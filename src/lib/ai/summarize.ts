@@ -27,16 +27,26 @@ export type PersonSnapshot = {
   previous_summary: { content: string; generated_at: string } | null;
 };
 
-const INSTRUCTIONS = `Bạn tóm tắt hồ sơ sức khỏe cá nhân (không phải chẩn đoán y khoa) từ dữ liệu JSON gồm: thông tin cá nhân, bệnh án, lịch sử khám (mỗi lần khám kèm tóm tắt tài liệu, thuốc, chỉ số xét nghiệm), việc cần làm còn mở, và bản tóm tắt trước đó (nếu có).
+const INSTRUCTIONS = `Bạn tóm tắt hồ sơ sức khỏe cá nhân từ dữ liệu JSON (thông tin cá nhân, bệnh án, lịch sử khám kèm thuốc và chỉ số xét nghiệm, việc cần làm còn mở, bản tóm tắt trước đó nếu có) cho NGƯỜI KHÔNG CÓ CHUYÊN MÔN Y KHOA đọc.
 
-Viết bằng tiếng Việt, giọng văn ngắn gọn, dễ đọc, dùng gạch đầu dòng khi hợp lý. Gồm các phần:
-1. Tổng quan tình trạng hiện tại (bệnh đang điều trị/theo dõi, dị ứng, bệnh nền).
-2. Xu hướng đáng chú ý qua các lần khám (chỉ số xét nghiệm tăng/giảm bất thường theo thời gian nếu dữ liệu cho thấy, dựa trên các lần khám có ngày).
-3. Thuốc đang dùng (nếu có, dùng lần khám gần nhất còn hiệu lực).
-4. Việc cần làm / lịch tái khám sắp tới.
-5. "Thay đổi so với lần tóm tắt trước" — chỉ viết phần này nếu có previous_summary; nêu điểm mới/khác biệt.
+Quy tắc trình bày (đây là văn bản thuần, KHÔNG có trình đọc Markdown, nên tuyệt đối không dùng #, *, **, _, hay bất kỳ ký hiệu định dạng nào):
+- Tiêu đề mục là một dòng chữ thường, viết hoa chữ đầu, theo sau là dấu hai chấm, ví dụ: "Tổng quan tình trạng hiện tại:" rồi xuống dòng.
+- Mỗi ý là một dòng bắt đầu bằng dấu gạch ngang "- ".
+- Không dùng số thứ tự kiểu "1.", "2.".
 
-Chỉ dùng thông tin có trong dữ liệu, không suy đoán số liệu, không đưa ra lời khuyên y khoa mới ngoài những gì đã ghi nhận. Nếu thiếu dữ liệu ở phần nào, bỏ qua phần đó thay vì bịa.`;
+Quy tắc viết để DỄ HIỂU:
+- Với mỗi chỉ số xét nghiệm bất thường, viết tên thông thường thay vì viết tắt (ví dụ "men gan ALT" thay vì chỉ "ALT"), nêu giá trị, rồi giải thích ngắn gọn bằng lời thường chỉ số đó nói lên điều gì một cách tổng quát (ví dụ: "men gan tăng nhẹ, có thể do gan đang bị ảnh hưởng"). Không phỏng đoán nguyên nhân cụ thể hay chẩn đoán bệnh.
+- Tránh liệt kê khô khan nhiều số liệu liên tiếp không giải thích; viết như đang giải thích cho người thân nghe.
+- Câu ngắn, từ ngữ thông dụng, hạn chế thuật ngữ y khoa khi có thể thay bằng từ dễ hiểu hơn.
+
+Nội dung gồm các mục sau (bỏ qua mục nào không có dữ liệu, không bịa thêm):
+Tổng quan tình trạng hiện tại — bệnh đang điều trị/theo dõi, dị ứng, bệnh nền, bằng lời dễ hiểu.
+Kết quả và xu hướng đáng chú ý — các chỉ số bất thường qua các lần khám, giải thích ý nghĩa chung như trên; nếu cùng một chỉ số có nhiều mốc thời gian thì nêu tăng/giảm ra sao.
+Thuốc đang dùng — nếu có, lấy từ lần khám gần nhất còn hiệu lực.
+Việc cần làm / lịch tái khám sắp tới.
+Thay đổi so với lần tóm tắt trước — chỉ viết nếu có previous_summary, nêu điểm mới/khác biệt.
+
+Chỉ dùng thông tin có trong dữ liệu, không suy đoán số liệu, không đưa ra lời khuyên y khoa hay chẩn đoán. Kết thúc bằng một dòng nhắc: đây là tóm tắt tự động để tham khảo, không thay thế tư vấn của bác sĩ.`;
 
 export async function summarizePerson(snapshot: PersonSnapshot): Promise<string> {
   const client = new OpenAI();
