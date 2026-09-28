@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { addActionItem, deleteActionItem, setActionItemDone } from "@/app/actions";
+import { PendingButton } from "@/components/PendingButton";
 import { SubmitButton } from "@/components/SubmitButton";
 import { formatDate } from "@/lib/format";
 
@@ -30,14 +31,14 @@ export function ActionItems({
         {items.map((a) => (
           <li key={a.id} className="flex items-start gap-3">
             <form action={setActionItemDone.bind(null, a.id, !a.done)}>
-              <button
+              <PendingButton
                 aria-label={a.done ? "Đánh dấu chưa xong" : "Đánh dấu đã xong"}
                 className={`mt-0.5 flex h-5 w-5 items-center justify-center rounded border text-xs ${
                   a.done ? "border-teal-600 bg-teal-600 text-white" : "border-slate-400 bg-white"
                 }`}
               >
                 {a.done && "✓"}
-              </button>
+              </PendingButton>
             </form>
             <div className="flex-1">
               <span className={a.done ? "text-slate-400 line-through" : ""}>{a.content}</span>
@@ -52,9 +53,9 @@ export function ActionItems({
               </div>
             </div>
             <form action={deleteActionItem.bind(null, a.id)}>
-              <button className="text-slate-400 hover:text-red-600" aria-label="Xóa">
+              <PendingButton className="text-slate-400 hover:text-red-600" aria-label="Xóa">
                 ×
-              </button>
+              </PendingButton>
             </form>
           </li>
         ))}

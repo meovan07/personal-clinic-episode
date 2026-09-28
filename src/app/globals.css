@@ -34,3 +34,22 @@ body {
     @apply text-sm text-slate-500;
   }
 }
+
+@keyframes top-loader {
+  0% {
+    margin-left: -33%;
+  }
+  100% {
+    margin-left: 100%;
+  }
+}
+
+/* Reset the browser's default <dialog> chrome; ConfirmForm styles the panel itself. */
+dialog {
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+dialog::backdrop {
+  background: rgb(15 23 42 / 0.4);
+}

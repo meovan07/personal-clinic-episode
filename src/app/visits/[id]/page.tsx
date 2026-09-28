@@ -6,6 +6,7 @@ import { AiReadButton } from "@/components/AiReadButton";
 import { ConfirmForm } from "@/components/ConfirmForm";
 import { DocumentUploader } from "@/components/DocumentUploader";
 import { PageHeader } from "@/components/PageHeader";
+import { PendingButton } from "@/components/PendingButton";
 import { SubmitButton } from "@/components/SubmitButton";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate } from "@/lib/format";
@@ -235,9 +236,9 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
                   </div>
                 </div>
                 <form action={deleteMedication.bind(null, m.id, id)}>
-                  <button className="text-slate-400 hover:text-red-600" aria-label="Xóa">
+                  <PendingButton className="text-slate-400 hover:text-red-600" aria-label="Xóa">
                     ×
-                  </button>
+                  </PendingButton>
                 </form>
               </li>
             ))}

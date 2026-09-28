@@ -1,8 +1,18 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
+import { useFormStatus } from "react-dom";
 
-// A form that asks for confirmation before running its server action.
+function ConfirmSubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button type="submit" className="btn-danger" disabled={pending}>
+      {pending ? "Đang xóa…" : "Xóa"}
+    </button>
+  );
+}
+
+// Opens an in-app modal (instead of the browser's native confirm()) before running its server action.
 export function ConfirmForm({
   action,
   message,
@@ -14,15 +24,28 @@ export function ConfirmForm({
   children: ReactNode;
   className?: string;
 }) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
   return (
-    <form
-      action={action}
-      className={className}
-      onSubmit={(e) => {
-        if (!confirm(message)) e.preventDefault();
-      }}
-    >
-      {children}
-    </form>
+    <div className={className}>
+      <span onClick={() => dialogRef.current?.showModal()}>{children}</span>
+      <dialog
+        ref={dialogRef}
+        className="m-auto w-80 max-w-[90vw] rounded-xl border border-slate-200 bg-white p-5 shadow-lg"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) dialogRef.current?.close();
+        }}
+      >
+        <p className="mb-4">{message}</p>
+        <div className="flex justify-end gap-2">
+          <button type="button" className="btn" onClick={() => dialogRef.current?.close()}>
+            Hủy
+          </button>
+          <form action={action}>
+            <ConfirmSubmitButton />
+          </form>
+        </div>
+      </dialog>
+    </div>
   );
 }

@@ -3,6 +3,7 @@ import { Be_Vietnam_Pro } from "next/font/google";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/actions";
+import { TopLoader } from "@/components/TopLoader";
 import "./globals.css";
 
 const font = Be_Vietnam_Pro({
@@ -33,6 +34,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="vi" className={`${font.variable} h-full antialiased`}>
       <body className="min-h-full font-sans">
+        <TopLoader />
         {user && (
           <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 backdrop-blur">
             <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
