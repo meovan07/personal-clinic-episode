@@ -14,7 +14,7 @@ export default async function Home() {
     supabase
       .from("visits")
       .select("id, visit_date, facility, reason, cases(title), people(full_name), documents(count)")
-      .order("visit_date", { ascending: false })
+      .order("visit_date", { ascending: false, nullsFirst: false })
       .limit(8),
     supabase
       .from("action_items")
@@ -35,7 +35,11 @@ export default async function Home() {
         {people.data?.length === 0 && <p className="muted">Bắt đầu bằng cách thêm hồ sơ cho bạn và người yêu.</p>}
         <div className="grid gap-3 sm:grid-cols-2">
           {people.data?.map((p) => {
-            const lastVisit = p.visits.map((v) => v.visit_date).sort().at(-1);
+            const lastVisit = p.visits
+              .map((v) => v.visit_date)
+              .filter((d): d is string => !!d)
+              .sort()
+              .at(-1);
             const active = p.cases.filter((c) => c.status === "dang_dieu_tri").length;
             const a = age(p.birth_date);
             return (

@@ -246,13 +246,13 @@ isOneToOne: false
                   ]
                 },"visits": {
                   Row: {
-                    "case_id": string | null,"created_at": string,"department": string | null,"doctor": string | null,"facility": string | null,"id": string,"notes": string | null,"person_id": string,"reason": string | null,"visit_date": string
+                    "case_id": string | null,"created_at": string,"department": string | null,"doctor": string | null,"facility": string | null,"id": string,"notes": string | null,"person_id": string,"reason": string | null,"visit_date": string | null
                   }
                   Insert: {
-                    "case_id"?: string | null,"created_at"?: string,"department"?: string | null,"doctor"?: string | null,"facility"?: string | null,"id"?: string,"notes"?: string | null,"person_id": string,"reason"?: string | null,"visit_date": string
+                    "case_id"?: string | null,"created_at"?: string,"department"?: string | null,"doctor"?: string | null,"facility"?: string | null,"id"?: string,"notes"?: string | null,"person_id": string,"reason"?: string | null,"visit_date"?: string | null
                   }
                   Update: {
-                    "case_id"?: string | null,"created_at"?: string,"department"?: string | null,"doctor"?: string | null,"facility"?: string | null,"id"?: string,"notes"?: string | null,"person_id"?: string,"reason"?: string | null,"visit_date"?: string
+                    "case_id"?: string | null,"created_at"?: string,"department"?: string | null,"doctor"?: string | null,"facility"?: string | null,"id"?: string,"notes"?: string | null,"person_id"?: string,"reason"?: string | null,"visit_date"?: string | null
                   }
                   Relationships: [
                     {

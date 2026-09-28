@@ -107,7 +107,7 @@ export async function saveVisit(fd: FormData) {
   const row = {
     person_id: required(fd, "person_id"),
     case_id: str(fd, "case_id"),
-    visit_date: required(fd, "visit_date"),
+    visit_date: str(fd, "visit_date"),
     facility: str(fd, "facility"),
     department: str(fd, "department"),
     doctor: str(fd, "doctor"),
@@ -311,7 +311,7 @@ export async function confirmExtraction(documentId: string, input: unknown) {
   const doc = check(
     await supabase
       .from("documents")
-      .select("id, visit_id, visits(person_id, facility, department, doctor)")
+      .select("id, visit_id, visits(person_id, visit_date, facility, department, doctor)")
       .eq("id", documentId)
       .single(),
   );
@@ -362,11 +362,12 @@ export async function confirmExtraction(documentId: string, input: unknown) {
   if (actions.length) check(await supabase.from("action_items").insert(actions));
 
   // Fill in visit details the user left empty.
-  const visitPatch: { facility?: string; department?: string; doctor?: string } = {};
+  const visitPatch: { visit_date?: string; facility?: string; department?: string; doctor?: string } = {};
   for (const k of ["facility", "department", "doctor"] as const) {
     const found = reviewed[k];
     if (!visit[k] && found) visitPatch[k] = found;
   }
+  if (!visit.visit_date && reviewed.document_date) visitPatch.visit_date = reviewed.document_date;
   if (Object.keys(visitPatch).length) check(await supabase.from("visits").update(visitPatch).eq("id", doc.visit_id));
 
   const summary = [

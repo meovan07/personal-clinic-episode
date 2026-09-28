@@ -21,7 +21,7 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
       .from("visits")
       .select("id, visit_date, facility, reason, cases(title), documents(count)")
       .eq("person_id", id)
-      .order("visit_date", { ascending: false }),
+      .order("visit_date", { ascending: false, nullsFirst: false }),
     supabase
       .from("action_items")
       .select("id, content, due_on, done, visit_id")

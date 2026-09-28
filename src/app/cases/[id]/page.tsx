@@ -17,7 +17,7 @@ export default async function CasePage({ params }: PageProps<"/cases/[id]">) {
     .from("visits")
     .select("id, visit_date, facility, reason, documents(count)")
     .eq("case_id", id)
-    .order("visit_date", { ascending: false });
+    .order("visit_date", { ascending: false, nullsFirst: false });
 
   return (
     <div className="space-y-8">

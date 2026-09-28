@@ -3,7 +3,7 @@ import { formatDate } from "@/lib/format";
 
 export type VisitRow = {
   id: string;
-  visit_date: string;
+  visit_date: string | null;
   facility: string | null;
   reason: string | null;
   cases?: { title: string } | null;
@@ -22,7 +22,7 @@ export function VisitList({ visits, showPerson = false }: { visits: VisitRow[]; 
             <span className="absolute -left-[27px] top-4 h-3 w-3 rounded-full border-2 border-white bg-teal-500" />
             <Link href={`/visits/${v.id}`} className="card block hover:border-teal-300">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <span className="font-semibold">{formatDate(v.visit_date)}</span>
+                <span className="font-semibold">{formatDate(v.visit_date) || "Chưa rõ ngày"}</span>
                 <span className="muted">
                   {showPerson && v.people?.full_name}
                   {docCount > 0 && ` · 📎 ${docCount}`}

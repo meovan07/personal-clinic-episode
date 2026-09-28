@@ -107,8 +107,8 @@ export function VisitForm({
       {visit && <input type="hidden" name="id" value={visit.id} />}
       <input type="hidden" name="person_id" value={personId} />
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Ngày khám *">
-          <input type="date" name="visit_date" required className="input" defaultValue={visit?.visit_date ?? today()} />
+        <Field label="Ngày khám (để trống nếu chưa rõ, AI có thể tự điền sau khi đọc tài liệu)">
+          <input type="date" name="visit_date" className="input" defaultValue={visit?.visit_date ?? ""} />
         </Field>
         <Field label="Thuộc bệnh án">
           <select name="case_id" className="input" defaultValue={visit?.case_id ?? defaultCaseId ?? ""}>

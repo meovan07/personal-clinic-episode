@@ -68,7 +68,7 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
     <div className="space-y-8">
       <PageHeader
         back={{ href: `/people/${visit.person_id}`, label: visit.people.full_name }}
-        title={`Khám ngày ${formatDate(visit.visit_date)}`}
+        title={`Khám ngày ${formatDate(visit.visit_date) || "(chưa rõ)"}`}
         subtitle={
           <>
             {visit.facility ?? "Chưa ghi nơi khám"}

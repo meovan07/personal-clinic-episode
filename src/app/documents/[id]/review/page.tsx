@@ -36,7 +36,7 @@ export default async function ReviewPage({ params }: PageProps<"/documents/[id]/
   return (
     <>
       <PageHeader
-        back={{ href: `/visits/${doc.visit_id}`, label: `Khám ngày ${formatDate(doc.visits.visit_date)}` }}
+        back={{ href: `/visits/${doc.visit_id}`, label: `Khám ngày ${formatDate(doc.visits.visit_date) || "(chưa rõ)"}` }}
         title="Kiểm tra kết quả AI đọc"
         subtitle={`${doc.title ?? DOC_TYPE[doc.doc_type]} · So sánh với bản gốc bên trái, sửa nếu sai rồi bấm Xác nhận.`}
       />
