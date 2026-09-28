@@ -131,6 +131,26 @@ export async function saveVisit(fd: FormData) {
   redirect(`/visits/${saved.id}`);
 }
 
+// Used by the client-driven "thêm lần khám" flow (NewVisitForm), which may attach a photo
+// and jump straight to AI review - it needs the new id back, so it can't use the
+// redirect()-throwing saveVisit above.
+export async function createVisit(fd: FormData): Promise<string> {
+  const supabase = await createClient();
+  const row = {
+    person_id: required(fd, "person_id"),
+    case_id: str(fd, "case_id"),
+    visit_date: str(fd, "visit_date"),
+    facility: str(fd, "facility"),
+    department: str(fd, "department"),
+    doctor: str(fd, "doctor"),
+    reason: str(fd, "reason"),
+    notes: str(fd, "notes"),
+  };
+  const saved = check(await supabase.from("visits").insert(row).select("id").single());
+  revalidatePath("/", "layout");
+  return saved.id;
+}
+
 export async function deleteVisit(id: string, personId: string) {
   const supabase = await createClient();
   await removeFilesUnder(supabase, (q) => q.eq("documents.visit_id", id));
@@ -169,7 +189,7 @@ export async function createDocument(input: {
   title: string | null;
   docType: string;
   files: UploadedFile[];
-}) {
+}): Promise<string> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -189,6 +209,7 @@ export async function createDocument(input: {
     throw new Error(error.message);
   }
   revalidatePath(`/visits/${input.visitId}`);
+  return doc.id;
 }
 
 export async function deleteDocument(id: string, visitId: string) {
@@ -337,7 +358,14 @@ export async function deleteVaccination(id: string, personId: string) {
 
 // ---------- AI extraction (Phase 2) ----------
 
-export async function readDocumentWithAI(documentId: string): Promise<{ error: string | null }> {
+// The visit-relevant fields from a read, so a caller (NewVisitForm) can pre-fill the visit
+// form immediately instead of waiting for the document confirm step to back-fill them.
+type ReadResult = {
+  error: string | null;
+  visitFields?: { visit_date: string | null; facility: string | null; department: string | null; doctor: string | null };
+};
+
+export async function readDocumentWithAI(documentId: string): Promise<ReadResult> {
   const supabase = await createClient();
   const doc = check(
     await supabase
@@ -375,7 +403,15 @@ export async function readDocumentWithAI(documentId: string): Promise<{ error: s
         })
         .eq("id", documentId),
     );
-    return { error: null };
+    return {
+      error: null,
+      visitFields: {
+        visit_date: result.document_date,
+        facility: result.facility,
+        department: result.department,
+        doctor: result.doctor,
+      },
+    };
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     await supabase.from("documents").update({ extraction_status: "failed", extraction_error: message }).eq("id", documentId);

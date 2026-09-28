@@ -28,7 +28,9 @@ export const metadata: Metadata = {
   description: "Lưu trữ bệnh án gia đình",
 };
 
-export const viewport: Viewport = { width: "device-width", initialScale: 1 };
+// maximumScale 1 stops iOS auto-zooming the page when a <16px input/select is focused -
+// accepted tradeoff since pinch-zoom is rarely needed on this app's short forms/lists.
+export const viewport: Viewport = { width: "device-width", initialScale: 1, maximumScale: 1 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const supabase = await createClient();

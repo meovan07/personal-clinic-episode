@@ -1,7 +1,10 @@
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/PageHeader";
-import { VisitForm } from "@/components/forms";
+import { NewVisitForm } from "@/components/NewVisitForm";
 import { createClient } from "@/lib/supabase/server";
+
+// The attached-photo path calls readDocumentWithAI, which can take up to a minute.
+export const maxDuration = 300;
 
 export default async function NewVisitPage({ searchParams }: PageProps<"/visits/new">) {
   const { person: personId, case: caseId } = await searchParams;
@@ -15,7 +18,7 @@ export default async function NewVisitPage({ searchParams }: PageProps<"/visits/
   return (
     <>
       <PageHeader back={{ href: `/people/${personId}`, label: person.full_name }} title="Thêm lần khám" />
-      <VisitForm personId={personId} cases={cases ?? []} defaultCaseId={typeof caseId === "string" ? caseId : undefined} />
+      <NewVisitForm personId={personId} cases={cases ?? []} defaultCaseId={typeof caseId === "string" ? caseId : undefined} />
     </>
   );
 }

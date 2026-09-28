@@ -80,12 +80,10 @@ a {
   .btn-danger-solid {
     @apply inline-flex items-center justify-center gap-1.5 rounded-md bg-stamp px-3 py-2 text-sm font-medium text-white hover:bg-stamp-dark disabled:opacity-50;
   }
-  /* Pinned at 16px (not rem-relative) regardless of the root scale above - below that,
-     iOS Safari zooms the page in when the field is focused. The placeholder is sized
-     down separately (::placeholder's font-size doesn't affect that zoom trigger) so it
-     doesn't read larger than the rest of the now-smaller UI text. */
+  /* Below 16px, iOS Safari zooms the page in when the field is focused - accepted
+     deliberately here so input text matches the rest of the UI's smaller scale. */
   .input {
-    @apply w-full rounded-md border border-line bg-surface px-3 py-2 text-[16px] text-ink placeholder:text-[15px] placeholder:text-ink-faint focus:border-pen focus:outline-none focus:ring-2 focus:ring-pen-tint;
+    @apply w-full rounded-md border border-line bg-surface px-3 py-2 text-base text-ink placeholder:text-sm placeholder:text-ink-faint focus:border-pen focus:outline-none focus:ring-2 focus:ring-pen-tint;
   }
   .label {
     @apply mb-1 block text-sm font-medium text-ink-soft;
