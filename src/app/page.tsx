@@ -1,69 +1,69 @@
-import Image from "next/image";
+import Link from "next/link";
+import { ActionItems } from "@/components/ActionItems";
+import { VisitList } from "@/components/VisitList";
+import { createClient } from "@/lib/supabase/server";
+import { age, formatDate } from "@/lib/format";
 
-export default function Home() {
+export default async function Home() {
+  const supabase = await createClient();
+  const [people, visits, actions] = await Promise.all([
+    supabase
+      .from("people")
+      .select("id, full_name, birth_date, cases(status), visits(visit_date)")
+      .order("created_at"),
+    supabase
+      .from("visits")
+      .select("id, visit_date, facility, reason, cases(title), people(full_name), documents(count)")
+      .order("visit_date", { ascending: false })
+      .limit(8),
+    supabase
+      .from("action_items")
+      .select("id, content, due_on, done, visit_id, people(full_name)")
+      .eq("done", false)
+      .order("due_on", { ascending: true, nullsFirst: false }),
+  ]);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="space-y-8">
+      <section>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="section-title mb-0">Hồ sơ</h2>
+          <Link href="/people/new" className="btn">
+            + Thêm người
+          </Link>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        {people.data?.length === 0 && <p className="muted">Bắt đầu bằng cách thêm hồ sơ cho bạn và người yêu.</p>}
+        <div className="grid gap-3 sm:grid-cols-2">
+          {people.data?.map((p) => {
+            const lastVisit = p.visits.map((v) => v.visit_date).sort().at(-1);
+            const active = p.cases.filter((c) => c.status === "dang_dieu_tri").length;
+            const a = age(p.birth_date);
+            return (
+              <Link key={p.id} href={`/people/${p.id}`} className="card hover:border-teal-300">
+                <div className="text-lg font-semibold">{p.full_name}</div>
+                <div className="muted">
+                  {a !== null && `${a} tuổi · `}
+                  {p.visits.length} lần khám
+                  {active > 0 && ` · ${active} bệnh đang điều trị`}
+                </div>
+                {lastVisit && <div className="muted">Khám gần nhất: {formatDate(lastVisit)}</div>}
+              </Link>
+            );
+          })}
         </div>
-      </main>
+      </section>
+
+      <section>
+        <h2 className="section-title">Việc cần làm</h2>
+        <div className="card">
+          <ActionItems items={actions.data ?? []} showPerson />
+        </div>
+      </section>
+
+      <section>
+        <h2 className="section-title">Lần khám gần đây</h2>
+        <VisitList visits={visits.data ?? []} showPerson />
+      </section>
     </div>
   );
 }
