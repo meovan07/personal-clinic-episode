@@ -1,79 +1,100 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { confirmExtraction } from "@/app/actions";
-import type { ExtractionResult } from "@/lib/ai/extract";
+import { confirmInboxItem, discardInboxItem, type CaseChoice, type VisitChoice } from "@/app/actions";
+import { ConfirmForm } from "@/components/ConfirmForm";
+import { StringList } from "@/components/ReviewForm";
+import type { ExtractionResult, InboxExtractionResult } from "@/lib/ai/extract";
 import { DOC_TYPE } from "@/lib/labels";
+import { formatDate } from "@/lib/format";
 
 type Obs = ExtractionResult["observations"][number];
 type Med = ExtractionResult["medications"][number];
 type Preview = { url: string; name: string; mime: string | null };
+type PersonOpt = { id: string; full_name: string };
+type CaseOpt = { id: string; person_id: string; title: string; status: string };
+type SuggestedVisit = {
+  id: string;
+  visit_date: string | null;
+  facility: string | null;
+  department: string | null;
+  doctor: string | null;
+  case_id: string | null;
+  cases: { title: string } | null;
+} | null;
 
 const FLAGS: Record<string, string> = { normal: "Bình thường", high: "Cao", low: "Thấp", abnormal: "Bất thường" };
 const emptyObs: Obs = { raw_name: "", test_code: null, value: "", unit: null, ref_range: null, flag: null };
 const emptyMed: Med = { name: "", dose: null, schedule: null, duration_days: null, notes: null };
-
 const nul = (v: string) => (v.trim() === "" ? null : v);
 
-export function StringList({
-  items,
-  onChange,
-  placeholder,
-}: {
-  items: string[];
-  onChange: (items: string[]) => void;
-  placeholder: string;
-}) {
-  return (
-    <div className="space-y-2">
-      {items.map((v, i) => (
-        <div key={i} className="flex gap-2">
-          <input
-            className="input"
-            value={v}
-            placeholder={placeholder}
-            onChange={(e) => onChange(items.map((x, j) => (j === i ? e.target.value : x)))}
-          />
-          <button type="button" className="btn" onClick={() => onChange(items.filter((_, j) => j !== i))} aria-label="Xóa">
-            ×
-          </button>
-        </div>
-      ))}
-      <button type="button" className="btn" onClick={() => onChange([...items, ""])}>
-        + Thêm
-      </button>
-    </div>
-  );
-}
-
-export function ReviewForm({
-  documentId,
-  visitId,
+export function InboxReviewForm({
+  inboxId,
   initial,
-  previews,
+  people,
+  cases,
   catalog,
+  previews,
+  suggestedPersonId,
+  suggestedCaseId,
+  suggestedIsNewCase,
+  suggestedNewCaseTitle,
+  suggestedVisit,
 }: {
-  documentId: string;
-  visitId: string;
-  initial: ExtractionResult;
-  previews: Preview[];
+  inboxId: string;
+  initial: InboxExtractionResult;
+  people: PersonOpt[];
+  cases: CaseOpt[];
   catalog: { code: string; name_vi: string }[];
+  previews: Preview[];
+  suggestedPersonId: string | null;
+  suggestedCaseId: string | null;
+  suggestedIsNewCase: boolean;
+  suggestedNewCaseTitle: string | null;
+  suggestedVisit: SuggestedVisit;
 }) {
-  const [data, setData] = useState(initial);
+  const [data, setData] = useState<ExtractionResult>(initial);
+  const [personId, setPersonId] = useState(suggestedPersonId ?? people[0]?.id ?? "");
+  const [useExistingVisit, setUseExistingVisit] = useState(!!suggestedVisit);
+  const [caseMode, setCaseMode] = useState<"none" | "existing" | "new">(
+    suggestedIsNewCase ? "new" : suggestedCaseId ? "existing" : "none",
+  );
+  const [caseExistingId, setCaseExistingId] = useState(suggestedCaseId ?? "");
+  const [newCaseTitle, setNewCaseTitle] = useState(suggestedNewCaseTitle ?? "");
+  const [visitDate, setVisitDate] = useState(initial.document_date ?? "");
+  const [facility, setFacility] = useState(initial.facility ?? "");
+  const [department, setDepartment] = useState(initial.department ?? "");
+  const [doctor, setDoctor] = useState(initial.doctor ?? "");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+
   const set = <K extends keyof ExtractionResult>(key: K, value: ExtractionResult[K]) => setData((d) => ({ ...d, [key]: value }));
   const setObs = (i: number, patch: Partial<Obs>) =>
     set("observations", data.observations.map((o, j) => (j === i ? { ...o, ...patch } : o)));
   const setMed = (i: number, patch: Partial<Med>) =>
     set("medications", data.medications.map((m, j) => (j === i ? { ...m, ...patch } : m)));
 
+  const personCases = useMemo(() => cases.filter((c) => c.person_id === personId), [cases, personId]);
+  const canMergeVisit = !!suggestedVisit && personId === suggestedPersonId;
+  const merging = canMergeVisit && useExistingVisit;
+  const lowConfidence = initial.person_match_confidence === "low" || !suggestedPersonId;
+
   function save() {
     setError(null);
     startTransition(async () => {
       try {
-        await confirmExtraction(documentId, data);
+        const visit: VisitChoice = merging
+          ? { type: "existing", id: suggestedVisit!.id }
+          : { type: "new", visit_date: nul(visitDate), facility: nul(facility), department: nul(department), doctor: nul(doctor) };
+        const caseChoice: CaseChoice = merging
+          ? { type: "none" }
+          : caseMode === "existing" && caseExistingId
+            ? { type: "existing", id: caseExistingId }
+            : caseMode === "new"
+              ? { type: "new", title: newCaseTitle.trim() || "Bệnh án mới" }
+              : { type: "none" };
+        await confirmInboxItem(inboxId, { personId, case: caseChoice, visit, reviewed: data });
       } catch (e) {
         // redirect() throws a special error that Next handles; anything else is a real failure.
         if (e instanceof Error && !e.message.includes("NEXT_REDIRECT")) setError(e.message);
@@ -102,6 +123,11 @@ export function ReviewForm({
       </div>
 
       <div className="space-y-6">
+        {lowConfidence && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+            ⚠ AI chưa chắc chắn tài liệu này của ai, hãy kiểm tra kỹ mục &quot;Người bệnh&quot; bên dưới.
+          </div>
+        )}
         {data.uncertain.length > 0 && (
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
             <div className="mb-1 font-medium">⚠ AI chưa chắc chắn, hãy kiểm tra kỹ:</div>
@@ -112,6 +138,105 @@ export function ReviewForm({
             </ul>
           </div>
         )}
+
+        <section className="card space-y-3">
+          <label className="block">
+            <span className="label">Người bệnh</span>
+            <select
+              className="input"
+              value={personId}
+              onChange={(e) => {
+                setPersonId(e.target.value);
+                setUseExistingVisit(false);
+                setCaseMode("none");
+                setCaseExistingId("");
+              }}
+            >
+              {people.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.full_name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          {canMergeVisit ? (
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
+              <label className="flex items-start gap-2">
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  checked={useExistingVisit}
+                  onChange={(e) => setUseExistingVisit(e.target.checked)}
+                />
+                <span>
+                  Gộp vào lần khám ngày {formatDate(suggestedVisit!.visit_date) || "(chưa rõ)"}
+                  {suggestedVisit!.facility && ` tại ${suggestedVisit!.facility}`}
+                  {suggestedVisit!.cases && ` · Bệnh án: ${suggestedVisit!.cases.title}`}
+                  {!suggestedVisit!.cases && " · Khám lẻ"}
+                  <br />
+                  <span className="muted">Bỏ chọn để tạo lần khám mới thay vào đó.</span>
+                </span>
+              </label>
+            </div>
+          ) : null}
+
+          {!merging && (
+            <>
+              <label className="block">
+                <span className="label">Bệnh án</span>
+                <select
+                  className="input"
+                  value={caseMode === "existing" ? caseExistingId : caseMode}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v === "none" || v === "new") {
+                      setCaseMode(v);
+                      setCaseExistingId("");
+                    } else {
+                      setCaseMode("existing");
+                      setCaseExistingId(v);
+                    }
+                  }}
+                >
+                  <option value="none">— Không (khám lẻ)</option>
+                  <option value="new">+ Tạo bệnh án mới</option>
+                  {personCases.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {caseMode === "new" && (
+                <input
+                  className="input"
+                  placeholder="Tên bệnh án, VD: Viêm dạ dày"
+                  value={newCaseTitle}
+                  onChange={(e) => setNewCaseTitle(e.target.value)}
+                />
+              )}
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block">
+                  <span className="label">Ngày khám</span>
+                  <input type="date" className="input" value={visitDate} onChange={(e) => setVisitDate(e.target.value)} />
+                </label>
+                <label className="block">
+                  <span className="label">Nơi khám</span>
+                  <input className="input" value={facility} onChange={(e) => setFacility(e.target.value)} />
+                </label>
+                <label className="block">
+                  <span className="label">Khoa</span>
+                  <input className="input" value={department} onChange={(e) => setDepartment(e.target.value)} />
+                </label>
+                <label className="block">
+                  <span className="label">Bác sĩ</span>
+                  <input className="input" value={doctor} onChange={(e) => setDoctor(e.target.value)} />
+                </label>
+              </div>
+            </>
+          )}
+        </section>
 
         <section className="card space-y-3">
           <div className="grid gap-3 sm:grid-cols-2">
@@ -128,18 +253,6 @@ export function ReviewForm({
                   </option>
                 ))}
               </select>
-            </label>
-            <label className="block">
-              <span className="label">Nơi khám</span>
-              <input className="input" value={data.facility ?? ""} onChange={(e) => set("facility", nul(e.target.value))} />
-            </label>
-            <label className="block">
-              <span className="label">Khoa</span>
-              <input className="input" value={data.department ?? ""} onChange={(e) => set("department", nul(e.target.value))} />
-            </label>
-            <label className="block">
-              <span className="label">Bác sĩ</span>
-              <input className="input" value={data.doctor ?? ""} onChange={(e) => set("doctor", nul(e.target.value))} />
             </label>
           </div>
           <label className="block">
@@ -302,11 +415,16 @@ export function ReviewForm({
         </section>
 
         {error && <p className="text-sm text-red-600">{error}</p>}
-        <div className="sticky bottom-0 flex gap-2 border-t border-slate-200 bg-slate-50 py-3">
+        <div className="sticky bottom-0 flex flex-wrap gap-2 border-t border-slate-200 bg-slate-50 py-3">
           <button className="btn-primary" disabled={pending} onClick={save}>
             {pending ? "Đang lưu…" : "✓ Xác nhận & lưu"}
           </button>
-          <Link href={`/visits/${visitId}`} className="btn">
+          <ConfirmForm action={discardInboxItem.bind(null, inboxId)} message="Bỏ tài liệu này? File gốc sẽ bị xóa.">
+            <button className="btn" type="button">
+              Bỏ tài liệu này
+            </button>
+          </ConfirmForm>
+          <Link href="/" className="btn">
             Để sau
           </Link>
         </div>

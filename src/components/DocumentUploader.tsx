@@ -6,16 +6,7 @@ import { createDocument, findDuplicateFiles, type UploadedFile } from "@/app/act
 import { createClient } from "@/lib/supabase/client";
 import { DOC_TYPE } from "@/lib/labels";
 import { formatBytes } from "@/lib/format";
-
-async function sha256(file: File): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
-  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-function extension(name: string): string {
-  const m = name.toLowerCase().match(/\.([a-z0-9]{1,5})$/);
-  return m ? m[1] : "bin";
-}
+import { extension, sha256 } from "@/lib/hash";
 
 export function DocumentUploader({ visitId }: { visitId: string }) {
   const router = useRouter();

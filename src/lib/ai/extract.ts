@@ -79,10 +79,7 @@ function toContent(file: ExtractFile): ResponseInputContent | null {
   return null; // e.g. HEIC, which the API does not accept
 }
 
-export async function extractDocument(
-  files: ExtractFile[],
-  catalog: { code: string; name_vi: string }[],
-): Promise<{ result: ExtractionResult; skipped: string[] }> {
+function buildContent(files: ExtractFile[]): { content: ResponseInputContent[]; skipped: string[] } {
   const content: ResponseInputContent[] = [];
   const skipped: string[] = [];
   for (const f of files) {
@@ -93,7 +90,14 @@ export async function extractDocument(
   if (content.length === 0) {
     throw new Error("Không có file nào đọc được (chỉ hỗ trợ PDF, JPG, PNG, WEBP).");
   }
+  return { content, skipped };
+}
 
+export async function extractDocument(
+  files: ExtractFile[],
+  catalog: { code: string; name_vi: string }[],
+): Promise<{ result: ExtractionResult; skipped: string[] }> {
+  const { content, skipped } = buildContent(files);
   const catalogText = catalog.map((c) => `${c.code}: ${c.name_vi}`).join("\n");
   const client = new OpenAI();
   const response = await client.responses.parse({
@@ -108,6 +112,74 @@ export async function extractDocument(
       },
     ],
     text: { format: zodTextFormat(Extraction, "medical_document") },
+  });
+
+  if (!response.output_parsed) {
+    throw new Error("AI không trả về kết quả hợp lệ. Thử lại sau.");
+  }
+  return { result: response.output_parsed, skipped };
+}
+
+// ---------- Inbox: extraction + person/bệnh án matching in one pass ----------
+
+export const InboxExtraction = Extraction.extend({
+  patient_name: z.string().nullable().describe("Patient's name as printed on the document, if legible"),
+  matched_person_id: z.string().nullable().describe("Best-guess id from the family roster below. Prefer a guess over null; use person_match_confidence for doubt"),
+  person_match_confidence: z.enum(["high", "low"]).nullable(),
+  matched_case_id: z
+    .string()
+    .nullable()
+    .describe("Id of an existing bệnh án of the matched person that this document clearly continues, else null"),
+  is_new_case: z
+    .boolean()
+    .describe("True only if this document reflects a specific diagnosed condition or ongoing treatment worth tracking as its own bệnh án, and no existing case fits"),
+  new_case_title: z.string().nullable().describe("Short Vietnamese bệnh án title, only meaningful when is_new_case is true"),
+});
+
+export type InboxExtractionResult = z.infer<typeof InboxExtraction>;
+
+const MATCH_INSTRUCTIONS = `
+You also decide which family member this document belongs to and whether it continues an existing bệnh án (case).
+
+Rules:
+- Read the patient name as printed (patient_name), but decide matched_person_id using ALL context (name, age/sex if shown, handwriting, facility patterns) against the roster below.
+- The family is small. Always pick your best-guess matched_person_id from the roster ids given — do not return null just because the name isn't a perfect string match (nicknames, missing diacritics, a spouse's or child's name are common). Set person_match_confidence to "low" when you're genuinely unsure instead of leaving matched_person_id null.
+- matched_case_id must be one of the listed case ids belonging to the matched person, and only when the diagnosis/illness in this document clearly continues that case (same condition/body area/ongoing treatment). Otherwise null.
+- is_new_case is true only when the document is about a specific diagnosed condition or ongoing treatment worth tracking as its own bệnh án (not a routine annual checkup, a one-off vaccination, or a normal-result general screening), and no existing case already covers it. In that case also fill new_case_title with a short Vietnamese title in the same style as existing ones (e.g. "Viêm dạ dày", "Gãy tay trái").`;
+
+export async function extractAndMatchDocument(
+  files: ExtractFile[],
+  catalog: { code: string; name_vi: string }[],
+  people: { id: string; full_name: string; birth_date: string | null; sex: string | null }[],
+  casesByPerson: Record<string, { id: string; title: string; status: string; started_on: string | null }[]>,
+): Promise<{ result: InboxExtractionResult; skipped: string[] }> {
+  const { content, skipped } = buildContent(files);
+  const catalogText = catalog.map((c) => `${c.code}: ${c.name_vi}`).join("\n");
+  const rosterText = people
+    .map((p) => {
+      const cases = casesByPerson[p.id] ?? [];
+      const caseLines = cases.length
+        ? cases
+            .map((c) => `  - [id=${c.id}] "${c.title}" (${c.status}${c.started_on ? `, bắt đầu ${c.started_on}` : ""})`)
+            .join("\n")
+        : "  (chưa có bệnh án nào)";
+      return `- [id=${p.id}] ${p.full_name}${p.birth_date ? ` (sinh ${p.birth_date})` : ""}${p.sex ? `, ${p.sex}` : ""}\n${caseLines}`;
+    })
+    .join("\n");
+
+  const client = new OpenAI();
+  const response = await client.responses.parse({
+    model: process.env.OPENAI_MODEL || "gpt-5.5",
+    reasoning: { effort: "low" },
+    store: false, // don't keep medical documents on OpenAI's side
+    instructions: `${INSTRUCTIONS}\n${MATCH_INSTRUCTIONS}\n\nTest catalog:\n${catalogText}\n\nGia đình và bệnh án hiện có:\n${rosterText}`,
+    input: [
+      {
+        role: "user",
+        content: [{ type: "input_text", text: `Extract this document (${content.length} page(s)).` }, ...content],
+      },
+    ],
+    text: { format: zodTextFormat(InboxExtraction, "medical_document_matched") },
   });
 
   if (!response.output_parsed) {

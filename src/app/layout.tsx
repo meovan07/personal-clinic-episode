@@ -3,8 +3,12 @@ import { Be_Vietnam_Pro } from "next/font/google";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/actions";
+import { QuickAddButton } from "@/components/QuickAddButton";
 import { TopLoader } from "@/components/TopLoader";
 import "./globals.css";
+
+// The "+" button's AI processing runs inside a server action and can take up to a minute.
+export const maxDuration = 300;
 
 const font = Be_Vietnam_Pro({
   variable: "--font-be-vietnam",
@@ -57,6 +61,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             children
           )}
         </main>
+        {user && isMember && <QuickAddButton />}
       </body>
     </html>
   );
