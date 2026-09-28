@@ -46,7 +46,7 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
       .order("created_at")
       .order("page_no", { referencedTable: "document_files" }),
     supabase.from("medications").select("*").eq("visit_id", id).order("created_at"),
-    supabase.from("action_items").select("id, content, due_on, done, visit_id").eq("visit_id", id).order("created_at"),
+    supabase.from("action_items").select("id, content, due_on, done, visit_id, notes").eq("visit_id", id).order("created_at"),
     supabase
       .from("observations")
       .select("id, raw_name, value, value_text, unit, raw_value, raw_unit, ref_range_text, flag, test_catalog(name_vi)")
@@ -222,8 +222,9 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
                           <div className="text-xs text-ink-faint">{o.raw_name}</div>
                         )}
                       </td>
-                      <td className={`data px-4 py-2 ${FLAG_STYLE[o.flag ?? ""] ?? ""}`}>
-                        {o.value ?? o.value_text} {o.unit} {FLAG_ARROW[o.flag ?? ""]}
+                      <td className={`px-4 py-2 ${FLAG_STYLE[o.flag ?? ""] ?? ""}`}>
+                        {o.value !== null ? <span className="data">{o.value}</span> : o.value_text} {o.unit}{" "}
+                        {FLAG_ARROW[o.flag ?? ""]}
                         {converted && (
                           <div className="font-normal text-xs text-ink-faint">
                             Gốc: {o.raw_value} {o.raw_unit}
@@ -258,14 +259,18 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
                 <li key={v.id} className="py-2">
                   <span className="font-medium">{v.vaccine_name}</span>
                   {v.dose_label && ` · ${v.dose_label}`}
-                  <div className="data muted">
-                    {[
-                      v.disease,
-                      v.given_on && `Tiêm ${formatDate(v.given_on)}`,
-                      v.next_due_on && `Hẹn mũi sau ${formatDate(v.next_due_on)}`,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")}
+                  <div className="muted flex flex-wrap gap-x-2 [&>*+*]:before:mr-2 [&>*+*]:before:content-['·']">
+                    {v.disease && <span>{v.disease}</span>}
+                    {v.given_on && (
+                      <span>
+                        Tiêm <span className="data">{formatDate(v.given_on)}</span>
+                      </span>
+                    )}
+                    {v.next_due_on && (
+                      <span>
+                        Hẹn mũi sau <span className="data">{formatDate(v.next_due_on)}</span>
+                      </span>
+                    )}
                   </div>
                 </li>
               ))}
@@ -282,7 +287,7 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
             {meds.data?.map((m) => (
               <li key={m.id} className="flex items-start justify-between gap-2 py-2">
                 <div>
-                  <span className="font-medium">{m.name}</span> {m.dose && <span className="data">{m.dose}</span>}
+                  <span className="font-medium">{m.name}</span> {m.dose && <span>{m.dose}</span>}
                   <div className="muted">
                     {[m.schedule, m.duration_days && `${m.duration_days} ngày`, m.notes].filter(Boolean).join(" · ")}
                   </div>

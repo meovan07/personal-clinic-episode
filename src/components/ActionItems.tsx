@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Check, Plus, X } from "lucide-react";
 import { addActionItem, deleteActionItem, setActionItemDone } from "@/app/actions";
+import { EditActionItem } from "@/components/EditActionItem";
 import { PendingButton } from "@/components/PendingButton";
 import { SubmitButton } from "@/components/SubmitButton";
 import { formatDate } from "@/lib/format";
@@ -11,6 +12,7 @@ export type ActionItemRow = {
   due_on: string | null;
   done: boolean;
   visit_id: string | null;
+  notes?: string | null;
   people?: { full_name: string } | null;
 };
 
@@ -34,8 +36,8 @@ export function ActionItems({
             <form action={setActionItemDone.bind(null, a.id, !a.done)}>
               <PendingButton
                 aria-label={a.done ? "Đánh dấu chưa xong" : "Đánh dấu đã xong"}
-                className={`mt-0.5 flex h-5 w-5 items-center justify-center rounded border ${
-                  a.done ? "border-pine bg-pine text-white" : "border-line-strong bg-surface"
+                className={`mt-0.5 flex h-5 w-5 items-center justify-center rounded border transition-colors ${
+                  a.done ? "border-pine bg-pine text-white hover:bg-pine-dark" : "border-line-strong bg-surface hover:border-pine"
                 }`}
               >
                 {a.done && <Check className="h-3.5 w-3.5" strokeWidth={2.5} />}
@@ -53,6 +55,7 @@ export function ActionItems({
                 )}
               </div>
             </div>
+            <EditActionItem id={a.id} content={a.content} dueOn={a.due_on} notes={a.notes ?? null} />
             <form action={deleteActionItem.bind(null, a.id)}>
               <PendingButton className="text-ink-faint hover:text-stamp" aria-label="Xóa">
                 <X className="h-4 w-4" strokeWidth={1.75} />

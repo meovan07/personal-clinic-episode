@@ -14,59 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      accounts: {
-        Row: {
-          access_token: string | null
-          expires_at: number | null
-          id: string
-          id_token: string | null
-          provider: string
-          providerAccountId: string
-          refresh_token: string | null
-          scope: string | null
-          session_state: string | null
-          token_type: string | null
-          type: string
-          userId: string
-        }
-        Insert: {
-          access_token?: string | null
-          expires_at?: number | null
-          id?: string
-          id_token?: string | null
-          provider: string
-          providerAccountId: string
-          refresh_token?: string | null
-          scope?: string | null
-          session_state?: string | null
-          token_type?: string | null
-          type: string
-          userId: string
-        }
-        Update: {
-          access_token?: string | null
-          expires_at?: number | null
-          id?: string
-          id_token?: string | null
-          provider?: string
-          providerAccountId?: string
-          refresh_token?: string | null
-          scope?: string | null
-          session_state?: string | null
-          token_type?: string | null
-          type?: string
-          userId?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "accounts_userId_fkey"
-            columns: ["userId"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       action_items: {
         Row: {
           content: string
@@ -75,6 +22,7 @@ export type Database = {
           done: boolean
           due_on: string | null
           id: string
+          notes: string | null
           person_id: string
           visit_id: string | null
         }
@@ -85,6 +33,7 @@ export type Database = {
           done?: boolean
           due_on?: string | null
           id?: string
+          notes?: string | null
           person_id: string
           visit_id?: string | null
         }
@@ -95,6 +44,7 @@ export type Database = {
           done?: boolean
           due_on?: string | null
           id?: string
+          notes?: string | null
           person_id?: string
           visit_id?: string | null
         }
@@ -578,35 +528,6 @@ export type Database = {
         }
         Relationships: []
       }
-      sessions: {
-        Row: {
-          expires: string
-          id: string
-          sessionToken: string
-          userId: string
-        }
-        Insert: {
-          expires: string
-          id?: string
-          sessionToken: string
-          userId: string
-        }
-        Update: {
-          expires?: string
-          id?: string
-          sessionToken?: string
-          userId?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "sessions_userId_fkey"
-            columns: ["userId"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       test_catalog: {
         Row: {
           aliases: string[]
@@ -702,24 +623,6 @@ export type Database = {
         }
         Relationships: []
       }
-      verification_token: {
-        Row: {
-          expires: string
-          identifier: string
-          token: string
-        }
-        Insert: {
-          expires: string
-          identifier: string
-          token: string
-        }
-        Update: {
-          expires?: string
-          identifier?: string
-          token?: string
-        }
-        Relationships: []
-      }
       vaccinations: {
         Row: {
           created_at: string
@@ -733,6 +636,7 @@ export type Database = {
           next_due_on: string | null
           notes: string | null
           person_id: string
+          typically_single_dose: boolean | null
           vaccine_name: string
           visit_id: string | null
         }
@@ -748,6 +652,7 @@ export type Database = {
           next_due_on?: string | null
           notes?: string | null
           person_id: string
+          typically_single_dose?: boolean | null
           vaccine_name: string
           visit_id?: string | null
         }
@@ -763,6 +668,7 @@ export type Database = {
           next_due_on?: string | null
           notes?: string | null
           person_id?: string
+          typically_single_dose?: boolean | null
           vaccine_name?: string
           visit_id?: string | null
         }

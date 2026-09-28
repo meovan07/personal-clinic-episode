@@ -19,7 +19,7 @@ const sans = Be_Vietnam_Pro({
 });
 const mono = IBM_Plex_Mono({
   variable: "--font-plex-mono",
-  subsets: ["latin"],
+  subsets: ["latin", "vietnamese"],
   weight: ["400", "500", "600"],
 });
 
@@ -54,7 +54,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         {user && (
           <header className="sticky top-0 z-10 border-b border-line bg-surface/95 backdrop-blur">
             <div className="mx-auto flex max-w-4xl items-center justify-between gap-4 px-4 py-3">
-              <Link href="/" className="flex shrink-0 items-center gap-2 font-semibold text-pine">
+              <Link href="/" className="flex shrink-0 items-center gap-2 font-semibold text-pine hover:text-pine-dark">
                 <Stethoscope className="h-5 w-5" strokeWidth={2} />
                 <span className="hidden sm:inline">Sổ bệnh án</span>
               </Link>

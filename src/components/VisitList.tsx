@@ -23,7 +23,9 @@ export function VisitList({ visits, showPerson = false }: { visits: VisitRow[]; 
             <span className="absolute -left-[27px] top-4 h-3 w-3 rounded-full border-2 border-paper bg-pine" />
             <Link href={`/visits/${v.id}`} className="card card-interactive block">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <span className="font-semibold data">{formatDate(v.visit_date) || "Chưa rõ ngày"}</span>
+                <span className="font-semibold">
+                  {v.visit_date ? <span className="data">{formatDate(v.visit_date)}</span> : "Chưa rõ ngày"}
+                </span>
                 <span className="muted flex items-center gap-1">
                   {showPerson && v.people?.full_name}
                   {docCount > 0 && (

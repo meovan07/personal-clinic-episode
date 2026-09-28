@@ -6,6 +6,7 @@ import { ActionItems } from "@/components/ActionItems";
 import { AiSummaryButton } from "@/components/AiSummaryButton";
 import { Badge } from "@/components/Badge";
 import { ConfirmForm } from "@/components/ConfirmForm";
+import { HealthSummary } from "@/components/HealthSummary";
 import { ObservationTrend, type TrendSeries } from "@/components/ObservationTrend";
 import { PageHeader } from "@/components/PageHeader";
 import { VaccinationSummary } from "@/components/VaccinationSummary";
@@ -29,7 +30,7 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
       .order("visit_date", { ascending: false, nullsFirst: false }),
     supabase
       .from("action_items")
-      .select("id, content, due_on, done, visit_id")
+      .select("id, content, due_on, done, visit_id, notes")
       .eq("person_id", id)
       .order("done")
       .order("created_at", { ascending: false }),
@@ -40,7 +41,7 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
       .order("generated_at", { ascending: false }),
     supabase
       .from("vaccinations")
-      .select("id, vaccine_name, disease, given_on, next_due_on")
+      .select("id, vaccine_name, disease, given_on, next_due_on, typically_single_dose")
       .eq("person_id", id)
       .order("given_on", { ascending: true, nullsFirst: true }),
   ]);
@@ -136,7 +137,7 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
         </div>
         {latestSummary ? (
           <div className="card space-y-2">
-            <p className="whitespace-pre-line">{latestSummary.content}</p>
+            <HealthSummary content={latestSummary.content} />
             <p className="muted text-xs">Tạo lúc {formatDate(latestSummary.generated_at)}</p>
             {olderSummaries.length > 0 && (
               <details className="text-sm">
@@ -145,7 +146,7 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
                   {olderSummaries.map((s) => (
                     <div key={s.id}>
                       <p className="muted text-xs">{formatDate(s.generated_at)}</p>
-                      <p className="whitespace-pre-line">{s.content}</p>
+                      <HealthSummary content={s.content} />
                     </div>
                   ))}
                 </div>

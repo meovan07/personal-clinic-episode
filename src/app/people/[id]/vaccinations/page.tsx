@@ -60,18 +60,18 @@ export default async function VaccinationsPage({ params }: PageProps<"/people/[i
                     <div className="flex-1">
                       <span className="font-medium">{d.dose_label ?? "Mũi tiêm"}</span>
                       {" · "}
-                      <span className="data">{formatDate(d.given_on) || "Chưa rõ ngày"}</span>
+                      {d.given_on ? <span className="data">{formatDate(d.given_on)}</span> : "Chưa rõ ngày"}
                       <div className="muted flex flex-wrap gap-x-2 [&>*+*]:before:mr-2 [&>*+*]:before:content-['·']">
                         <span>{d.vaccine_name}</span>
                         {d.facility && <span>{d.facility}</span>}
                         {d.lot_number && (
-                          <span className="data">
-                            Lô {d.lot_number}
+                          <span>
+                            Lô <span className="data">{d.lot_number}</span>
                           </span>
                         )}
                         {d.next_due_on && (
-                          <span className="data">
-                            Hẹn mũi sau {formatDate(d.next_due_on)}
+                          <span>
+                            Hẹn mũi sau <span className="data">{formatDate(d.next_due_on)}</span>
                           </span>
                         )}
                         {d.visit_id && (

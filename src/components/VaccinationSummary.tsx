@@ -2,8 +2,10 @@ import { Badge } from "@/components/Badge";
 import { formatDate, today } from "@/lib/format";
 import { groupBySeries, type Dose } from "@/lib/vaccinations";
 
+type Row = Dose & { id: string; typically_single_dose?: boolean | null };
+
 // One line per disease/series: how many doses, the most recent date, and the next appointment if still open.
-export function VaccinationSummary({ doses }: { doses: (Dose & { id: string })[] }) {
+export function VaccinationSummary({ doses }: { doses: Row[] }) {
   if (doses.length === 0) return <p className="muted">Chưa có mũi tiêm nào.</p>;
   const now = today();
   return (
@@ -18,13 +20,16 @@ export function VaccinationSummary({ doses }: { doses: (Dose & { id: string })[]
               <span className="font-medium">{s.title}</span>
               <span className="muted">
                 {" "}
-                · {s.doses.length} mũi · gần nhất <span className="data">{formatDate(last.given_on) || "chưa rõ ngày"}</span>
+                · {s.doses.length} mũi · gần nhất{" "}
+                {last.given_on ? <span className="data">{formatDate(last.given_on)}</span> : "chưa rõ ngày"}
               </span>
             </div>
-            {due && (
+            {due ? (
               <Badge tone={overdue ? "danger" : "pen"}>
-                {overdue ? "Quá hẹn" : "Hẹn"} <span className="data">{formatDate(due)}</span>
+                {overdue ? "Quá hẹn" : "Hẹn"} {formatDate(due)}
               </Badge>
+            ) : (
+              last.typically_single_dose && <Badge tone="pine">Thường chỉ 1 mũi</Badge>
             )}
           </li>
         );

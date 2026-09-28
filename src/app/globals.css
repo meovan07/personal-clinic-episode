@@ -27,6 +27,7 @@
 
   /* Red stamp ink - destructive / overdue / allergy alerts. */
   --color-stamp: #b3261e;
+  --color-stamp-dark: #8f1e18;
   --color-stamp-tint: #f5ded9;
 
   /* Functional lab-flag colors (reused for vaccination due-badges & to-do states). */
@@ -36,8 +37,24 @@
   --color-flag-high: #b3261e;
 }
 
+/* Scales all rem-based text/spacing down uniformly (was 16px root) - the default read too big. */
+html {
+  font-size: 15px;
+}
+
 body {
   @apply bg-paper text-ink;
+}
+
+/* Browsers don't give <button> a pointer cursor by default (unlike <a>) - fix that once,
+   globally, instead of tacking cursor-pointer onto every button className. Same for the
+   hover color transition: every button/link should ease into its hover state, not snap. */
+button:not(:disabled) {
+  cursor: pointer;
+}
+button,
+a {
+  transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease;
 }
 
 @layer components {
@@ -54,17 +71,27 @@ body {
   .btn-primary {
     @apply inline-flex items-center justify-center gap-1.5 rounded-md bg-pine px-3 py-2 text-sm font-medium text-white hover:bg-pine-dark disabled:opacity-50;
   }
+  /* Subtle: a page-level trigger that shouldn't be the loudest button around. */
   .btn-danger {
-    @apply inline-flex items-center justify-center gap-1.5 rounded-md border border-stamp/30 bg-surface px-3 py-2 text-sm font-medium text-stamp hover:bg-stamp-tint disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-1.5 rounded-md border border-stamp/40 bg-surface px-3 py-2 text-sm font-medium text-stamp hover:bg-stamp-tint disabled:opacity-50;
   }
+  /* Filled: the actual "yes, delete this" moment inside a confirm dialog - must read as
+     clearly heavier than Cancel, not the same weight as the outline trigger above. */
+  .btn-danger-solid {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-md bg-stamp px-3 py-2 text-sm font-medium text-white hover:bg-stamp-dark disabled:opacity-50;
+  }
+  /* Pinned at 16px (not rem-relative) regardless of the root scale above - below that,
+     iOS Safari zooms the page in when the field is focused. The placeholder is sized
+     down separately (::placeholder's font-size doesn't affect that zoom trigger) so it
+     doesn't read larger than the rest of the now-smaller UI text. */
   .input {
-    @apply w-full rounded-md border border-line bg-surface px-3 py-2 text-base text-ink focus:border-pen focus:outline-none focus:ring-2 focus:ring-pen-tint;
+    @apply w-full rounded-md border border-line bg-surface px-3 py-2 text-[16px] text-ink placeholder:text-[15px] placeholder:text-ink-faint focus:border-pen focus:outline-none focus:ring-2 focus:ring-pen-tint;
   }
   .label {
     @apply mb-1 block text-sm font-medium text-ink-soft;
   }
   .section-title {
-    @apply mb-3 text-lg font-semibold text-ink;
+    @apply mb-3 text-base font-semibold text-ink;
   }
   .muted {
     @apply text-sm text-ink-soft;
@@ -86,12 +113,17 @@ body {
   }
 }
 
-/* Reset the browser's default <dialog> chrome; ConfirmForm styles the panel itself. */
-dialog {
-  padding: 0;
-  border: none;
-  background: transparent;
-}
-dialog::backdrop {
-  background: rgb(28 36 32 / 0.45);
+/* Reset the browser's default <dialog> chrome; ConfirmForm styles the panel itself.
+   Must be layered (not plain/unlayered CSS) - unlayered rules always beat @layer utilities
+   in the cascade regardless of source order, which was silently stripping p-5/border/bg-surface
+   off the dialog element. */
+@layer base {
+  dialog {
+    padding: 0;
+    border: none;
+    background: transparent;
+  }
+  dialog::backdrop {
+    background: rgb(28 36 32 / 0.45);
+  }
 }

@@ -9,7 +9,7 @@ import {
   type ExtractFile,
   type ExtractionResult,
 } from "@/lib/ai/extract";
-import { polishActionItem } from "@/lib/ai/polish";
+import { polishActionItem, refineActionItem } from "@/lib/ai/polish";
 import { summarizePerson, type PersonSnapshot } from "@/lib/ai/summarize";
 import { today } from "@/lib/format";
 import { normalizeObservation } from "@/lib/normalize";
@@ -256,6 +256,46 @@ export async function addActionItem(fd: FormData) {
   revalidatePath("/", "layout");
 }
 
+// The added context isn't just stored, and isn't just rephrased in isolation either: the AI
+// gets the real family roster and the person's recent visits/cases so it can actually resolve
+// a vague reference ("chồng" -> the other family member's real name) or a vague test name
+// against what was actually recorded, instead of only parroting back what the user typed.
+export async function updateActionItem(fd: FormData) {
+  const supabase = await createClient();
+  const id = required(fd, "id");
+  const raw = required(fd, "content");
+  const notes = str(fd, "notes");
+
+  const item = check(await supabase.from("action_items").select("person_id").eq("id", id).single());
+  const [people, person, visits, cases] = await Promise.all([
+    supabase.from("people").select("id, full_name, sex").order("created_at").then(check),
+    supabase.from("people").select("full_name").eq("id", item.person_id).single().then(check),
+    supabase
+      .from("visits")
+      .select("visit_date, facility, reason")
+      .eq("person_id", item.person_id)
+      .order("visit_date", { ascending: false, nullsFirst: false })
+      .limit(5)
+      .then(check),
+    supabase.from("cases").select("title, status").eq("person_id", item.person_id).then(check),
+  ]);
+  const recentContext = [
+    ...cases.map((c) => `- Bệnh án: ${c.title} (${c.status})`),
+    ...visits.map((v) => `- Khám ${v.visit_date ?? "(chưa rõ ngày)"}: ${v.reason ?? v.facility ?? "(không ghi lý do)"}`),
+  ].join("\n");
+
+  const content = await refineActionItem({ content: raw, notes, people, forPersonName: person.full_name, recentContext }).catch(
+    () => raw,
+  );
+  check(
+    await supabase
+      .from("action_items")
+      .update({ content, due_on: str(fd, "due_on"), notes })
+      .eq("id", id),
+  );
+  revalidatePath("/", "layout");
+}
+
 export async function setActionItemDone(id: string, done: boolean) {
   const supabase = await createClient();
   check(await supabase.from("action_items").update({ done }).eq("id", id));
@@ -407,6 +447,7 @@ async function applyExtraction(
       next_due_on: v.next_due_on,
       lot_number: v.lot_number,
       facility: v.facility ?? reviewed.facility,
+      typically_single_dose: v.typically_single_dose,
     }))
     .filter((v) => !knownDoses.some((k) => isSameDose(k, v)));
   if (vaccinations.length) check(await supabase.from("vaccinations").insert(vaccinations));
@@ -485,7 +526,7 @@ export async function generatePersonSummary(personId: string): Promise<{ error: 
         .eq("person_id", personId)
         .order("visit_date", { ascending: true, nullsFirst: false })
         .then(check),
-      supabase.from("action_items").select("content, due_on").eq("person_id", personId).eq("done", false).then(check),
+      supabase.from("action_items").select("content, due_on, notes").eq("person_id", personId).eq("done", false).then(check),
       supabase
         .from("vaccinations")
         .select("vaccine_name, disease, dose_label, given_on, next_due_on")

@@ -62,6 +62,14 @@ export const Extraction = z.object({
       next_due_on: z.string().nullable().describe("Next dose date if written (hẹn tiêm mũi tiếp), YYYY-MM-DD"),
       lot_number: z.string().nullable().describe("Lot/batch number (số lô) as printed"),
       facility: z.string().nullable().describe("Where it was given, if written per row"),
+      typically_single_dose: z
+        .boolean()
+        .nullable()
+        .describe(
+          "Your general medical knowledge of this vaccine's standard schedule, NOT specific to this patient: true if it is normally given as a single dose " +
+            "(e.g. most travel vaccines, single-antigen boosters like uốn ván for an already-immune adult), false if it normally requires multiple doses or " +
+            "periodic boosters (e.g. viêm gan B primary series, HPV, DPT/DTaP, cúm yearly), null if genuinely unsure or it depends heavily on age/indication.",
+        ),
     }),
   ),
   uncertain: z.array(z.string()).describe("Vietnamese notes about anything hard to read or ambiguous"),
@@ -72,7 +80,13 @@ export type ExtractionResult = z.infer<typeof Extraction>;
 // Extractions saved before a field existed lack it; fill the gaps so they still parse on the review screens.
 export function withExtractionDefaults(json: unknown): unknown {
   if (!json || typeof json !== "object") return json;
-  return { vaccinations: [], ...json };
+  const withDefaults: Record<string, unknown> = { vaccinations: [], ...json };
+  if (Array.isArray(withDefaults.vaccinations)) {
+    withDefaults.vaccinations = withDefaults.vaccinations.map((v) =>
+      v && typeof v === "object" ? { typically_single_dose: null, ...v } : v,
+    );
+  }
+  return withDefaults;
 }
 
 export type ExtractFile = { name: string; mime: string; bytes: Buffer };
@@ -86,7 +100,7 @@ Rules:
 - For test_code, only use a code from the catalog below; if nothing matches, use null.
 - If something is unreadable, leave it out or null and mention it in "uncertain". Never guess numbers.
 - doctor_advice is only what a doctor told THIS patient to do (lifestyle, diet, medication use, re-examination). Printed boilerplate that appears on every sheet (e.g. "Kết quả chỉ có giá trị trên mẫu xét nghiệm", "Mẫu được lưu 24 giờ", "gặp bác sĩ nếu kết quả bất thường") is NOT advice; leave it out.
-- Vaccination certificates, vaccination cards (sổ/phiếu tiêm chủng) and injection receipts: document_type is "vaccination_record", and every dose given becomes one entry in vaccinations (one row per dose, not per vaccine). Put the next-dose appointment in that dose's next_due_on, not in follow_up_date or doctor_advice. Leave vaccinations empty for other documents.
+- Vaccination certificates, vaccination cards (sổ/phiếu tiêm chủng) and injection receipts: document_type is "vaccination_record", and every dose given becomes one entry in vaccinations (one row per dose, not per vaccine). Put the next-dose appointment in that dose's next_due_on, not in follow_up_date or doctor_advice. Leave vaccinations empty for other documents. typically_single_dose is general knowledge about the vaccine itself (not a prediction for this specific patient) - use it to flag vaccines that normally don't need a follow-up dose, but leave it null rather than guess.
 - Write summary, doctor_advice and uncertain in Vietnamese.
 - This is for the patient's personal records, not diagnosis. Do not add medical advice that is not written on the document.`;
 

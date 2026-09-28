@@ -18,7 +18,7 @@ export function UpcomingDoses({ doses }: { doses: UpcomingDose[] }) {
               {d.disease && <span className="muted"> · {d.vaccine_name}</span>}
             </div>
             <Badge tone={overdue ? "danger" : "pen"}>
-              {overdue ? "Quá hẹn" : "Hẹn"} <span className="data">{formatDate(d.next_due_on)}</span>
+              {overdue ? "Quá hẹn" : "Hẹn"} {formatDate(d.next_due_on)}
             </Badge>
           </li>
         );

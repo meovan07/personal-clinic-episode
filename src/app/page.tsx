@@ -29,7 +29,7 @@ export default async function Home() {
       .limit(8),
     supabase
       .from("action_items")
-      .select("id, content, due_on, done, visit_id, people(full_name)")
+      .select("id, content, due_on, done, visit_id, notes, people(full_name)")
       .eq("done", false)
       .order("due_on", { ascending: true, nullsFirst: false }),
     supabase
@@ -91,7 +91,11 @@ export default async function Home() {
                     {p.visits.length} lần khám
                     {active > 0 && ` · ${active} bệnh đang điều trị`}
                   </div>
-                  {lastVisit && <div className="muted data">Khám gần nhất: {formatDate(lastVisit)}</div>}
+                  {lastVisit && (
+                    <div className="muted">
+                      Khám gần nhất: <span className="data">{formatDate(lastVisit)}</span>
+                    </div>
+                  )}
                 </div>
               </Link>
             );

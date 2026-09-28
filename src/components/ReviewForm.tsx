@@ -58,7 +58,27 @@ const emptyVax: Vax = {
   next_due_on: null,
   lot_number: null,
   facility: null,
+  typically_single_dose: null,
 };
+
+// Tri-state select for typically_single_dose: the AI's general knowledge of the vaccine
+// itself, not a claim about this specific patient - "unsure" is a real, valid answer.
+function SingleDoseSelect({ value, onChange }: { value: boolean | null; onChange: (v: boolean | null) => void }) {
+  return (
+    <label className="col-span-2 sm:col-span-6">
+      <span className="label">Số mũi cần thiết (theo kiến thức chung, không riêng cho người này)</span>
+      <select
+        className="input"
+        value={value === null ? "" : String(value)}
+        onChange={(e) => onChange(e.target.value === "" ? null : e.target.value === "true")}
+      >
+        <option value="">Chưa rõ</option>
+        <option value="true">Thường chỉ cần 1 mũi</option>
+        <option value="false">Thường cần nhiều mũi / nhắc lại định kỳ</option>
+      </select>
+    </label>
+  );
+}
 
 // Only shown for vaccination records (or when AI found doses anyway), so lab results don't get an empty section.
 export function VaccinationFields({
@@ -134,6 +154,10 @@ export function VaccinationFields({
                 <X className="h-4 w-4" strokeWidth={1.75} />
               </button>
             </div>
+            <SingleDoseSelect
+              value={v.typically_single_dose}
+              onChange={(typically_single_dose) => setVax(i, { typically_single_dose })}
+            />
           </div>
         ))}
         <button type="button" className="btn" onClick={() => onChange([...items, emptyVax])}>
