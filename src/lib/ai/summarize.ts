@@ -21,7 +21,7 @@ export type PersonSnapshot = {
     case_title: string | null;
     document_summaries: string[];
     medications: { name: string; dose: string | null; schedule: string | null }[];
-    observations: { name: string; value: string | null; unit: string | null; flag: string | null }[];
+    observations: { name: string; category: string | null; value: string | null; unit: string | null; flag: string | null }[];
   }[];
   open_action_items: { content: string; due_on: string | null }[];
   previous_summary: { content: string; generated_at: string } | null;
@@ -42,8 +42,10 @@ Quy tắc SÚC TÍCH — bắt buộc, đây là yêu cầu quan trọng nhất:
 - Mục "Kết quả và xu hướng" không quá 10 dòng; nếu nhiều chỉ số, ưu tiên chỉ số bất thường hoặc đổi nhiều nhất, phần còn lại gộp vào dòng "Bình thường: ...".
 - Không phỏng đoán nguyên nhân cụ thể hay chẩn đoán bệnh.
 
+Liên hệ với bệnh nền/bệnh đang điều trị — bắt buộc: mỗi observation có sẵn "category" (ví dụ "Chức năng gan", "Mỡ máu", "Đường huyết", "Chức năng thận"). Nếu person.chronic_conditions hoặc cases có nhắc bệnh liên quan tới một category nào đó (ví dụ "viêm gan B" liên quan category "Chức năng gan"; đái tháo đường liên quan "Đường huyết"), PHẢI nêu ngay trong "Tổng quan" các chỉ số thuộc category đó đang ở mức nào, tăng/giảm ra sao — không chờ tới mục "Kết quả và xu hướng" mới nhắc. Nếu có category nào có chỉ số bất thường dù không khớp bệnh nền đã ghi (ví dụ phát hiện mỡ máu tăng dù bệnh nền chỉ ghi viêm gan B), vẫn phải nêu rõ trong Tổng quan là "xét nghiệm cho thấy có thêm vấn đề về mỡ máu" — không bỏ sót.
+
 Nội dung gồm các mục sau (bỏ qua mục nào không có dữ liệu, không bịa thêm):
-Tổng quan tình trạng hiện tại — 2-3 dòng: bệnh đang điều trị/theo dõi, dị ứng, bệnh nền.
+Tổng quan tình trạng hiện tại — 2-4 dòng: bệnh đang điều trị/theo dõi, dị ứng, bệnh nền, và các phát hiện đáng chú ý theo category như trên.
 Kết quả và xu hướng đáng chú ý — theo đúng quy tắc súc tích ở trên.
 Thuốc đang dùng — mỗi thuốc một dòng ngắn: tên, liều, cách dùng.
 Việc cần làm / lịch tái khám sắp tới — mỗi việc một dòng ngắn.

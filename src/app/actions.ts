@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { Extraction, extractDocument, type ExtractFile } from "@/lib/ai/extract";
+import { polishActionItem } from "@/lib/ai/polish";
 import { summarizePerson, type PersonSnapshot } from "@/lib/ai/summarize";
 import { normalizeObservation } from "@/lib/normalize";
 import { createClient } from "@/lib/supabase/server";
@@ -232,11 +233,13 @@ export async function deleteMedication(id: string, visitId: string) {
 
 export async function addActionItem(fd: FormData) {
   const supabase = await createClient();
+  const raw = required(fd, "content");
+  const content = await polishActionItem(raw).catch(() => raw); // AI polish is best-effort
   check(
     await supabase.from("action_items").insert({
       person_id: required(fd, "person_id"),
       visit_id: str(fd, "visit_id"),
-      content: required(fd, "content"),
+      content,
       due_on: str(fd, "due_on"),
     }),
   );
@@ -404,7 +407,7 @@ export async function generatePersonSummary(personId: string): Promise<{ error: 
       supabase
         .from("visits")
         .select(
-          "visit_date, facility, department, doctor, reason, cases(title), documents(summary, extraction_status), medications(name, dose, schedule), observations(raw_name, value, value_text, unit, flag, test_catalog(name_vi))",
+          "visit_date, facility, department, doctor, reason, cases(title), documents(summary, extraction_status), medications(name, dose, schedule), observations(raw_name, value, value_text, unit, flag, test_catalog(name_vi, category))",
         )
         .eq("person_id", personId)
         .order("visit_date", { ascending: true, nullsFirst: false })
@@ -439,6 +442,7 @@ export async function generatePersonSummary(personId: string): Promise<{ error: 
         medications: v.medications,
         observations: v.observations.map((o) => ({
           name: o.test_catalog?.name_vi ?? o.raw_name,
+          category: o.test_catalog?.category ?? null,
           value: o.value !== null ? String(o.value) : o.value_text,
           unit: o.unit,
           flag: o.flag,

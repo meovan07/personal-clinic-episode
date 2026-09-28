@@ -4,6 +4,7 @@ import { deletePerson } from "@/app/actions";
 import { ActionItems } from "@/components/ActionItems";
 import { AiSummaryButton } from "@/components/AiSummaryButton";
 import { ConfirmForm } from "@/components/ConfirmForm";
+import { ObservationTrend, type TrendSeries } from "@/components/ObservationTrend";
 import { PageHeader } from "@/components/PageHeader";
 import { VisitList } from "@/components/VisitList";
 import { createClient } from "@/lib/supabase/server";
@@ -36,6 +37,44 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
       .order("generated_at", { ascending: false }),
   ]);
   const [latestSummary, ...olderSummaries] = summaries.data ?? [];
+
+  // Chart the value of each lab test across visits, so trends (e.g. men gan, mỡ máu) are visible at a glance.
+  const visitDates = new Map((visits.data ?? []).map((v) => [v.id, v.visit_date]));
+  const visitIds = [...visitDates.keys()];
+  const { data: obsRows } = visitIds.length
+    ? await supabase
+        .from("observations")
+        .select("visit_id, test_code, value, unit, flag, test_catalog(name_vi, category)")
+        .in("visit_id", visitIds)
+        .not("value", "is", null)
+        .not("test_code", "is", null)
+    : { data: [] };
+  const seriesByCode = new Map<string, TrendSeries & { dated: { date: string; value: number; flag: string | null }[] }>();
+  for (const o of obsRows ?? []) {
+    const date = visitDates.get(o.visit_id);
+    if (!date || o.value === null || !o.test_code) continue;
+    const existing = seriesByCode.get(o.test_code);
+    const point = { date, value: o.value, flag: o.flag };
+    if (existing) existing.dated.push(point);
+    else
+      seriesByCode.set(o.test_code, {
+        code: o.test_code,
+        name: o.test_catalog?.name_vi ?? o.test_code,
+        category: o.test_catalog?.category ?? null,
+        unit: o.unit,
+        latestFlag: null,
+        points: [],
+        dated: [point],
+      });
+  }
+  const ABNORMAL_FIRST: Record<string, number> = { high: 0, abnormal: 0, low: 1, normal: 2 };
+  const trends: TrendSeries[] = [...seriesByCode.values()]
+    .map((s) => {
+      const dated = s.dated.sort((a, b) => a.date.localeCompare(b.date));
+      return { ...s, points: dated.map(({ date, value }) => ({ date, value })), latestFlag: dated.at(-1)?.flag ?? null };
+    })
+    .filter((s) => s.points.length >= 2)
+    .sort((a, b) => (ABNORMAL_FIRST[a.latestFlag ?? "normal"] ?? 2) - (ABNORMAL_FIRST[b.latestFlag ?? "normal"] ?? 2));
 
   const a = age(person.birth_date);
   const facts = [
@@ -105,6 +144,17 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
           <p className="muted">Chưa có tóm tắt. Bấm &quot;Tóm tắt bằng AI&quot; để AI đọc lịch sử khám và bệnh án.</p>
         )}
       </section>
+
+      {trends.length > 0 && (
+        <section>
+          <h2 className="section-title">Biểu đồ chỉ số xét nghiệm</h2>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {trends.map((s) => (
+              <ObservationTrend key={s.code} series={s} />
+            ))}
+          </div>
+        </section>
+      )}
 
       <section>
         <div className="mb-3 flex items-center justify-between">
