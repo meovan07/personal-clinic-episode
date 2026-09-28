@@ -80,7 +80,7 @@ export function DocumentUploader({ visitId }: { visitId: string }) {
           ref={inputRef}
           type="file"
           multiple
-          accept="image/*,application/pdf,.heic,.heif"
+          accept="image/*,application/pdf"
           className="block w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-teal-50 file:px-3 file:py-2 file:text-teal-700"
           onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
         />

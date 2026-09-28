@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { addMedication, deleteDocument, deleteMedication, deleteVisit } from "@/app/actions";
 import { ActionItems } from "@/components/ActionItems";
+import { AiReadButton } from "@/components/AiReadButton";
 import { ConfirmForm } from "@/components/ConfirmForm";
 import { DocumentUploader } from "@/components/DocumentUploader";
 import { PageHeader } from "@/components/PageHeader";
@@ -9,6 +10,16 @@ import { SubmitButton } from "@/components/SubmitButton";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate } from "@/lib/format";
 import { DOC_TYPE } from "@/lib/labels";
+
+// AI extraction runs inside a server action on this page and can take a minute.
+export const maxDuration = 300;
+
+const FLAG_STYLE: Record<string, string> = {
+  high: "text-red-600 font-semibold",
+  low: "text-blue-600 font-semibold",
+  abnormal: "text-red-600 font-semibold",
+};
+const FLAG_ARROW: Record<string, string> = { high: "↑", low: "↓", abnormal: "!" };
 
 // Browsers other than Safari can't display HEIC, so those are shown as links.
 const PREVIEWABLE = /^image\/(jpeg|png|gif|webp|avif)$/;
@@ -23,15 +34,22 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
     .maybeSingle();
   if (!visit) notFound();
 
-  const [docs, meds, actions] = await Promise.all([
+  const [docs, meds, actions, observations] = await Promise.all([
     supabase
       .from("documents")
-      .select("id, title, doc_type, created_at, document_files(id, page_no, storage_path, file_name, mime_type)")
+      .select(
+        "id, title, doc_type, created_at, summary, extraction_status, extraction_error, document_files(id, page_no, storage_path, file_name, mime_type)",
+      )
       .eq("visit_id", id)
       .order("created_at")
       .order("page_no", { referencedTable: "document_files" }),
     supabase.from("medications").select("*").eq("visit_id", id).order("created_at"),
     supabase.from("action_items").select("id, content, due_on, done, visit_id").eq("visit_id", id).order("created_at"),
+    supabase
+      .from("observations")
+      .select("id, raw_name, value, value_text, unit, raw_value, raw_unit, ref_range_text, flag, test_catalog(name_vi)")
+      .eq("visit_id", id)
+      .order("created_at"),
   ]);
 
   const paths = (docs.data ?? []).flatMap((d) => d.document_files.map((f) => f.storage_path));
@@ -132,11 +150,76 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
                   );
                 })}
               </div>
+              <div className="mt-3 border-t border-slate-100 pt-3">
+                {d.extraction_status === "confirmed" ? (
+                  <div className="space-y-2">
+                    {d.summary && <p className="whitespace-pre-line text-sm">{d.summary}</p>}
+                    <Link href={`/documents/${d.id}/review`} className="text-sm text-teal-700 hover:underline">
+                      ✓ Đã xác nhận · Sửa kết quả
+                    </Link>
+                  </div>
+                ) : d.extraction_status === "needs_review" ? (
+                  <Link href={`/documents/${d.id}/review`} className="btn-primary">
+                    AI đã đọc xong: kiểm tra & xác nhận →
+                  </Link>
+                ) : (
+                  <>
+                    {d.extraction_status === "failed" && (
+                      <p className="mb-2 text-sm text-red-600">Lần đọc trước bị lỗi: {d.extraction_error}</p>
+                    )}
+                    <AiReadButton
+                      documentId={d.id}
+                      label={d.extraction_status === "pending" ? "🤖 Đọc lại bằng AI" : undefined}
+                    />
+                  </>
+                )}
+              </div>
             </div>
           ))}
           <DocumentUploader visitId={id} />
         </div>
       </section>
+
+      {(observations.data?.length ?? 0) > 0 && (
+        <section>
+          <h2 className="section-title">Kết quả xét nghiệm / chỉ số</h2>
+          <div className="card overflow-x-auto p-0">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 text-left text-slate-500">
+                <tr>
+                  <th className="px-4 py-2 font-medium">Chỉ số</th>
+                  <th className="px-4 py-2 font-medium">Kết quả</th>
+                  <th className="px-4 py-2 font-medium">Tham chiếu</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {observations.data?.map((o) => {
+                  const converted = o.raw_unit && o.unit !== o.raw_unit;
+                  return (
+                    <tr key={o.id}>
+                      <td className="px-4 py-2">
+                        {o.test_catalog?.name_vi ?? o.raw_name}
+                        {o.test_catalog && o.test_catalog.name_vi !== o.raw_name && (
+                          <div className="text-xs text-slate-400">{o.raw_name}</div>
+                        )}
+                      </td>
+                      <td className={`px-4 py-2 ${FLAG_STYLE[o.flag ?? ""] ?? ""}`}>
+                        {o.value ?? o.value_text} {o.unit} {FLAG_ARROW[o.flag ?? ""]}
+                        {converted && (
+                          <div className="text-xs font-normal text-slate-400">
+                            Gốc: {o.raw_value} {o.raw_unit}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-2 text-slate-500">{o.ref_range_text}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       <section>
         <h2 className="section-title">Thuốc được kê</h2>

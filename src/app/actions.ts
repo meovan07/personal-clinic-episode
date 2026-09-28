@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { Extraction, extractDocument, type ExtractFile } from "@/lib/ai/extract";
+import { normalizeObservation } from "@/lib/normalize";
 import { createClient } from "@/lib/supabase/server";
 
 function str(fd: FormData, key: string): string | null {
@@ -250,4 +252,136 @@ export async function deleteActionItem(id: string) {
   const supabase = await createClient();
   check(await supabase.from("action_items").delete().eq("id", id));
   revalidatePath("/", "layout");
+}
+
+// ---------- AI extraction (Phase 2) ----------
+
+export async function readDocumentWithAI(documentId: string): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const doc = check(
+    await supabase
+      .from("documents")
+      .select("id, visit_id, document_files(storage_path, file_name, mime_type, page_no)")
+      .eq("id", documentId)
+      .order("page_no", { referencedTable: "document_files" })
+      .single(),
+  );
+  check(await supabase.from("documents").update({ extraction_status: "pending", extraction_error: null }).eq("id", documentId));
+
+  try {
+    const files: ExtractFile[] = [];
+    for (const f of doc.document_files) {
+      const { data, error } = await supabase.storage.from("documents").download(f.storage_path);
+      if (error) throw new Error(`Không tải được file ${f.file_name}: ${error.message}`);
+      files.push({
+        name: f.file_name,
+        mime: f.mime_type ?? data.type,
+        bytes: Buffer.from(await data.arrayBuffer()),
+      });
+    }
+    const catalog = check(await supabase.from("test_catalog").select("code, name_vi").order("code"));
+    const { result, skipped } = await extractDocument(files, catalog);
+    if (skipped.length > 0) result.uncertain.push(`Bỏ qua file không đọc được: ${skipped.join(", ")}`);
+
+    check(
+      await supabase
+        .from("documents")
+        .update({
+          raw_ai_json: result,
+          reviewed_json: null,
+          extraction_status: "needs_review",
+          extracted_at: new Date().toISOString(),
+        })
+        .eq("id", documentId),
+    );
+    return { error: null };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    await supabase.from("documents").update({ extraction_status: "failed", extraction_error: message }).eq("id", documentId);
+    return { error: message };
+  } finally {
+    revalidatePath(`/visits/${doc.visit_id}`);
+  }
+}
+
+// Saves the user-reviewed extraction as real rows. Re-confirming replaces the rows from the previous confirm.
+export async function confirmExtraction(documentId: string, input: unknown) {
+  const reviewed = Extraction.parse(input);
+  const supabase = await createClient();
+  const doc = check(
+    await supabase
+      .from("documents")
+      .select("id, visit_id, visits(person_id, facility, department, doctor)")
+      .eq("id", documentId)
+      .single(),
+  );
+  const visit = doc.visits;
+  const [catalog, conversions] = await Promise.all([
+    supabase.from("test_catalog").select("code, name_vi, aliases, standard_unit").then(check),
+    supabase.from("unit_conversions").select("test_code, from_unit, factor").then(check),
+  ]);
+
+  await Promise.all([
+    supabase.from("observations").delete().eq("document_id", documentId).then(check),
+    supabase.from("medications").delete().eq("document_id", documentId).then(check),
+    supabase.from("action_items").delete().eq("document_id", documentId).then(check),
+  ]);
+
+  const observations = reviewed.observations
+    .filter((o) => o.raw_name.trim() && o.value.trim())
+    .map((o) => ({
+      ...normalizeObservation(o, catalog, conversions),
+      visit_id: doc.visit_id,
+      document_id: documentId,
+    }));
+  if (observations.length) check(await supabase.from("observations").insert(observations));
+
+  const medications = reviewed.medications
+    .filter((m) => m.name.trim())
+    .map((m) => ({
+      visit_id: doc.visit_id,
+      document_id: documentId,
+      name: m.name.trim(),
+      dose: m.dose,
+      schedule: m.schedule,
+      duration_days: m.duration_days,
+      notes: m.notes,
+    }));
+  if (medications.length) check(await supabase.from("medications").insert(medications));
+
+  const base = { person_id: visit.person_id, visit_id: doc.visit_id, document_id: documentId };
+  // With a follow-up date, the advice line about re-examination becomes the dated to-do instead of a duplicate.
+  const advice = reviewed.doctor_advice.map((a) => a.trim()).filter(Boolean);
+  const followUpLine = reviewed.follow_up_date ? advice.find((a) => /^tái khám/i.test(a)) : undefined;
+  const actions: (typeof base & { content: string; due_on?: string })[] = advice
+    .filter((a) => a !== followUpLine)
+    .map((content) => ({ ...base, content }));
+  if (reviewed.follow_up_date) {
+    actions.push({ ...base, content: followUpLine ?? "Tái khám", due_on: reviewed.follow_up_date });
+  }
+  if (actions.length) check(await supabase.from("action_items").insert(actions));
+
+  // Fill in visit details the user left empty.
+  const visitPatch: { facility?: string; department?: string; doctor?: string } = {};
+  for (const k of ["facility", "department", "doctor"] as const) {
+    const found = reviewed[k];
+    if (!visit[k] && found) visitPatch[k] = found;
+  }
+  if (Object.keys(visitPatch).length) check(await supabase.from("visits").update(visitPatch).eq("id", doc.visit_id));
+
+  const summary = [
+    reviewed.summary.trim(),
+    reviewed.diagnoses.length ? `Chẩn đoán: ${reviewed.diagnoses.join("; ")}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+  check(
+    await supabase
+      .from("documents")
+      .update({ doc_type: reviewed.document_type, summary, reviewed_json: reviewed, extraction_status: "confirmed" })
+      .eq("id", documentId),
+  );
+
+  revalidatePath("/", "layout");
+  redirect(`/visits/${doc.visit_id}`);
 }
