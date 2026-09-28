@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/PageHeader";
 import { ReviewForm } from "@/components/ReviewForm";
-import { Extraction } from "@/lib/ai/extract";
+import { Extraction, withExtractionDefaults } from "@/lib/ai/extract";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate } from "@/lib/format";
 import { DOC_TYPE } from "@/lib/labels";
@@ -17,7 +17,7 @@ export default async function ReviewPage({ params }: PageProps<"/documents/[id]/
     .maybeSingle();
   if (!doc) notFound();
 
-  const parsed = Extraction.safeParse(doc.reviewed_json ?? doc.raw_ai_json);
+  const parsed = Extraction.safeParse(withExtractionDefaults(doc.reviewed_json ?? doc.raw_ai_json));
   if (!parsed.success) notFound();
 
   const [{ data: signed }, { data: catalog }] = await Promise.all([

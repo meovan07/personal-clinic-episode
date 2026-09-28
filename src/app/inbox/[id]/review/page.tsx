@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/PageHeader";
 import { InboxReviewForm } from "@/components/InboxReviewForm";
 import { InboxRetry } from "@/components/InboxRetry";
-import { InboxExtraction } from "@/lib/ai/extract";
+import { InboxExtraction, withExtractionDefaults } from "@/lib/ai/extract";
 import { createClient } from "@/lib/supabase/server";
 
 // AI extraction/matching runs inside a server action triggered from this page and can take a minute.
@@ -47,7 +47,7 @@ async function ReviewBody({
     inbox_files: { storage_path: string; file_name: string; mime_type: string | null; page_no: number }[];
   };
 }) {
-  const parsed = InboxExtraction.safeParse(item.extraction);
+  const parsed = InboxExtraction.safeParse(withExtractionDefaults(item.extraction));
   if (!parsed.success) notFound();
 
   const supabase = await createClient();

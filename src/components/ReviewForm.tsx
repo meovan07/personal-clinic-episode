@@ -47,6 +47,101 @@ export function StringList({
   );
 }
 
+type Vax = ExtractionResult["vaccinations"][number];
+const emptyVax: Vax = {
+  vaccine_name: "",
+  disease: null,
+  dose_label: null,
+  given_on: null,
+  next_due_on: null,
+  lot_number: null,
+  facility: null,
+};
+
+// Only shown for vaccination records (or when AI found doses anyway), so lab results don't get an empty section.
+export function VaccinationFields({
+  documentType,
+  items,
+  onChange,
+}: {
+  documentType: ExtractionResult["document_type"];
+  items: Vax[];
+  onChange: (items: Vax[]) => void;
+}) {
+  if (documentType !== "vaccination_record" && items.length === 0) return null;
+  const setVax = (i: number, patch: Partial<Vax>) => onChange(items.map((v, j) => (j === i ? { ...v, ...patch } : v)));
+  return (
+    <section>
+      <h2 className="section-title">Tiêm chủng ({items.length})</h2>
+      <div className="space-y-2">
+        {items.map((v, i) => (
+          <div key={i} className="card grid grid-cols-2 gap-2 sm:grid-cols-6">
+            <input
+              className="input col-span-2 sm:col-span-3"
+              value={v.vaccine_name}
+              placeholder="Tên vắc xin"
+              aria-label="Tên vắc xin"
+              onChange={(e) => setVax(i, { vaccine_name: e.target.value })}
+            />
+            <input
+              className="input sm:col-span-2"
+              value={v.disease ?? ""}
+              placeholder="Phòng bệnh"
+              aria-label="Phòng bệnh"
+              onChange={(e) => setVax(i, { disease: nul(e.target.value) })}
+            />
+            <input
+              className="input"
+              value={v.dose_label ?? ""}
+              placeholder="Mũi"
+              aria-label="Mũi"
+              onChange={(e) => setVax(i, { dose_label: nul(e.target.value) })}
+            />
+            <label className="col-span-1 sm:col-span-2">
+              <span className="label">Ngày tiêm</span>
+              <input
+                type="date"
+                className="input"
+                value={v.given_on ?? ""}
+                onChange={(e) => setVax(i, { given_on: nul(e.target.value) })}
+              />
+            </label>
+            <label className="col-span-1 sm:col-span-2">
+              <span className="label">Hẹn mũi tiếp</span>
+              <input
+                type="date"
+                className="input"
+                value={v.next_due_on ?? ""}
+                onChange={(e) => setVax(i, { next_due_on: nul(e.target.value) })}
+              />
+            </label>
+            <div className="col-span-2 flex items-end gap-2 sm:col-span-2">
+              <input
+                className="input"
+                value={v.lot_number ?? ""}
+                placeholder="Số lô"
+                aria-label="Số lô"
+                onChange={(e) => setVax(i, { lot_number: nul(e.target.value) })}
+              />
+              <button
+                type="button"
+                className="btn"
+                aria-label="Xóa mũi tiêm"
+                onClick={() => onChange(items.filter((_, j) => j !== i))}
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        ))}
+        <button type="button" className="btn" onClick={() => onChange([...items, emptyVax])}>
+          + Thêm mũi tiêm
+        </button>
+      </div>
+    </section>
+  );
+}
+
 export function ReviewForm({
   documentId,
   visitId,
@@ -284,6 +379,12 @@ export function ReviewForm({
             </button>
           </div>
         </section>
+
+        <VaccinationFields
+          documentType={data.document_type}
+          items={data.vaccinations}
+          onChange={(v) => set("vaccinations", v)}
+        />
 
         <section className="card space-y-3">
           <div>

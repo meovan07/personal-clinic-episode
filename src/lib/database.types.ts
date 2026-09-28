@@ -720,6 +720,76 @@ export type Database = {
         }
         Relationships: []
       }
+      vaccinations: {
+        Row: {
+          created_at: string
+          disease: string | null
+          document_id: string | null
+          dose_label: string | null
+          facility: string | null
+          given_on: string | null
+          id: string
+          lot_number: string | null
+          next_due_on: string | null
+          notes: string | null
+          person_id: string
+          vaccine_name: string
+          visit_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          disease?: string | null
+          document_id?: string | null
+          dose_label?: string | null
+          facility?: string | null
+          given_on?: string | null
+          id?: string
+          lot_number?: string | null
+          next_due_on?: string | null
+          notes?: string | null
+          person_id: string
+          vaccine_name: string
+          visit_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          disease?: string | null
+          document_id?: string | null
+          dose_label?: string | null
+          facility?: string | null
+          given_on?: string | null
+          id?: string
+          lot_number?: string | null
+          next_due_on?: string | null
+          notes?: string | null
+          person_id?: string
+          vaccine_name?: string
+          visit_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vaccinations_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vaccinations_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vaccinations_visit_id_fkey"
+            columns: ["visit_id"]
+            isOneToOne: false
+            referencedRelation: "visits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       visits: {
         Row: {
           case_id: string | null

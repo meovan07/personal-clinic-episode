@@ -11,6 +11,7 @@ export const DOC_TYPES = [
   "prescription",
   "discharge_summary",
   "visit_note",
+  "vaccination_record",
   "invoice",
   "other",
 ] as const;
@@ -49,14 +50,34 @@ export const Extraction = z.object({
       flag: z.enum(["normal", "high", "low", "abnormal"]).nullable().describe("As marked on the paper (H/L/*/bold), else your judgment against ref_range"),
     }),
   ),
+  vaccinations: z.array(
+    z.object({
+      vaccine_name: z.string().describe("Vaccine/product name exactly as printed, e.g. 'Vaxigrip Tetra', 'Gardasil 9', 'Viêm gan B'"),
+      disease: z
+        .string()
+        .nullable()
+        .describe("What it protects against, short Vietnamese, e.g. 'Cúm', 'HPV', 'Viêm gan B', 'Uốn ván'"),
+      dose_label: z.string().nullable().describe("Dose as printed, e.g. 'Mũi 1', 'Mũi 2', 'Nhắc lại'"),
+      given_on: z.string().nullable().describe("Date the dose was given, YYYY-MM-DD"),
+      next_due_on: z.string().nullable().describe("Next dose date if written (hẹn tiêm mũi tiếp), YYYY-MM-DD"),
+      lot_number: z.string().nullable().describe("Lot/batch number (số lô) as printed"),
+      facility: z.string().nullable().describe("Where it was given, if written per row"),
+    }),
+  ),
   uncertain: z.array(z.string()).describe("Vietnamese notes about anything hard to read or ambiguous"),
 });
 
 export type ExtractionResult = z.infer<typeof Extraction>;
 
+// Extractions saved before a field existed lack it; fill the gaps so they still parse on the review screens.
+export function withExtractionDefaults(json: unknown): unknown {
+  if (!json || typeof json !== "object") return json;
+  return { vaccinations: [], ...json };
+}
+
 export type ExtractFile = { name: string; mime: string; bytes: Buffer };
 
-const INSTRUCTIONS = `You read Vietnamese medical documents (lab results, imaging reports, prescriptions, discharge papers, visit notes) photographed or scanned by the patient, and extract them into structured data.
+const INSTRUCTIONS = `You read Vietnamese medical documents (lab results, imaging reports, prescriptions, discharge papers, visit notes, vaccination certificates / sổ tiêm chủng) photographed or scanned by the patient, and extract them into structured data.
 
 Rules:
 - The files are pages of ONE document, in order.
@@ -65,6 +86,7 @@ Rules:
 - For test_code, only use a code from the catalog below; if nothing matches, use null.
 - If something is unreadable, leave it out or null and mention it in "uncertain". Never guess numbers.
 - doctor_advice is only what a doctor told THIS patient to do (lifestyle, diet, medication use, re-examination). Printed boilerplate that appears on every sheet (e.g. "Kết quả chỉ có giá trị trên mẫu xét nghiệm", "Mẫu được lưu 24 giờ", "gặp bác sĩ nếu kết quả bất thường") is NOT advice; leave it out.
+- Vaccination certificates, vaccination cards (sổ/phiếu tiêm chủng) and injection receipts: document_type is "vaccination_record", and every dose given becomes one entry in vaccinations (one row per dose, not per vaccine). Put the next-dose appointment in that dose's next_due_on, not in follow_up_date or doctor_advice. Leave vaccinations empty for other documents.
 - Write summary, doctor_advice and uncertain in Vietnamese.
 - This is for the patient's personal records, not diagnosis. Do not add medical advice that is not written on the document.`;
 

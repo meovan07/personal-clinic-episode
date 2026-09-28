@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { confirmInboxItem, discardInboxItem, type CaseChoice, type VisitChoice } from "@/app/actions";
 import { ConfirmForm } from "@/components/ConfirmForm";
-import { StringList } from "@/components/ReviewForm";
+import { StringList, VaccinationFields } from "@/components/ReviewForm";
 import type { ExtractionResult, InboxExtractionResult } from "@/lib/ai/extract";
 import { DOC_TYPE } from "@/lib/labels";
 import { formatDate } from "@/lib/format";
@@ -397,6 +397,12 @@ export function InboxReviewForm({
             </button>
           </div>
         </section>
+
+        <VaccinationFields
+          documentType={data.document_type}
+          items={data.vaccinations}
+          onChange={(v) => set("vaccinations", v)}
+        />
 
         <section className="card space-y-3">
           <div>

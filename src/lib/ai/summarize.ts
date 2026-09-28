@@ -24,10 +24,17 @@ export type PersonSnapshot = {
     observations: { name: string; category: string | null; value: string | null; unit: string | null; flag: string | null }[];
   }[];
   open_action_items: { content: string; due_on: string | null }[];
+  vaccinations: {
+    vaccine_name: string;
+    disease: string | null;
+    dose_label: string | null;
+    given_on: string | null;
+    next_due_on: string | null;
+  }[];
   previous_summary: { content: string; generated_at: string } | null;
 };
 
-const INSTRUCTIONS = `Bạn tóm tắt hồ sơ sức khỏe cá nhân từ dữ liệu JSON (thông tin cá nhân, bệnh án, lịch sử khám kèm thuốc và chỉ số xét nghiệm, việc cần làm còn mở, bản tóm tắt trước đó nếu có) cho NGƯỜI KHÔNG CÓ CHUYÊN MÔN Y KHOA đọc.
+const INSTRUCTIONS = `Bạn tóm tắt hồ sơ sức khỏe cá nhân từ dữ liệu JSON (thông tin cá nhân, bệnh án, lịch sử khám kèm thuốc và chỉ số xét nghiệm, việc cần làm còn mở, lịch sử tiêm chủng, bản tóm tắt trước đó nếu có) cho NGƯỜI KHÔNG CÓ CHUYÊN MÔN Y KHOA đọc.
 
 Quy tắc trình bày (đây là văn bản thuần, KHÔNG có trình đọc Markdown, nên tuyệt đối không dùng #, *, **, _, hay bất kỳ ký hiệu định dạng nào):
 - Tiêu đề mục là một dòng chữ thường, viết hoa chữ đầu, theo sau là dấu hai chấm, ví dụ: "Tổng quan tình trạng hiện tại:" rồi xuống dòng.
@@ -49,6 +56,7 @@ Tổng quan tình trạng hiện tại — 2-4 dòng: bệnh đang điều trị
 Kết quả và xu hướng đáng chú ý — theo đúng quy tắc súc tích ở trên.
 Thuốc đang dùng — mỗi thuốc một dòng ngắn: tên, liều, cách dùng.
 Việc cần làm / lịch tái khám sắp tới — mỗi việc một dòng ngắn.
+Tiêm chủng — mỗi bệnh được phòng một dòng: đã tiêm mấy mũi, mũi gần nhất ngày nào, mũi tiếp theo hẹn ngày nào (nếu có).
 Thay đổi so với lần tóm tắt trước — chỉ viết nếu có previous_summary, tối đa 2-3 dòng nêu điểm mới/khác biệt.
 
 Chỉ dùng thông tin có trong dữ liệu, không suy đoán số liệu, không đưa ra lời khuyên y khoa hay chẩn đoán. Kết thúc bằng một dòng: "Đây là tóm tắt tự động để tham khảo, không thay thế tư vấn của bác sĩ."`;

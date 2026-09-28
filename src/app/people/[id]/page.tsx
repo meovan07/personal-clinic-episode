@@ -6,10 +6,12 @@ import { AiSummaryButton } from "@/components/AiSummaryButton";
 import { ConfirmForm } from "@/components/ConfirmForm";
 import { ObservationTrend, type TrendSeries } from "@/components/ObservationTrend";
 import { PageHeader } from "@/components/PageHeader";
+import { UpcomingDoses } from "@/components/UpcomingDoses";
 import { VisitList } from "@/components/VisitList";
 import { createClient } from "@/lib/supabase/server";
 import { age, formatDate } from "@/lib/format";
 import { CASE_STATUS, CASE_STATUS_STYLE, SEX } from "@/lib/labels";
+import { pendingDoses } from "@/lib/vaccinations";
 
 export default async function PersonPage({ params }: PageProps<"/people/[id]">) {
   const { id } = await params;
@@ -17,7 +19,7 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
   const { data: person } = await supabase.from("people").select("*").eq("id", id).maybeSingle();
   if (!person) notFound();
 
-  const [cases, visits, actions, summaries] = await Promise.all([
+  const [cases, visits, actions, summaries, vaccinations] = await Promise.all([
     supabase.from("cases").select("*, visits(count)").eq("person_id", id).order("started_on", { ascending: false }),
     supabase
       .from("visits")
@@ -35,6 +37,7 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
       .select("id, content, generated_at")
       .eq("person_id", id)
       .order("generated_at", { ascending: false }),
+    supabase.from("vaccinations").select("id, vaccine_name, disease, given_on, next_due_on").eq("person_id", id),
   ]);
   const [latestSummary, ...olderSummaries] = summaries.data ?? [];
 
@@ -179,6 +182,18 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
               </div>
             </Link>
           ))}
+        </div>
+      </section>
+
+      <section>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="section-title mb-0">Tiêm chủng</h2>
+          <Link href={`/people/${id}/vaccinations`} className="btn">
+            Sổ tiêm chủng ({vaccinations.data?.length ?? 0} mũi) →
+          </Link>
+        </div>
+        <div className="card">
+          <UpcomingDoses doses={pendingDoses(vaccinations.data ?? [])} />
         </div>
       </section>
 

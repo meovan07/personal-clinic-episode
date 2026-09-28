@@ -8,12 +8,14 @@ A private website for storing the medical records of two people: cases (bệnh �
 
 - [x] **Phase 1 – Storage:** people, cases, visits, multi-page document upload (with duplicate detection), medications, to-dos
 - [x] **Phase 2 – AI extraction:** read uploaded PDFs/photos, extract results, review screen, test catalog
-- [ ] **Phase 3 – Insights:** per-test charts, "what changed" summaries
-- [ ] **Phase 4 – Extras:** reminders, a one-page summary for doctors, search
+- [x] **Phase 3 – Insights:** per-test charts, "what changed" summaries
+- [x] **Phase 4 – Quick add:** a single "+" upload; AI matches the document to a person and bệnh án instead of manual selection
+- [x] **Phase 5 – Sổ tiêm chủng:** vaccination history per person (vaccine, dose, date given, next due date), read from scanned vaccination certificates the same way lab results are today
+- [ ] **Phase 6 – Extras:** reminders, a one-page summary for doctors, search
 
 ## Data model
 
-`people` → `cases` → `visits` → `documents` (→ `document_files`, one row per page) / `observations` / `medications`, plus `action_items` and `ai_summaries`. Every table has row-level security, and only accounts listed in `members` can read or write. Original files live in the private `documents` storage bucket and are only served through signed URLs that expire after 1 hour. See `supabase/migrations/`.
+`people` → `cases` → `visits` → `documents` (→ `document_files`, one row per page) / `observations` / `medications`, plus `vaccinations` (per person, from confirmed certificates or added by hand), `action_items` and `ai_summaries`. Every table has row-level security, and only accounts listed in `members` can read or write. Original files live in the private `documents` storage bucket and are only served through signed URLs that expire after 1 hour. See `supabase/migrations/`.
 
 ## How AI extraction works
 
@@ -25,6 +27,7 @@ A private website for storing the medical records of two people: cases (bệnh �
    - converts units using `unit_conversions`, e.g. mg/dL → mmol/L (the printed value is kept in `raw_value` / `raw_unit`)
    - reads reference ranges (`3,9 - 6,4`, `< 5.18`, `(≤ 40)`) and recomputes high/low
    - turns the doctor's advice and the follow-up date into to-dos
+   - saves vaccination doses (skipping doses already recorded from an earlier photo of the same card) and turns a future next-dose date into a to-do
 
    Confirming again replaces the rows created from that document.
 

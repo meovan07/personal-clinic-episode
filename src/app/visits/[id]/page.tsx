@@ -35,7 +35,7 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
     .maybeSingle();
   if (!visit) notFound();
 
-  const [docs, meds, actions, observations] = await Promise.all([
+  const [docs, meds, actions, observations, vaccinations] = await Promise.all([
     supabase
       .from("documents")
       .select(
@@ -51,6 +51,11 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
       .select("id, raw_name, value, value_text, unit, raw_value, raw_unit, ref_range_text, flag, test_catalog(name_vi)")
       .eq("visit_id", id)
       .order("created_at"),
+    supabase
+      .from("vaccinations")
+      .select("id, vaccine_name, disease, dose_label, given_on, next_due_on")
+      .eq("visit_id", id)
+      .order("given_on", { nullsFirst: true }),
   ]);
 
   const paths = (docs.data ?? []).flatMap((d) => d.document_files.map((f) => f.storage_path));
@@ -218,6 +223,36 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
                 })}
               </tbody>
             </table>
+          </div>
+        </section>
+      )}
+
+      {(vaccinations.data?.length ?? 0) > 0 && (
+        <section>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="section-title mb-0">Tiêm chủng</h2>
+            <Link href={`/people/${visit.person_id}/vaccinations`} className="text-sm text-teal-700 hover:underline">
+              Xem sổ tiêm chủng →
+            </Link>
+          </div>
+          <div className="card">
+            <ul className="divide-y divide-slate-100">
+              {vaccinations.data?.map((v) => (
+                <li key={v.id} className="py-2">
+                  <span className="font-medium">{v.vaccine_name}</span>
+                  {v.dose_label && ` · ${v.dose_label}`}
+                  <div className="muted">
+                    {[
+                      v.disease,
+                      v.given_on && `Tiêm ${formatDate(v.given_on)}`,
+                      v.next_due_on && `Hẹn mũi sau ${formatDate(v.next_due_on)}`,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </div>
+                </li>
+              ))}
+            </ul>
           </div>
         </section>
       )}

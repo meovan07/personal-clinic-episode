@@ -11,7 +11,9 @@ import {
 } from "@/lib/ai/extract";
 import { polishActionItem } from "@/lib/ai/polish";
 import { summarizePerson, type PersonSnapshot } from "@/lib/ai/summarize";
+import { today } from "@/lib/format";
 import { normalizeObservation } from "@/lib/normalize";
+import { isSameDose, pendingDoses } from "@/lib/vaccinations";
 import { createClient } from "@/lib/supabase/server";
 
 function str(fd: FormData, key: string): string | null {
@@ -266,6 +268,33 @@ export async function deleteActionItem(id: string) {
   revalidatePath("/", "layout");
 }
 
+// ---------- Vaccinations (Phase 5) ----------
+
+export async function addVaccination(fd: FormData) {
+  const supabase = await createClient();
+  const personId = required(fd, "person_id");
+  check(
+    await supabase.from("vaccinations").insert({
+      person_id: personId,
+      vaccine_name: required(fd, "vaccine_name"),
+      disease: str(fd, "disease"),
+      dose_label: str(fd, "dose_label"),
+      given_on: str(fd, "given_on"),
+      next_due_on: str(fd, "next_due_on"),
+      lot_number: str(fd, "lot_number"),
+      facility: str(fd, "facility"),
+      notes: str(fd, "notes"),
+    }),
+  );
+  revalidatePath(`/people/${personId}`, "layout");
+}
+
+export async function deleteVaccination(id: string, personId: string) {
+  const supabase = await createClient();
+  check(await supabase.from("vaccinations").delete().eq("id", id));
+  revalidatePath(`/people/${personId}`, "layout");
+}
+
 // ---------- AI extraction (Phase 2) ----------
 
 export async function readDocumentWithAI(documentId: string): Promise<{ error: string | null }> {
@@ -336,6 +365,7 @@ async function applyExtraction(
     supabase.from("observations").delete().eq("document_id", documentId).then(check),
     supabase.from("medications").delete().eq("document_id", documentId).then(check),
     supabase.from("action_items").delete().eq("document_id", documentId).then(check),
+    supabase.from("vaccinations").delete().eq("document_id", documentId).then(check),
   ]);
 
   const observations = reviewed.observations
@@ -360,6 +390,27 @@ async function applyExtraction(
     }));
   if (medications.length) check(await supabase.from("medications").insert(medications));
 
+  // Skip doses already recorded from another photo of the same vaccination card (or added by hand).
+  const knownDoses = check(
+    await supabase.from("vaccinations").select("vaccine_name, disease, given_on, next_due_on").eq("person_id", visit.person_id),
+  );
+  const vaccinations = reviewed.vaccinations
+    .filter((v) => v.vaccine_name.trim())
+    .map((v) => ({
+      person_id: visit.person_id,
+      visit_id: visitId,
+      document_id: documentId,
+      vaccine_name: v.vaccine_name.trim(),
+      disease: v.disease,
+      dose_label: v.dose_label,
+      given_on: v.given_on,
+      next_due_on: v.next_due_on,
+      lot_number: v.lot_number,
+      facility: v.facility ?? reviewed.facility,
+    }))
+    .filter((v) => !knownDoses.some((k) => isSameDose(k, v)));
+  if (vaccinations.length) check(await supabase.from("vaccinations").insert(vaccinations));
+
   const base = { person_id: visit.person_id, visit_id: visitId, document_id: documentId };
   // With a follow-up date, the advice line about re-examination becomes the dated to-do instead of a duplicate.
   const advice = reviewed.doctor_advice.map((a) => a.trim()).filter(Boolean);
@@ -369,6 +420,14 @@ async function applyExtraction(
     .map((content) => ({ ...base, content }));
   if (reviewed.follow_up_date) {
     actions.push({ ...base, content: followUpLine ?? "Tái khám", due_on: reviewed.follow_up_date });
+  }
+  // Next-dose appointments from this document that are still ahead and not already covered by a later dose.
+  const fromThisDocument = new Set<object>(vaccinations);
+  const upcoming = pendingDoses([...knownDoses, ...vaccinations]).filter(
+    (d) => fromThisDocument.has(d) && d.next_due_on >= today(),
+  );
+  for (const d of upcoming) {
+    actions.push({ ...base, content: `Tiêm mũi tiếp theo: ${d.vaccine_name}`, due_on: d.next_due_on });
   }
   if (actions.length) check(await supabase.from("action_items").insert(actions));
 
@@ -410,7 +469,7 @@ export async function confirmExtraction(documentId: string, input: unknown) {
 export async function generatePersonSummary(personId: string): Promise<{ error: string | null }> {
   const supabase = await createClient();
   try {
-    const [person, cases, visits, openActions, lastSummary] = await Promise.all([
+    const [person, cases, visits, openActions, vaccinations, lastSummary] = await Promise.all([
       supabase
         .from("people")
         .select("full_name, sex, birth_date, blood_type, allergies, chronic_conditions")
@@ -427,6 +486,12 @@ export async function generatePersonSummary(personId: string): Promise<{ error: 
         .order("visit_date", { ascending: true, nullsFirst: false })
         .then(check),
       supabase.from("action_items").select("content, due_on").eq("person_id", personId).eq("done", false).then(check),
+      supabase
+        .from("vaccinations")
+        .select("vaccine_name, disease, dose_label, given_on, next_due_on")
+        .eq("person_id", personId)
+        .order("given_on", { ascending: true, nullsFirst: true })
+        .then(check),
       supabase
         .from("ai_summaries")
         .select("content, generated_at")
@@ -463,6 +528,7 @@ export async function generatePersonSummary(personId: string): Promise<{ error: 
         })),
       })),
       open_action_items: openActions,
+      vaccinations,
       previous_summary: lastSummary ? { content: lastSummary.content, generated_at: lastSummary.generated_at } : null,
     };
 
