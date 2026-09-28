@@ -6,12 +6,11 @@ import { AiSummaryButton } from "@/components/AiSummaryButton";
 import { ConfirmForm } from "@/components/ConfirmForm";
 import { ObservationTrend, type TrendSeries } from "@/components/ObservationTrend";
 import { PageHeader } from "@/components/PageHeader";
-import { UpcomingDoses } from "@/components/UpcomingDoses";
+import { VaccinationSummary } from "@/components/VaccinationSummary";
 import { VisitList } from "@/components/VisitList";
 import { createClient } from "@/lib/supabase/server";
 import { age, formatDate } from "@/lib/format";
 import { CASE_STATUS, CASE_STATUS_STYLE, SEX } from "@/lib/labels";
-import { pendingDoses } from "@/lib/vaccinations";
 
 export default async function PersonPage({ params }: PageProps<"/people/[id]">) {
   const { id } = await params;
@@ -37,7 +36,11 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
       .select("id, content, generated_at")
       .eq("person_id", id)
       .order("generated_at", { ascending: false }),
-    supabase.from("vaccinations").select("id, vaccine_name, disease, given_on, next_due_on").eq("person_id", id),
+    supabase
+      .from("vaccinations")
+      .select("id, vaccine_name, disease, given_on, next_due_on")
+      .eq("person_id", id)
+      .order("given_on", { ascending: true, nullsFirst: true }),
   ]);
   const [latestSummary, ...olderSummaries] = summaries.data ?? [];
 
@@ -193,7 +196,7 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
           </Link>
         </div>
         <div className="card">
-          <UpcomingDoses doses={pendingDoses(vaccinations.data ?? [])} />
+          <VaccinationSummary doses={vaccinations.data ?? []} />
         </div>
       </section>
 

@@ -7,7 +7,7 @@ import { SubmitButton } from "@/components/SubmitButton";
 import { UpcomingDoses } from "@/components/UpcomingDoses";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate, today } from "@/lib/format";
-import { pendingDoses, seriesKey } from "@/lib/vaccinations";
+import { groupBySeries, pendingDoses } from "@/lib/vaccinations";
 
 export default async function VaccinationsPage({ params }: PageProps<"/people/[id]/vaccinations">) {
   const { id } = await params;
@@ -23,16 +23,7 @@ export default async function VaccinationsPage({ params }: PageProps<"/people/[i
   if (!person) notFound();
 
   // One block per disease (series), newest series activity first, doses oldest-first inside.
-  const groups = new Map<string, { key: string; title: string; doses: NonNullable<typeof doses> }>();
-  for (const d of doses ?? []) {
-    const key = seriesKey(d);
-    const g = groups.get(key);
-    if (g) g.doses.push(d);
-    else groups.set(key, { key, title: d.disease ?? d.vaccine_name, doses: [d] });
-  }
-  const series = [...groups.values()].sort((a, b) =>
-    (b.doses.at(-1)?.given_on ?? "").localeCompare(a.doses.at(-1)?.given_on ?? ""),
-  );
+  const series = groupBySeries(doses ?? []);
 
   return (
     <div className="space-y-8">

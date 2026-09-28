@@ -19,6 +19,21 @@ export function isSameDose(a: Dose, b: Dose): boolean {
   return nameKey(a.vaccine_name) === nameKey(b.vaccine_name) || seriesKey(a) === seriesKey(b);
 }
 
+// Doses of the same series, oldest first, newest series activity first — for "which vaccines did I already take" views.
+// Assumes `doses` is pre-sorted ascending by given_on (nulls first), as every query here selects it.
+export function groupBySeries<T extends Dose>(doses: T[]): { key: string; title: string; doses: T[] }[] {
+  const groups = new Map<string, { key: string; title: string; doses: T[] }>();
+  for (const d of doses) {
+    const key = seriesKey(d);
+    const g = groups.get(key);
+    if (g) g.doses.push(d);
+    else groups.set(key, { key, title: d.disease ?? d.vaccine_name, doses: [d] });
+  }
+  return [...groups.values()].sort((a, b) =>
+    (b.doses.at(-1)?.given_on ?? "").localeCompare(a.doses.at(-1)?.given_on ?? ""),
+  );
+}
+
 // A dose's next_due_on is still open when no later dose of the same series has been recorded.
 export function pendingDoses<T extends Dose>(doses: T[]): (T & { next_due_on: string })[] {
   return doses
