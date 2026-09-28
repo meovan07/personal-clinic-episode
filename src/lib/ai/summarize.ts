@@ -34,19 +34,22 @@ Quy tắc trình bày (đây là văn bản thuần, KHÔNG có trình đọc Ma
 - Mỗi ý là một dòng bắt đầu bằng dấu gạch ngang "- ".
 - Không dùng số thứ tự kiểu "1.", "2.".
 
-Quy tắc viết để DỄ HIỂU:
-- Với mỗi chỉ số xét nghiệm bất thường, viết tên thông thường thay vì viết tắt (ví dụ "men gan ALT" thay vì chỉ "ALT"), nêu giá trị, rồi giải thích ngắn gọn bằng lời thường chỉ số đó nói lên điều gì một cách tổng quát (ví dụ: "men gan tăng nhẹ, có thể do gan đang bị ảnh hưởng"). Không phỏng đoán nguyên nhân cụ thể hay chẩn đoán bệnh.
-- Tránh liệt kê khô khan nhiều số liệu liên tiếp không giải thích; viết như đang giải thích cho người thân nghe.
-- Câu ngắn, từ ngữ thông dụng, hạn chế thuật ngữ y khoa khi có thể thay bằng từ dễ hiểu hơn.
+Quy tắc SÚC TÍCH — bắt buộc, đây là yêu cầu quan trọng nhất: người đọc phải nắm được ý chính trong 30 giây, không phải đọc từng câu văn dài:
+- Mỗi chỉ số xét nghiệm CHỈ xuất hiện đúng MỘT dòng duy nhất, kể cả khi đo nhiều lần. Nếu có từ 2 mốc thời gian trở lên cho cùng một chỉ số, viết theo dạng: "Tên chỉ số: giá trị cũ → giá trị mới đơn vị (ngày cũ → ngày mới) — nhận xét ngắn". Nếu chỉ có 1 mốc: "Tên chỉ số: giá trị đơn vị — nhận xét ngắn". Dùng tên thông thường thay vì viết tắt (ví dụ "men gan ALT" thay vì "ALT").
+- "Nhận xét ngắn" tối đa 6-8 từ, ví dụ "cao hơn bình thường, gan có thể bị ảnh hưởng" hoặc chỉ "bình thường". Đây KHÔNG phải câu văn hoàn chỉnh. Cấm dùng các cụm lặp lại như "cho thấy", "trong ngưỡng bình thường trên phiếu xét nghiệm", "tại thời điểm xét nghiệm".
+- Các chỉ số bình thường: gộp chung một dòng liệt kê tên, không giải thích từng cái, ví dụ: "Bình thường: AST, HDL-Cholesterol.".
+- Mỗi loại chỉ số chỉ giải thích ý nghĩa chung (gan/mỡ máu/thận/…) ĐÚNG MỘT LẦN trong cả bài, không lặp lại lời giải thích ở nhiều dòng.
+- Mục "Kết quả và xu hướng" không quá 10 dòng; nếu nhiều chỉ số, ưu tiên chỉ số bất thường hoặc đổi nhiều nhất, phần còn lại gộp vào dòng "Bình thường: ...".
+- Không phỏng đoán nguyên nhân cụ thể hay chẩn đoán bệnh.
 
 Nội dung gồm các mục sau (bỏ qua mục nào không có dữ liệu, không bịa thêm):
-Tổng quan tình trạng hiện tại — bệnh đang điều trị/theo dõi, dị ứng, bệnh nền, bằng lời dễ hiểu.
-Kết quả và xu hướng đáng chú ý — các chỉ số bất thường qua các lần khám, giải thích ý nghĩa chung như trên; nếu cùng một chỉ số có nhiều mốc thời gian thì nêu tăng/giảm ra sao.
-Thuốc đang dùng — nếu có, lấy từ lần khám gần nhất còn hiệu lực.
-Việc cần làm / lịch tái khám sắp tới.
-Thay đổi so với lần tóm tắt trước — chỉ viết nếu có previous_summary, nêu điểm mới/khác biệt.
+Tổng quan tình trạng hiện tại — 2-3 dòng: bệnh đang điều trị/theo dõi, dị ứng, bệnh nền.
+Kết quả và xu hướng đáng chú ý — theo đúng quy tắc súc tích ở trên.
+Thuốc đang dùng — mỗi thuốc một dòng ngắn: tên, liều, cách dùng.
+Việc cần làm / lịch tái khám sắp tới — mỗi việc một dòng ngắn.
+Thay đổi so với lần tóm tắt trước — chỉ viết nếu có previous_summary, tối đa 2-3 dòng nêu điểm mới/khác biệt.
 
-Chỉ dùng thông tin có trong dữ liệu, không suy đoán số liệu, không đưa ra lời khuyên y khoa hay chẩn đoán. Kết thúc bằng một dòng nhắc: đây là tóm tắt tự động để tham khảo, không thay thế tư vấn của bác sĩ.`;
+Chỉ dùng thông tin có trong dữ liệu, không suy đoán số liệu, không đưa ra lời khuyên y khoa hay chẩn đoán. Kết thúc bằng một dòng: "Đây là tóm tắt tự động để tham khảo, không thay thế tư vấn của bác sĩ."`;
 
 export async function summarizePerson(snapshot: PersonSnapshot): Promise<string> {
   const client = new OpenAI();
