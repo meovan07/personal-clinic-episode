@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
+import { Check, Paperclip, Plus, TriangleAlert, X } from "lucide-react";
 import { confirmInboxItem, discardInboxItem, type CaseChoice, type VisitChoice } from "@/app/actions";
 import { ConfirmForm } from "@/components/ConfirmForm";
 import { StringList, VaccinationFields } from "@/components/ReviewForm";
@@ -115,8 +116,9 @@ export function InboxReviewForm({
               <img src={p.url} alt={p.name} className="w-full rounded-lg border bg-white" />
             </a>
           ) : (
-            <a key={i} href={p.url} target="_blank" rel="noreferrer" className="card block">
-              📎 {p.name}
+            <a key={i} href={p.url} target="_blank" rel="noreferrer" className="card flex items-center gap-2">
+              <Paperclip className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+              {p.name}
             </a>
           ),
         )}
@@ -124,18 +126,22 @@ export function InboxReviewForm({
 
       <div className="space-y-6">
         {lowConfidence && (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-            ⚠ AI chưa chắc chắn tài liệu này của ai, hãy kiểm tra kỹ mục &quot;Người bệnh&quot; bên dưới.
+          <div className="flex gap-3 rounded-lg border border-flag-low/30 bg-flag-low-tint p-4 text-sm text-ink">
+            <TriangleAlert className="h-5 w-5 shrink-0 text-flag-low" strokeWidth={1.75} />
+            AI chưa chắc chắn tài liệu này của ai, hãy kiểm tra kỹ mục &quot;Người bệnh&quot; bên dưới.
           </div>
         )}
         {data.uncertain.length > 0 && (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-            <div className="mb-1 font-medium">⚠ AI chưa chắc chắn, hãy kiểm tra kỹ:</div>
-            <ul className="list-disc pl-5">
-              {data.uncertain.map((u, i) => (
-                <li key={i}>{u}</li>
-              ))}
-            </ul>
+          <div className="flex gap-3 rounded-lg border border-flag-low/30 bg-flag-low-tint p-4 text-sm text-ink">
+            <TriangleAlert className="h-5 w-5 shrink-0 text-flag-low" strokeWidth={1.75} />
+            <div>
+              <div className="mb-1 font-medium">AI chưa chắc chắn, hãy kiểm tra kỹ:</div>
+              <ul className="list-disc pl-5">
+                {data.uncertain.map((u, i) => (
+                  <li key={i}>{u}</li>
+                ))}
+              </ul>
+            </div>
           </div>
         )}
 
@@ -161,7 +167,7 @@ export function InboxReviewForm({
           </label>
 
           {canMergeVisit ? (
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
+            <div className="rounded-lg border border-line bg-paper-dim p-3 text-sm">
               <label className="flex items-start gap-2">
                 <input
                   type="checkbox"
@@ -272,7 +278,7 @@ export function InboxReviewForm({
               <div
                 key={i}
                 className={`card grid grid-cols-2 gap-2 sm:grid-cols-6 ${
-                  o.flag === "high" || o.flag === "low" || o.flag === "abnormal" ? "border-red-200" : ""
+                  o.flag === "high" || o.flag === "low" || o.flag === "abnormal" ? "border-stamp/30" : ""
                 }`}
               >
                 <input
@@ -336,13 +342,14 @@ export function InboxReviewForm({
                     aria-label="Xóa chỉ số"
                     onClick={() => set("observations", data.observations.filter((_, j) => j !== i))}
                   >
-                    ×
+                    <X className="h-4 w-4" strokeWidth={1.75} />
                   </button>
                 </div>
               </div>
             ))}
             <button type="button" className="btn" onClick={() => set("observations", [...data.observations, emptyObs])}>
-              + Thêm chỉ số
+              <Plus className="h-4 w-4" strokeWidth={1.75} />
+              Thêm chỉ số
             </button>
           </div>
         </section>
@@ -388,12 +395,13 @@ export function InboxReviewForm({
                   aria-label="Xóa thuốc"
                   onClick={() => set("medications", data.medications.filter((_, j) => j !== i))}
                 >
-                  ×
+                  <X className="h-4 w-4" strokeWidth={1.75} />
                 </button>
               </div>
             ))}
             <button type="button" className="btn" onClick={() => set("medications", [...data.medications, emptyMed])}>
-              + Thêm thuốc
+              <Plus className="h-4 w-4" strokeWidth={1.75} />
+              Thêm thuốc
             </button>
           </div>
         </section>
@@ -420,10 +428,17 @@ export function InboxReviewForm({
           </label>
         </section>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <div className="sticky bottom-0 flex flex-wrap gap-2 border-t border-slate-200 bg-slate-50 py-3">
+        {error && <p className="text-sm text-stamp">{error}</p>}
+        <div className="sticky bottom-16 flex flex-wrap gap-2 border-t border-line bg-paper py-3 sm:bottom-0">
           <button className="btn-primary" disabled={pending} onClick={save}>
-            {pending ? "Đang lưu…" : "✓ Xác nhận & lưu"}
+            {pending ? (
+              "Đang lưu…"
+            ) : (
+              <>
+                <Check className="h-4 w-4" strokeWidth={2} />
+                Xác nhận & lưu
+              </>
+            )}
           </button>
           <ConfirmForm action={discardInboxItem.bind(null, inboxId)} message="Bỏ tài liệu này? File gốc sẽ bị xóa.">
             <button className="btn" type="button">

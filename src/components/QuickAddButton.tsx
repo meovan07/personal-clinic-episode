@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { Plus, X } from "lucide-react";
 import { createInboxItem, findDuplicateFiles, processInboxItem, type UploadedFile } from "@/app/actions";
 import { createClient } from "@/lib/supabase/client";
 import { extension, sha256 } from "@/lib/hash";
@@ -98,9 +99,9 @@ export function QuickAddButton() {
       />
 
       {files.length === 0 ? (
-        <div className="fixed bottom-5 right-5 z-20 flex flex-col items-end gap-2">
+        <div className="fixed bottom-20 right-4 z-20 flex flex-col items-end gap-2 sm:bottom-5 sm:right-5">
           {error && (
-            <div className="max-w-[80vw] rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 shadow-lg sm:max-w-xs">
+            <div className="max-w-[80vw] rounded-lg border border-stamp/30 bg-stamp-tint px-3 py-2 text-sm text-stamp shadow-lg sm:max-w-xs">
               {error}
             </div>
           )}
@@ -108,13 +109,13 @@ export function QuickAddButton() {
             type="button"
             aria-label="Thêm tài liệu"
             onClick={() => inputRef.current?.click()}
-            className="flex h-14 w-14 items-center justify-center rounded-full bg-teal-600 text-3xl leading-none text-white shadow-lg hover:bg-teal-700"
+            className="flex h-14 w-14 items-center justify-center rounded-full bg-pine text-white shadow-lg hover:bg-pine-dark"
           >
-            +
+            <Plus className="h-7 w-7" strokeWidth={2} />
           </button>
         </div>
       ) : (
-        <div className="fixed inset-x-0 bottom-0 z-20 space-y-3 rounded-t-2xl border-t border-slate-200 bg-white p-4 shadow-[0_-4px_16px_rgba(0,0,0,0.12)] sm:inset-x-auto sm:bottom-5 sm:right-5 sm:w-96 sm:rounded-2xl sm:border">
+        <div className="fixed inset-x-0 bottom-16 z-20 space-y-3 rounded-t-2xl border-t border-line bg-surface p-4 shadow-[0_-4px_16px_rgba(28,36,32,0.12)] sm:inset-x-auto sm:bottom-5 sm:right-5 sm:w-96 sm:rounded-2xl sm:border">
           <p className="label">Nhiều trang của cùng một tài liệu? Chụp/chọn thêm rồi tải lên cùng lúc.</p>
           <ul className="muted max-h-40 space-y-1 overflow-auto">
             {files.map((f, i) => (
@@ -124,17 +125,17 @@ export function QuickAddButton() {
                 </span>
                 <button
                   type="button"
-                  className="shrink-0 text-slate-400 hover:text-red-600"
+                  className="shrink-0 text-ink-faint hover:text-stamp"
                   aria-label="Xóa"
                   disabled={!!busy}
                   onClick={() => setFiles((fs) => fs.filter((_, j) => j !== i))}
                 >
-                  ×
+                  <X className="h-4 w-4" strokeWidth={1.75} />
                 </button>
               </li>
             ))}
           </ul>
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-stamp">{error}</p>}
           <div className="flex flex-wrap gap-2">
             <button type="button" className="btn-primary" disabled={!!busy} onClick={upload}>
               {busy ?? `Tải lên ${files.length} file`}

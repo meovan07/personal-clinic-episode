@@ -1,14 +1,19 @@
 import Link from "next/link";
+import { Clock, Sparkles, TriangleAlert, UserPlus } from "lucide-react";
 import { ActionItems } from "@/components/ActionItems";
 import { VisitList } from "@/components/VisitList";
 import { createClient } from "@/lib/supabase/server";
 import { age, formatDate } from "@/lib/format";
 
-const INBOX_STATUS: Record<string, string> = {
-  processing: "🕓 Đang xử lý…",
-  needs_review: "🤖 AI đã đọc xong, cần xác nhận",
-  failed: "⚠ Lỗi khi đọc, bấm để thử lại",
+const INBOX_STATUS: Record<string, { label: string; icon: typeof Clock }> = {
+  processing: { label: "Đang xử lý…", icon: Clock },
+  needs_review: { label: "AI đã đọc xong, cần xác nhận", icon: Sparkles },
+  failed: { label: "Lỗi khi đọc, bấm để thử lại", icon: TriangleAlert },
 };
+
+function initial(name: string) {
+  return name.trim().charAt(0).toUpperCase() || "?";
+}
 
 export default async function Home() {
   const supabase = await createClient();
@@ -39,12 +44,19 @@ export default async function Home() {
         <section>
           <h2 className="section-title">Tài liệu mới tải lên</h2>
           <div className="space-y-2">
-            {inbox.data.map((item) => (
-              <Link key={item.id} href={`/inbox/${item.id}/review`} className="card flex items-center justify-between gap-2 hover:border-teal-300">
-                <span>{item.inbox_files.map((f) => f.file_name).join(", ")}</span>
-                <span className="muted whitespace-nowrap">{INBOX_STATUS[item.status] ?? item.status}</span>
-              </Link>
-            ))}
+            {inbox.data.map((item) => {
+              const status = INBOX_STATUS[item.status];
+              const Icon = status?.icon;
+              return (
+                <Link key={item.id} href={`/inbox/${item.id}/review`} className="card card-interactive flex items-center justify-between gap-2">
+                  <span>{item.inbox_files.map((f) => f.file_name).join(", ")}</span>
+                  <span className="muted flex items-center gap-1.5 whitespace-nowrap">
+                    {Icon && <Icon className="h-3.5 w-3.5" strokeWidth={1.75} />}
+                    {status?.label ?? item.status}
+                  </span>
+                </Link>
+              );
+            })}
           </div>
         </section>
       )}
@@ -53,7 +65,8 @@ export default async function Home() {
         <div className="mb-3 flex items-center justify-between">
           <h2 className="section-title mb-0">Hồ sơ</h2>
           <Link href="/people/new" className="btn">
-            + Thêm người
+            <UserPlus className="h-4 w-4" strokeWidth={1.75} />
+            Thêm người
           </Link>
         </div>
         {people.data?.length === 0 && <p className="muted">Bắt đầu bằng cách thêm hồ sơ cho bạn và người yêu.</p>}
@@ -67,14 +80,19 @@ export default async function Home() {
             const active = p.cases.filter((c) => c.status === "dang_dieu_tri").length;
             const a = age(p.birth_date);
             return (
-              <Link key={p.id} href={`/people/${p.id}`} className="card hover:border-teal-300">
-                <div className="text-lg font-semibold">{p.full_name}</div>
-                <div className="muted">
-                  {a !== null && `${a} tuổi · `}
-                  {p.visits.length} lần khám
-                  {active > 0 && ` · ${active} bệnh đang điều trị`}
+              <Link key={p.id} href={`/people/${p.id}`} className="card card-interactive flex items-start gap-3">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-pine-tint text-lg font-semibold text-pine">
+                  {initial(p.full_name)}
+                </span>
+                <div>
+                  <div className="text-lg font-semibold">{p.full_name}</div>
+                  <div className="muted">
+                    {a !== null && `${a} tuổi · `}
+                    {p.visits.length} lần khám
+                    {active > 0 && ` · ${active} bệnh đang điều trị`}
+                  </div>
+                  {lastVisit && <div className="muted data">Khám gần nhất: {formatDate(lastVisit)}</div>}
                 </div>
-                {lastVisit && <div className="muted">Khám gần nhất: {formatDate(lastVisit)}</div>}
               </Link>
             );
           })}

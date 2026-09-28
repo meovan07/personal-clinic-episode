@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Check, FileText, Folder, ImageIcon, Pencil, Plus, Syringe, X } from "lucide-react";
 import { addMedication, deleteDocument, deleteMedication, deleteVisit } from "@/app/actions";
 import { ActionItems } from "@/components/ActionItems";
 import { AiReadButton } from "@/components/AiReadButton";
@@ -16,9 +17,9 @@ import { DOC_TYPE } from "@/lib/labels";
 export const maxDuration = 300;
 
 const FLAG_STYLE: Record<string, string> = {
-  high: "text-red-600 font-semibold",
-  low: "text-blue-600 font-semibold",
-  abnormal: "text-red-600 font-semibold",
+  high: "text-stamp font-semibold",
+  low: "text-flag-low font-semibold",
+  abnormal: "text-stamp font-semibold",
 };
 const FLAG_ARROW: Record<string, string> = { high: "↑", low: "↓", abnormal: "!" };
 
@@ -81,8 +82,9 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
             {visit.cases && (
               <>
                 {" · "}
-                <Link href={`/cases/${visit.cases.id}`} className="text-teal-700 hover:underline">
-                  📁 {visit.cases.title}
+                <Link href={`/cases/${visit.cases.id}`} className="inline-flex items-center gap-1 text-pen hover:underline">
+                  <Folder className="h-3.5 w-3.5" strokeWidth={1.75} />
+                  {visit.cases.title}
                 </Link>
               </>
             )}
@@ -90,6 +92,7 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
         }
         actions={
           <Link href={`/visits/${id}/edit`} className="btn">
+            <Pencil className="h-4 w-4" strokeWidth={1.75} />
             Sửa
           </Link>
         }
@@ -130,7 +133,9 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
                   </div>
                 </div>
                 <ConfirmForm action={deleteDocument.bind(null, d.id, id)} message="Xóa tài liệu này và file gốc?">
-                  <button className="text-sm text-slate-400 hover:text-red-600">Xóa</button>
+                  <button className="text-ink-faint hover:text-stamp" aria-label="Xóa tài liệu">
+                    <X className="h-4 w-4" strokeWidth={1.75} />
+                  </button>
                 </ConfirmForm>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -140,7 +145,7 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
                   return PREVIEWABLE.test(f.mime_type ?? "") ? (
                     <a key={f.id} href={url} target="_blank" rel="noreferrer">
                       {/* eslint-disable-next-line @next/next/no-img-element -- signed URLs, not optimizable */}
-                      <img src={url} alt={f.file_name} className="h-32 w-24 rounded-lg border object-cover" />
+                      <img src={url} alt={f.file_name} className="h-32 w-24 rounded-md border border-line object-cover" />
                     </a>
                   ) : (
                     <a
@@ -148,34 +153,42 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
                       href={url}
                       target="_blank"
                       rel="noreferrer"
-                      className="flex h-32 w-24 flex-col items-center justify-center rounded-lg border bg-slate-50 p-2 text-center text-xs hover:border-teal-300"
+                      className="flex h-32 w-24 flex-col items-center justify-center gap-1 rounded-md border border-line bg-paper-dim p-2 text-center text-xs hover:border-line-strong"
                     >
-                      <span className="text-2xl">{f.mime_type === "application/pdf" ? "📄" : "🖼"}</span>
-                      <span className="mt-1 line-clamp-3 break-all">{f.file_name}</span>
+                      {f.mime_type === "application/pdf" ? (
+                        <FileText className="h-6 w-6 text-ink-faint" strokeWidth={1.5} />
+                      ) : (
+                        <ImageIcon className="h-6 w-6 text-ink-faint" strokeWidth={1.5} />
+                      )}
+                      <span className="line-clamp-3 break-all">{f.file_name}</span>
                     </a>
                   );
                 })}
               </div>
-              <div className="mt-3 border-t border-slate-100 pt-3">
+              <div className="mt-3 border-t border-line pt-3">
                 {d.extraction_status === "confirmed" ? (
                   <div className="space-y-2">
                     {d.summary && <p className="whitespace-pre-line text-sm">{d.summary}</p>}
-                    <Link href={`/documents/${d.id}/review`} className="text-sm text-teal-700 hover:underline">
-                      ✓ Đã xác nhận · Sửa kết quả
+                    <Link
+                      href={`/documents/${d.id}/review`}
+                      className="inline-flex items-center gap-1 text-sm text-pen hover:underline"
+                    >
+                      <Check className="h-3.5 w-3.5" strokeWidth={2} />
+                      Đã xác nhận · Sửa kết quả
                     </Link>
                   </div>
                 ) : d.extraction_status === "needs_review" ? (
                   <Link href={`/documents/${d.id}/review`} className="btn-primary">
-                    AI đã đọc xong: kiểm tra & xác nhận →
+                    AI đã đọc xong: kiểm tra & xác nhận
                   </Link>
                 ) : (
                   <>
                     {d.extraction_status === "failed" && (
-                      <p className="mb-2 text-sm text-red-600">Lần đọc trước bị lỗi: {d.extraction_error}</p>
+                      <p className="mb-2 text-sm text-stamp">Lần đọc trước bị lỗi: {d.extraction_error}</p>
                     )}
                     <AiReadButton
                       documentId={d.id}
-                      label={d.extraction_status === "pending" ? "🤖 Đọc lại bằng AI" : undefined}
+                      label={d.extraction_status === "pending" ? "Đọc lại bằng AI" : undefined}
                     />
                   </>
                 )}
@@ -191,14 +204,14 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
           <h2 className="section-title">Kết quả xét nghiệm / chỉ số</h2>
           <div className="card overflow-x-auto p-0">
             <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-left text-slate-500">
+              <thead className="bg-paper-dim text-left text-ink-soft">
                 <tr>
                   <th className="px-4 py-2 font-medium">Chỉ số</th>
                   <th className="px-4 py-2 font-medium">Kết quả</th>
                   <th className="px-4 py-2 font-medium">Tham chiếu</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-line">
                 {observations.data?.map((o) => {
                   const converted = o.raw_unit && o.unit !== o.raw_unit;
                   return (
@@ -206,18 +219,18 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
                       <td className="px-4 py-2">
                         {o.test_catalog?.name_vi ?? o.raw_name}
                         {o.test_catalog && o.test_catalog.name_vi !== o.raw_name && (
-                          <div className="text-xs text-slate-400">{o.raw_name}</div>
+                          <div className="text-xs text-ink-faint">{o.raw_name}</div>
                         )}
                       </td>
-                      <td className={`px-4 py-2 ${FLAG_STYLE[o.flag ?? ""] ?? ""}`}>
+                      <td className={`data px-4 py-2 ${FLAG_STYLE[o.flag ?? ""] ?? ""}`}>
                         {o.value ?? o.value_text} {o.unit} {FLAG_ARROW[o.flag ?? ""]}
                         {converted && (
-                          <div className="text-xs font-normal text-slate-400">
+                          <div className="font-normal text-xs text-ink-faint">
                             Gốc: {o.raw_value} {o.raw_unit}
                           </div>
                         )}
                       </td>
-                      <td className="px-4 py-2 text-slate-500">{o.ref_range_text}</td>
+                      <td className="data px-4 py-2 text-ink-soft">{o.ref_range_text}</td>
                     </tr>
                   );
                 })}
@@ -231,17 +244,21 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
         <section>
           <div className="mb-3 flex items-center justify-between">
             <h2 className="section-title mb-0">Tiêm chủng</h2>
-            <Link href={`/people/${visit.person_id}/vaccinations`} className="text-sm text-teal-700 hover:underline">
-              Xem sổ tiêm chủng →
+            <Link
+              href={`/people/${visit.person_id}/vaccinations`}
+              className="inline-flex items-center gap-1 text-sm text-pen hover:underline"
+            >
+              <Syringe className="h-3.5 w-3.5" strokeWidth={1.75} />
+              Xem sổ tiêm chủng
             </Link>
           </div>
           <div className="card">
-            <ul className="divide-y divide-slate-100">
+            <ul className="divide-y divide-line">
               {vaccinations.data?.map((v) => (
                 <li key={v.id} className="py-2">
                   <span className="font-medium">{v.vaccine_name}</span>
                   {v.dose_label && ` · ${v.dose_label}`}
-                  <div className="muted">
+                  <div className="data muted">
                     {[
                       v.disease,
                       v.given_on && `Tiêm ${formatDate(v.given_on)}`,
@@ -261,18 +278,18 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
         <h2 className="section-title">Thuốc được kê</h2>
         <div className="card space-y-3">
           {meds.data?.length === 0 && <p className="muted">Chưa có thuốc.</p>}
-          <ul className="divide-y divide-slate-100">
+          <ul className="divide-y divide-line">
             {meds.data?.map((m) => (
               <li key={m.id} className="flex items-start justify-between gap-2 py-2">
                 <div>
-                  <span className="font-medium">{m.name}</span> {m.dose && <span>{m.dose}</span>}
+                  <span className="font-medium">{m.name}</span> {m.dose && <span className="data">{m.dose}</span>}
                   <div className="muted">
                     {[m.schedule, m.duration_days && `${m.duration_days} ngày`, m.notes].filter(Boolean).join(" · ")}
                   </div>
                 </div>
                 <form action={deleteMedication.bind(null, m.id, id)}>
-                  <PendingButton className="text-slate-400 hover:text-red-600" aria-label="Xóa">
-                    ×
+                  <PendingButton className="text-ink-faint hover:text-stamp" aria-label="Xóa">
+                    <X className="h-4 w-4" strokeWidth={1.75} />
                   </PendingButton>
                 </form>
               </li>
@@ -285,7 +302,10 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
             <input name="schedule" placeholder="Cách dùng (2 lần/ngày)" className="input" />
             <input name="duration_days" type="number" min={1} placeholder="Số ngày" className="input" />
             <div className="sm:col-span-5">
-              <SubmitButton className="btn">+ Thêm thuốc</SubmitButton>
+              <SubmitButton className="btn">
+                <Plus className="h-4 w-4" strokeWidth={1.75} />
+                Thêm thuốc
+              </SubmitButton>
             </div>
           </form>
         </div>
@@ -301,7 +321,7 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
       <ConfirmForm
         action={deleteVisit.bind(null, id, visit.person_id)}
         message="Xóa lần khám này cùng toàn bộ tài liệu và thuốc? Không thể hoàn tác."
-        className="border-t border-slate-200 pt-6"
+        className="border-t border-line pt-6"
       >
         <button className="btn-danger">Xóa lần khám</button>
       </ConfirmForm>

@@ -1,13 +1,17 @@
 "use client";
 
 import { useActionState } from "react";
+import { Stethoscope } from "lucide-react";
 import { signIn } from "@/app/actions";
 
 export default function LoginPage() {
   const [error, action, pending] = useActionState(signIn, null);
   return (
     <div className="mx-auto mt-16 max-w-sm">
-      <h1 className="mb-6 text-center text-2xl font-bold text-teal-700">🩺 Sổ bệnh án</h1>
+      <div className="mb-6 flex flex-col items-center gap-2 text-pine">
+        <Stethoscope className="h-8 w-8" strokeWidth={1.75} />
+        <h1 className="text-2xl font-bold text-ink">Sổ bệnh án</h1>
+      </div>
       <form action={action} className="card space-y-4">
         <label className="block">
           <span className="label">Email</span>
@@ -17,7 +21,7 @@ export default function LoginPage() {
           <span className="label">Mật khẩu</span>
           <input name="password" type="password" required autoComplete="current-password" className="input" />
         </label>
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm text-stamp">{error}</p>}
         <button className="btn-primary w-full" disabled={pending}>
           {pending ? "Đang đăng nhập…" : "Đăng nhập"}
         </button>

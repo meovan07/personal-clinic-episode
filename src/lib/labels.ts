@@ -4,10 +4,11 @@ export const CASE_STATUS: Record<string, string> = {
   da_khoi: "Đã khỏi",
 };
 
-export const CASE_STATUS_STYLE: Record<string, string> = {
-  dang_dieu_tri: "bg-amber-100 text-amber-800",
-  theo_doi: "bg-sky-100 text-sky-800",
-  da_khoi: "bg-emerald-100 text-emerald-800",
+// Tone keys for <Badge>: đang điều trị (needs attention) / theo dõi (informational) / đã khỏi (resolved).
+export const CASE_STATUS_TONE: Record<string, "low" | "pen" | "pine"> = {
+  dang_dieu_tri: "low",
+  theo_doi: "pen",
+  da_khoi: "pine",
 };
 
 export const DOC_TYPE: Record<string, string> = {

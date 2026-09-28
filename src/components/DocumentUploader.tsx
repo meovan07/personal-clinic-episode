@@ -64,7 +64,7 @@ export function DocumentUploader({ visitId }: { visitId: string }) {
   }
 
   return (
-    <div className="space-y-3 rounded-xl border-2 border-dashed border-slate-300 bg-white p-4">
+    <div className="space-y-3 rounded-lg border-2 border-dashed border-line-strong bg-surface p-4">
       <div>
         <span className="label">Tải tài liệu lên (ảnh, PDF). Nhiều trang của cùng một phiếu thì chọn cùng lúc.</span>
         <input
@@ -72,7 +72,7 @@ export function DocumentUploader({ visitId }: { visitId: string }) {
           type="file"
           multiple
           accept="image/*,application/pdf"
-          className="block w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-teal-50 file:px-3 file:py-2 file:text-teal-700"
+          className="block w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-pine-tint file:px-3 file:py-2 file:text-pine"
           onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
         />
       </div>
@@ -111,7 +111,7 @@ export function DocumentUploader({ visitId }: { visitId: string }) {
           </button>
         </>
       )}
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-stamp">{error}</p>}
     </div>
   );
 }

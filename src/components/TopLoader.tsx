@@ -40,8 +40,8 @@ export function TopLoader() {
 
   if (!visible) return null;
   return (
-    <div aria-hidden className="fixed inset-x-0 top-0 z-50 h-0.5 overflow-hidden bg-teal-100">
-      <div className="h-full w-1/3 animate-[top-loader_1s_ease-in-out_infinite] bg-teal-600" />
+    <div aria-hidden className="fixed inset-x-0 top-0 z-50 h-0.5 overflow-hidden bg-pine-tint">
+      <div className="h-full w-1/3 animate-[top-loader_1s_ease-in-out_infinite] bg-pine" />
     </div>
   );
 }

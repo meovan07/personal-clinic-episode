@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { CalendarPlus, Pencil } from "lucide-react";
 import { deleteCase } from "@/app/actions";
+import { Badge } from "@/components/Badge";
 import { ConfirmForm } from "@/components/ConfirmForm";
 import { PageHeader } from "@/components/PageHeader";
 import { VisitList } from "@/components/VisitList";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate } from "@/lib/format";
-import { CASE_STATUS, CASE_STATUS_STYLE } from "@/lib/labels";
+import { CASE_STATUS, CASE_STATUS_TONE } from "@/lib/labels";
 
 export default async function CasePage({ params }: PageProps<"/cases/[id]">) {
   const { id } = await params;
@@ -26,9 +28,7 @@ export default async function CasePage({ params }: PageProps<"/cases/[id]">) {
         title={item.title}
         subtitle={
           <span className="flex flex-wrap items-center gap-2">
-            <span className={`rounded-full px-2 py-0.5 text-xs ${CASE_STATUS_STYLE[item.status]}`}>
-              {CASE_STATUS[item.status]}
-            </span>
+            <Badge tone={CASE_STATUS_TONE[item.status]}>{CASE_STATUS[item.status]}</Badge>
             {item.started_on && `Từ ${formatDate(item.started_on)}`}
             {item.ended_on && ` đến ${formatDate(item.ended_on)}`}
           </span>
@@ -36,9 +36,11 @@ export default async function CasePage({ params }: PageProps<"/cases/[id]">) {
         actions={
           <>
             <Link href={`/visits/new?person=${item.person_id}&case=${id}`} className="btn-primary">
-              + Lần khám
+              <CalendarPlus className="h-4 w-4" strokeWidth={1.75} />
+              Lần khám
             </Link>
             <Link href={`/cases/${id}/edit`} className="btn">
+              <Pencil className="h-4 w-4" strokeWidth={1.75} />
               Sửa
             </Link>
           </>
@@ -52,7 +54,7 @@ export default async function CasePage({ params }: PageProps<"/cases/[id]">) {
       <ConfirmForm
         action={deleteCase.bind(null, id, item.person_id)}
         message="Xóa bệnh án này? Các lần khám vẫn được giữ lại (chỉ bỏ liên kết)."
-        className="border-t border-slate-200 pt-6"
+        className="border-t border-line pt-6"
       >
         <button className="btn-danger">Xóa bệnh án</button>
       </ConfirmForm>

@@ -31,7 +31,7 @@ export function ConfirmForm({
       <span onClick={() => dialogRef.current?.showModal()}>{children}</span>
       <dialog
         ref={dialogRef}
-        className="m-auto w-80 max-w-[90vw] rounded-xl border border-slate-200 bg-white p-5 shadow-lg"
+        className="m-auto w-80 max-w-[90vw] rounded-lg border border-line bg-surface p-5 shadow-lg"
         onClick={(e) => {
           if (e.target === e.currentTarget) dialogRef.current?.close();
         }}

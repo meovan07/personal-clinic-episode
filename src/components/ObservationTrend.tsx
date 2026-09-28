@@ -10,13 +10,13 @@ export type TrendSeries = {
   points: TrendPoint[];
 };
 
-// Status palette is fixed regardless of the app's teal brand color - it must stay
-// legible and consistent no matter what test it's attached to.
+// Status palette is fixed regardless of the app's brand color - it must stay
+// legible and consistent no matter what test it's attached to (matches globals.css --color-flag-*).
 const STATUS_COLOR: Record<string, string> = {
-  normal: "#0ca30c",
-  high: "#d03b3b",
-  low: "#fab219",
-  abnormal: "#d03b3b",
+  normal: "#3f7a5e",
+  high: "#b3261e",
+  low: "#a9710a",
+  abnormal: "#b3261e",
 };
 const STATUS_LABEL: Record<string, string> = {
   normal: "Bình thường",
@@ -24,7 +24,7 @@ const STATUS_LABEL: Record<string, string> = {
   low: "Thấp",
   abnormal: "Bất thường",
 };
-const LINE_COLOR = "#c3c2b7"; // de-emphasis gray: the trend line itself isn't the status, the endpoint dot is
+const LINE_COLOR = "#cdc2a2"; // de-emphasis, matches --color-line-strong: the trend line itself isn't the status, the endpoint dot is
 
 const WIDTH = 100;
 const HEIGHT = 28;
@@ -48,21 +48,21 @@ export function ObservationTrend({ series }: { series: TrendSeries }) {
   const first = series.points[0];
   const last = series.points[series.points.length - 1];
   const { line, area, last: lastCoord } = sparkline(series.points.map((p) => p.value));
-  const color = STATUS_COLOR[series.latestFlag ?? ""] ?? "#898781";
+  const color = STATUS_COLOR[series.latestFlag ?? ""] ?? "#94998c";
   const statusLabel = STATUS_LABEL[series.latestFlag ?? ""];
 
   return (
     <div className="card space-y-2">
       <div className="flex items-baseline justify-between gap-2">
-        <span className="text-sm font-medium text-slate-700">{series.name}</span>
-        {series.category && <span className="text-xs text-slate-400">{series.category}</span>}
+        <span className="text-sm font-medium text-ink">{series.name}</span>
+        {series.category && <span className="text-xs text-ink-faint">{series.category}</span>}
       </div>
       <div className="flex items-end justify-between gap-3">
         <div>
           <div className="flex items-center gap-1.5">
             <span aria-hidden className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
-            <span className="text-lg font-semibold">
-              {last.value} <span className="text-sm font-normal text-slate-500">{series.unit}</span>
+            <span className="data text-lg font-semibold">
+              {last.value} <span className="font-sans text-sm font-normal text-ink-soft">{series.unit}</span>
             </span>
           </div>
           {statusLabel && (
@@ -70,14 +70,14 @@ export function ObservationTrend({ series }: { series: TrendSeries }) {
               {statusLabel}
             </div>
           )}
-          <div className="muted text-xs">
+          <div className="data muted text-xs">
             {formatDate(first.date)}: {first.value} → {formatDate(last.date)}: {last.value}
           </div>
         </div>
         <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="h-8 w-24 shrink-0" preserveAspectRatio="none" role="presentation">
-          <path d={area} fill={LINE_COLOR} fillOpacity={0.15} stroke="none" />
+          <path d={area} fill={LINE_COLOR} fillOpacity={0.2} stroke="none" />
           <path d={line} fill="none" stroke={LINE_COLOR} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-          <circle cx={lastCoord[0]} cy={lastCoord[1]} r={4} fill={color} stroke="white" strokeWidth={2} />
+          <circle cx={lastCoord[0]} cy={lastCoord[1]} r={4} fill={color} stroke="#fdfbf4" strokeWidth={2} />
         </svg>
       </div>
     </div>

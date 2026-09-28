@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { FolderPlus, Pencil, Syringe, TriangleAlert } from "lucide-react";
 import { deletePerson } from "@/app/actions";
 import { ActionItems } from "@/components/ActionItems";
 import { AiSummaryButton } from "@/components/AiSummaryButton";
+import { Badge } from "@/components/Badge";
 import { ConfirmForm } from "@/components/ConfirmForm";
 import { ObservationTrend, type TrendSeries } from "@/components/ObservationTrend";
 import { PageHeader } from "@/components/PageHeader";
@@ -10,7 +12,7 @@ import { VaccinationSummary } from "@/components/VaccinationSummary";
 import { VisitList } from "@/components/VisitList";
 import { createClient } from "@/lib/supabase/server";
 import { age, formatDate } from "@/lib/format";
-import { CASE_STATUS, CASE_STATUS_STYLE, SEX } from "@/lib/labels";
+import { CASE_STATUS, CASE_STATUS_TONE, SEX } from "@/lib/labels";
 
 export default async function PersonPage({ params }: PageProps<"/people/[id]">) {
   const { id } = await params;
@@ -98,9 +100,10 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
         actions={
           <>
             <Link href={`/visits/new?person=${id}`} className="btn-primary">
-              + Lần khám
+              Lần khám
             </Link>
             <Link href={`/people/${id}/edit`} className="btn">
+              <Pencil className="h-4 w-4" strokeWidth={1.75} />
               Sửa
             </Link>
           </>
@@ -110,8 +113,11 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
       {(person.allergies || person.chronic_conditions || person.notes) && (
         <div className="card space-y-2">
           {person.allergies && (
-            <p>
-              <span className="font-medium text-red-600">⚠ Dị ứng:</span> {person.allergies}
+            <p className="flex items-start gap-1.5">
+              <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-stamp" strokeWidth={1.75} />
+              <span>
+                <span className="font-medium text-stamp">Dị ứng:</span> {person.allergies}
+              </span>
             </p>
           )}
           {person.chronic_conditions && (
@@ -126,7 +132,7 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
       <section>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="section-title mb-0">Tóm tắt sức khỏe</h2>
-          <AiSummaryButton personId={id} label={latestSummary ? "🤖 Tóm tắt lại" : "🤖 Tóm tắt bằng AI"} />
+          <AiSummaryButton personId={id} label={latestSummary ? "Tóm tắt lại" : "Tóm tắt bằng AI"} />
         </div>
         {latestSummary ? (
           <div className="card space-y-2">
@@ -134,8 +140,8 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
             <p className="muted text-xs">Tạo lúc {formatDate(latestSummary.generated_at)}</p>
             {olderSummaries.length > 0 && (
               <details className="text-sm">
-                <summary className="cursor-pointer text-teal-700">Xem {olderSummaries.length} bản tóm tắt trước</summary>
-                <div className="mt-2 space-y-3 border-t border-slate-100 pt-2">
+                <summary className="cursor-pointer text-pen">Xem {olderSummaries.length} bản tóm tắt trước</summary>
+                <div className="mt-2 space-y-3 border-t border-line pt-2">
                   {olderSummaries.map((s) => (
                     <div key={s.id}>
                       <p className="muted text-xs">{formatDate(s.generated_at)}</p>
@@ -166,18 +172,17 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
         <div className="mb-3 flex items-center justify-between">
           <h2 className="section-title mb-0">Bệnh án</h2>
           <Link href={`/cases/new?person=${id}`} className="btn">
-            + Bệnh án
+            <FolderPlus className="h-4 w-4" strokeWidth={1.75} />
+            Bệnh án
           </Link>
         </div>
         {cases.data?.length === 0 && <p className="muted">Chưa có bệnh án. Lần khám lẻ vẫn có thể lưu không cần bệnh án.</p>}
         <div className="grid gap-3 sm:grid-cols-2">
           {cases.data?.map((c) => (
-            <Link key={c.id} href={`/cases/${c.id}`} className="card hover:border-teal-300">
+            <Link key={c.id} href={`/cases/${c.id}`} className="card card-interactive">
               <div className="flex items-start justify-between gap-2">
                 <span className="font-semibold">{c.title}</span>
-                <span className={`rounded-full px-2 py-0.5 text-xs ${CASE_STATUS_STYLE[c.status]}`}>
-                  {CASE_STATUS[c.status]}
-                </span>
+                <Badge tone={CASE_STATUS_TONE[c.status]}>{CASE_STATUS[c.status]}</Badge>
               </div>
               <div className="muted">
                 {c.started_on && `Từ ${formatDate(c.started_on)}`}
@@ -192,7 +197,8 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
         <div className="mb-3 flex items-center justify-between">
           <h2 className="section-title mb-0">Tiêm chủng</h2>
           <Link href={`/people/${id}/vaccinations`} className="btn">
-            Sổ tiêm chủng ({vaccinations.data?.length ?? 0} mũi) →
+            <Syringe className="h-4 w-4" strokeWidth={1.75} />
+            Sổ tiêm chủng ({vaccinations.data?.length ?? 0} mũi)
           </Link>
         </div>
         <div className="card">
@@ -215,7 +221,7 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
       <ConfirmForm
         action={deletePerson.bind(null, id)}
         message={`Xóa hồ sơ ${person.full_name} cùng TOÀN BỘ bệnh án, lần khám và tài liệu? Không thể hoàn tác.`}
-        className="border-t border-slate-200 pt-6"
+        className="border-t border-line pt-6"
       >
         <button className="btn-danger">Xóa hồ sơ</button>
       </ConfirmForm>
