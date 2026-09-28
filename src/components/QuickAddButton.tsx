@@ -3,9 +3,9 @@
 import { useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Plus, X } from "lucide-react";
-import { createInboxItem, findDuplicateFiles, processInboxItem, type UploadedFile } from "@/app/actions";
+import { createInboxItem, processInboxItem, type UploadedFile } from "@/app/actions";
 import { createClient } from "@/lib/supabase/client";
-import { extension, sha256 } from "@/lib/hash";
+import { hashAndCheckDuplicates, rollbackUpload, uploadToStorage } from "@/lib/upload";
 import { formatBytes } from "@/lib/format";
 
 // Global "+" button: pick photos/PDFs, AI figures out who they belong to and which bệnh án they continue.
@@ -38,33 +38,12 @@ export function QuickAddButton() {
   async function upload() {
     setError(null);
     const supabase = createClient();
-    const uploaded: UploadedFile[] = [];
+    let uploaded: UploadedFile[] = [];
     try {
       setBusy("Đang kiểm tra…");
-      const hashes = await Promise.all(files.map(sha256));
-      if (new Set(hashes).size !== hashes.length) throw new Error("Bạn đã chọn cùng một file hai lần.");
-      const dups = await findDuplicateFiles(hashes);
-      if (dups.length > 0) {
-        const names = dups.map((d) => `${d.file_name}${d.pending ? " (đang chờ xác nhận)" : ""}`).join(", ");
-        throw new Error(`File đã được tải lên trước đó: ${names}`);
-      }
+      const hashes = await hashAndCheckDuplicates(files);
 
-      for (const [i, file] of files.entries()) {
-        setBusy(`Đang tải ${i + 1}/${files.length}…`);
-        // Storage keys must be ASCII; the original (Vietnamese) name is kept only in the database.
-        const path = `inbox/${crypto.randomUUID()}.${extension(file.name)}`;
-        const { error: upErr } = await supabase.storage
-          .from("documents")
-          .upload(path, file, { contentType: file.type || undefined });
-        if (upErr) throw new Error(upErr.message);
-        uploaded.push({
-          storage_path: path,
-          file_name: file.name,
-          mime_type: file.type || "application/octet-stream",
-          size_bytes: file.size,
-          sha256: hashes[i],
-        });
-      }
+      uploaded = await uploadToStorage(supabase, files, hashes, "inbox", (i, total) => setBusy(`Đang tải ${i + 1}/${total}…`));
 
       setBusy("Đang lưu…");
       const { id } = await createInboxItem(uploaded);
@@ -75,9 +54,7 @@ export function QuickAddButton() {
       setFiles([]);
       router.push(`/inbox/${id}/review`);
     } catch (e) {
-      if (uploaded.length > 0) {
-        await supabase.storage.from("documents").remove(uploaded.map((f) => f.storage_path));
-      }
+      await rollbackUpload(supabase, uploaded);
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(null);

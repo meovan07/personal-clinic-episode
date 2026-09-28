@@ -2,11 +2,11 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createDocument, findDuplicateFiles, type UploadedFile } from "@/app/actions";
+import { createDocument, type UploadedFile } from "@/app/actions";
 import { createClient } from "@/lib/supabase/client";
 import { DOC_TYPE } from "@/lib/labels";
 import { formatBytes } from "@/lib/format";
-import { extension, sha256 } from "@/lib/hash";
+import { hashAndCheckDuplicates, rollbackUpload, uploadToStorage } from "@/lib/upload";
 
 export function DocumentUploader({ visitId }: { visitId: string }) {
   const router = useRouter();
@@ -20,32 +20,12 @@ export function DocumentUploader({ visitId }: { visitId: string }) {
   async function upload() {
     setError(null);
     const supabase = createClient();
-    const uploaded: UploadedFile[] = [];
+    let uploaded: UploadedFile[] = [];
     try {
       setBusy("Đang kiểm tra…");
-      const hashes = await Promise.all(files.map(sha256));
-      if (new Set(hashes).size !== hashes.length) throw new Error("Bạn đã chọn cùng một file hai lần.");
-      const dups = await findDuplicateFiles(hashes);
-      if (dups.length > 0) {
-        throw new Error(`File đã được tải lên trước đó: ${dups.map((d) => d.file_name).join(", ")}`);
-      }
+      const hashes = await hashAndCheckDuplicates(files);
 
-      for (const [i, file] of files.entries()) {
-        setBusy(`Đang tải ${i + 1}/${files.length}…`);
-        // Storage keys must be ASCII, so the original (Vietnamese) name is kept only in the database.
-        const path = `${visitId}/${crypto.randomUUID()}.${extension(file.name)}`;
-        const { error: upErr } = await supabase.storage
-          .from("documents")
-          .upload(path, file, { contentType: file.type || undefined });
-        if (upErr) throw new Error(upErr.message);
-        uploaded.push({
-          storage_path: path,
-          file_name: file.name,
-          mime_type: file.type || "application/octet-stream",
-          size_bytes: file.size,
-          sha256: hashes[i],
-        });
-      }
+      uploaded = await uploadToStorage(supabase, files, hashes, visitId, (i, total) => setBusy(`Đang tải ${i + 1}/${total}…`));
 
       setBusy("Đang lưu…");
       await createDocument({ visitId, title: title.trim() || null, docType, files: uploaded });
@@ -54,9 +34,7 @@ export function DocumentUploader({ visitId }: { visitId: string }) {
       if (inputRef.current) inputRef.current.value = "";
       router.refresh();
     } catch (e) {
-      if (uploaded.length > 0) {
-        await supabase.storage.from("documents").remove(uploaded.map((f) => f.storage_path));
-      }
+      await rollbackUpload(supabase, uploaded);
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(null);

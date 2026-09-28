@@ -30,7 +30,9 @@ export const metadata: Metadata = {
 
 // maximumScale 1 stops iOS auto-zooming the page when a <16px input/select is focused -
 // accepted tradeoff since pinch-zoom is rarely needed on this app's short forms/lists.
-export const viewport: Viewport = { width: "device-width", initialScale: 1, maximumScale: 1 };
+// viewportFit "cover" is required for env(safe-area-inset-*) to resolve to anything but 0 -
+// without it, the header/bottom-nav safe-area padding below has no effect at all.
+export const viewport: Viewport = { width: "device-width", initialScale: 1, maximumScale: 1, viewportFit: "cover" };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const supabase = await createClient();
@@ -54,7 +56,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full font-sans">
         <TopLoader />
         {user && (
-          <header className="sticky top-0 z-10 border-b border-line bg-surface/95 backdrop-blur">
+          <header className="sticky top-0 z-10 border-b border-line bg-surface/95 pt-[env(safe-area-inset-top)] backdrop-blur">
             <div className="mx-auto flex max-w-4xl items-center justify-between gap-4 px-4 py-3">
               <Link href="/" className="flex shrink-0 items-center gap-2 font-semibold text-pine hover:text-pine-dark">
                 <Stethoscope className="h-5 w-5" strokeWidth={2} />

@@ -1,17 +1,10 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Plus, Sparkles, X } from "lucide-react";
-import {
-  createDocument,
-  createVisit,
-  findDuplicateFiles,
-  readDocumentWithAI,
-  saveVisit,
-  type UploadedFile,
-} from "@/app/actions";
+import { Check, Plus, Sparkles, X } from "lucide-react";
+import { createDocument, createVisit, readDocumentWithAI, saveVisit, type UploadedFile } from "@/app/actions";
 import { createClient } from "@/lib/supabase/client";
-import { extension, sha256 } from "@/lib/hash";
+import { hashAndCheckDuplicates, rollbackUpload, uploadToStorage } from "@/lib/upload";
 import { formatBytes } from "@/lib/format";
 import type { Tables } from "@/lib/database.types";
 
@@ -69,7 +62,7 @@ export function NewVisitForm({
     setError(null);
     const fd = new FormData(formRef.current);
     const supabase = createClient();
-    const uploaded: UploadedFile[] = [];
+    let uploaded: UploadedFile[] = [];
     try {
       // Reuse the visit from a previous failed attempt instead of creating a duplicate.
       let newVisitId = visitId;
@@ -80,28 +73,9 @@ export function NewVisitForm({
       }
 
       setBusy("Đang kiểm tra…");
-      const hashes = await Promise.all(files.map(sha256));
-      if (new Set(hashes).size !== hashes.length) throw new Error("Bạn đã chọn cùng một file hai lần.");
-      const dups = await findDuplicateFiles(hashes);
-      if (dups.length > 0) {
-        throw new Error(`File đã được tải lên trước đó: ${dups.map((d) => d.file_name).join(", ")}`);
-      }
+      const hashes = await hashAndCheckDuplicates(files);
 
-      for (const [i, file] of files.entries()) {
-        setBusy(`Đang tải ${i + 1}/${files.length}…`);
-        const path = `${newVisitId}/${crypto.randomUUID()}.${extension(file.name)}`;
-        const { error: upErr } = await supabase.storage
-          .from("documents")
-          .upload(path, file, { contentType: file.type || undefined });
-        if (upErr) throw new Error(upErr.message);
-        uploaded.push({
-          storage_path: path,
-          file_name: file.name,
-          mime_type: file.type || "application/octet-stream",
-          size_bytes: file.size,
-          sha256: hashes[i],
-        });
-      }
+      uploaded = await uploadToStorage(supabase, files, hashes, newVisitId, (i, total) => setBusy(`Đang tải ${i + 1}/${total}…`));
 
       setBusy("Đang lưu tài liệu…");
       const documentId = await createDocument({ visitId: newVisitId, title: null, docType: "other", files: uploaded });
@@ -118,9 +92,7 @@ export function NewVisitForm({
       }
       setFilled(true);
     } catch (err) {
-      if (uploaded.length > 0) {
-        await supabase.storage.from("documents").remove(uploaded.map((f) => f.storage_path));
-      }
+      await rollbackUpload(supabase, uploaded);
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(null);
@@ -208,7 +180,12 @@ export function NewVisitForm({
                 Chụp/chọn thêm trang
               </button>
             )}
-            {filled && <p className="text-sm text-pine">✓ AI đã đọc xong và điền thông tin bên dưới — kiểm tra lại rồi lưu.</p>}
+            {filled && (
+              <p className="flex items-center gap-1.5 text-sm text-pine">
+                <Check className="h-4 w-4 shrink-0" strokeWidth={2} />
+                AI đã đọc xong và điền thông tin bên dưới — kiểm tra lại rồi lưu.
+              </p>
+            )}
           </>
         )}
       </div>
