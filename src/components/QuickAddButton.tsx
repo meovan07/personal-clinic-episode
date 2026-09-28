@@ -5,19 +5,37 @@ import { usePathname, useRouter } from "next/navigation";
 import { createInboxItem, findDuplicateFiles, processInboxItem, type UploadedFile } from "@/app/actions";
 import { createClient } from "@/lib/supabase/client";
 import { extension, sha256 } from "@/lib/hash";
+import { formatBytes } from "@/lib/format";
 
-// Global "+" button: pick a photo/PDF, AI figures out who it belongs to and which bệnh án it continues.
+// Global "+" button: pick photos/PDFs, AI figures out who they belong to and which bệnh án they continue.
 // See /inbox/[id]/review for the confirm step.
+//
+// On a phone, choosing "Camera" from the file picker opens the native camera and returns exactly one
+// photo per trip (the `multiple` attribute only helps when picking several existing photos from the
+// gallery). So picks are accumulated locally and only uploaded once the user is done adding pages,
+// letting a multi-page document be captured as several camera trips.
 export function QuickAddButton() {
   const router = useRouter();
   const pathname = usePathname();
   const inputRef = useRef<HTMLInputElement>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleFiles(files: File[]) {
+  function addPicked(picked: File[]) {
+    if (picked.length === 0) return;
     setError(null);
-    if (files.length === 0) return;
+    setFiles((f) => [...f, ...picked]);
+    if (inputRef.current) inputRef.current.value = "";
+  }
+
+  function reset() {
+    setFiles([]);
+    setError(null);
+  }
+
+  async function upload() {
+    setError(null);
     const supabase = createClient();
     const uploaded: UploadedFile[] = [];
     try {
@@ -53,15 +71,15 @@ export function QuickAddButton() {
       setBusy("AI đang đọc… (khoảng 30-60 giây)");
       // Errors here are stored on the inbox row; the review page surfaces them with a retry button.
       await processInboxItem(id);
+      setFiles([]);
       router.push(`/inbox/${id}/review`);
     } catch (e) {
       if (uploaded.length > 0) {
         await supabase.storage.from("documents").remove(uploaded.map((f) => f.storage_path));
       }
       setError(e instanceof Error ? e.message : String(e));
-      setBusy(null);
     } finally {
-      if (inputRef.current) inputRef.current.value = "";
+      setBusy(null);
     }
   }
 
@@ -76,28 +94,60 @@ export function QuickAddButton() {
         multiple
         accept="image/*,application/pdf"
         className="hidden"
-        onChange={(e) => handleFiles(Array.from(e.target.files ?? []))}
+        onChange={(e) => addPicked(Array.from(e.target.files ?? []))}
       />
-      <div className="fixed bottom-5 right-5 z-20 flex flex-col items-end gap-2">
-        {(busy || error) && (
-          <div
-            className={`max-w-[80vw] rounded-lg border px-3 py-2 text-sm shadow-lg sm:max-w-xs ${
-              error ? "border-red-200 bg-red-50 text-red-700" : "border-slate-200 bg-white text-slate-700"
-            }`}
+
+      {files.length === 0 ? (
+        <div className="fixed bottom-5 right-5 z-20 flex flex-col items-end gap-2">
+          {error && (
+            <div className="max-w-[80vw] rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 shadow-lg sm:max-w-xs">
+              {error}
+            </div>
+          )}
+          <button
+            type="button"
+            aria-label="Thêm tài liệu"
+            onClick={() => inputRef.current?.click()}
+            className="flex h-14 w-14 items-center justify-center rounded-full bg-teal-600 text-3xl leading-none text-white shadow-lg hover:bg-teal-700"
           >
-            {error ?? busy}
+            +
+          </button>
+        </div>
+      ) : (
+        <div className="fixed inset-x-0 bottom-0 z-20 space-y-3 rounded-t-2xl border-t border-slate-200 bg-white p-4 shadow-[0_-4px_16px_rgba(0,0,0,0.12)] sm:inset-x-auto sm:bottom-5 sm:right-5 sm:w-96 sm:rounded-2xl sm:border">
+          <p className="label">Nhiều trang của cùng một tài liệu? Chụp/chọn thêm rồi tải lên cùng lúc.</p>
+          <ul className="muted max-h-40 space-y-1 overflow-auto">
+            {files.map((f, i) => (
+              <li key={i} className="flex items-center justify-between gap-2">
+                <span className="truncate">
+                  Trang {i + 1}: {f.name} ({formatBytes(f.size)})
+                </span>
+                <button
+                  type="button"
+                  className="shrink-0 text-slate-400 hover:text-red-600"
+                  aria-label="Xóa"
+                  disabled={!!busy}
+                  onClick={() => setFiles((fs) => fs.filter((_, j) => j !== i))}
+                >
+                  ×
+                </button>
+              </li>
+            ))}
+          </ul>
+          {error && <p className="text-sm text-red-600">{error}</p>}
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className="btn-primary" disabled={!!busy} onClick={upload}>
+              {busy ?? `Tải lên ${files.length} file`}
+            </button>
+            <button type="button" className="btn" disabled={!!busy} onClick={() => inputRef.current?.click()}>
+              + Chụp/chọn thêm
+            </button>
+            <button type="button" className="btn" disabled={!!busy} onClick={reset}>
+              Hủy
+            </button>
           </div>
-        )}
-        <button
-          type="button"
-          aria-label="Thêm tài liệu"
-          disabled={!!busy}
-          onClick={() => inputRef.current?.click()}
-          className="flex h-14 w-14 items-center justify-center rounded-full bg-teal-600 text-3xl leading-none text-white shadow-lg hover:bg-teal-700 disabled:opacity-60"
-        >
-          +
-        </button>
-      </div>
+        </div>
+      )}
     </>
   );
 }
