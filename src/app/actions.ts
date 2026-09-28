@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { Extraction, extractDocument, type ExtractFile } from "@/lib/ai/extract";
+import { summarizePerson, type PersonSnapshot } from "@/lib/ai/summarize";
 import { normalizeObservation } from "@/lib/normalize";
 import { createClient } from "@/lib/supabase/server";
 
@@ -385,4 +386,73 @@ export async function confirmExtraction(documentId: string, input: unknown) {
 
   revalidatePath("/", "layout");
   redirect(`/visits/${doc.visit_id}`);
+}
+
+// ---------- AI person summary (Phase 3) ----------
+
+export async function generatePersonSummary(personId: string): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  try {
+    const [person, cases, visits, openActions, lastSummary] = await Promise.all([
+      supabase
+        .from("people")
+        .select("full_name, sex, birth_date, blood_type, allergies, chronic_conditions")
+        .eq("id", personId)
+        .single()
+        .then(check),
+      supabase.from("cases").select("title, status, started_on, ended_on").eq("person_id", personId).then(check),
+      supabase
+        .from("visits")
+        .select(
+          "visit_date, facility, department, doctor, reason, cases(title), documents(summary, extraction_status), medications(name, dose, schedule), observations(raw_name, value, value_text, unit, flag, test_catalog(name_vi))",
+        )
+        .eq("person_id", personId)
+        .order("visit_date", { ascending: true, nullsFirst: false })
+        .then(check),
+      supabase.from("action_items").select("content, due_on").eq("person_id", personId).eq("done", false).then(check),
+      supabase
+        .from("ai_summaries")
+        .select("content, generated_at")
+        .eq("person_id", personId)
+        .order("generated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+        .then((r) => {
+          if (r.error) throw new Error(r.error.message);
+          return r.data;
+        }),
+    ]);
+
+    const snapshot: PersonSnapshot = {
+      person,
+      cases,
+      visits: visits.map((v) => ({
+        visit_date: v.visit_date,
+        facility: v.facility,
+        department: v.department,
+        doctor: v.doctor,
+        reason: v.reason,
+        case_title: v.cases?.title ?? null,
+        document_summaries: v.documents
+          .filter((d): d is typeof d & { summary: string } => d.extraction_status === "confirmed" && !!d.summary)
+          .map((d) => d.summary),
+        medications: v.medications,
+        observations: v.observations.map((o) => ({
+          name: o.test_catalog?.name_vi ?? o.raw_name,
+          value: o.value !== null ? String(o.value) : o.value_text,
+          unit: o.unit,
+          flag: o.flag,
+        })),
+      })),
+      open_action_items: openActions,
+      previous_summary: lastSummary ? { content: lastSummary.content, generated_at: lastSummary.generated_at } : null,
+    };
+
+    const content = await summarizePerson(snapshot);
+    check(await supabase.from("ai_summaries").insert({ person_id: personId, content, input_snapshot: snapshot }));
+    revalidatePath(`/people/${personId}`);
+    return { error: null };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
 }

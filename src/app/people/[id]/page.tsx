@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { deletePerson } from "@/app/actions";
 import { ActionItems } from "@/components/ActionItems";
+import { AiSummaryButton } from "@/components/AiSummaryButton";
 import { ConfirmForm } from "@/components/ConfirmForm";
 import { PageHeader } from "@/components/PageHeader";
 import { VisitList } from "@/components/VisitList";
@@ -15,7 +16,7 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
   const { data: person } = await supabase.from("people").select("*").eq("id", id).maybeSingle();
   if (!person) notFound();
 
-  const [cases, visits, actions] = await Promise.all([
+  const [cases, visits, actions, summaries] = await Promise.all([
     supabase.from("cases").select("*, visits(count)").eq("person_id", id).order("started_on", { ascending: false }),
     supabase
       .from("visits")
@@ -28,7 +29,13 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
       .eq("person_id", id)
       .order("done")
       .order("created_at", { ascending: false }),
+    supabase
+      .from("ai_summaries")
+      .select("id, content, generated_at")
+      .eq("person_id", id)
+      .order("generated_at", { ascending: false }),
   ]);
+  const [latestSummary, ...olderSummaries] = summaries.data ?? [];
 
   const a = age(person.birth_date);
   const facts = [
@@ -70,6 +77,34 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
           {person.notes && <p className="muted whitespace-pre-line">{person.notes}</p>}
         </div>
       )}
+
+      <section>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="section-title mb-0">Tóm tắt sức khỏe</h2>
+          <AiSummaryButton personId={id} label={latestSummary ? "🤖 Tóm tắt lại" : "🤖 Tóm tắt bằng AI"} />
+        </div>
+        {latestSummary ? (
+          <div className="card space-y-2">
+            <p className="whitespace-pre-line">{latestSummary.content}</p>
+            <p className="muted text-xs">Tạo lúc {formatDate(latestSummary.generated_at)}</p>
+            {olderSummaries.length > 0 && (
+              <details className="text-sm">
+                <summary className="cursor-pointer text-teal-700">Xem {olderSummaries.length} bản tóm tắt trước</summary>
+                <div className="mt-2 space-y-3 border-t border-slate-100 pt-2">
+                  {olderSummaries.map((s) => (
+                    <div key={s.id}>
+                      <p className="muted text-xs">{formatDate(s.generated_at)}</p>
+                      <p className="whitespace-pre-line">{s.content}</p>
+                    </div>
+                  ))}
+                </div>
+              </details>
+            )}
+          </div>
+        ) : (
+          <p className="muted">Chưa có tóm tắt. Bấm &quot;Tóm tắt bằng AI&quot; để AI đọc lịch sử khám và bệnh án.</p>
+        )}
+      </section>
 
       <section>
         <div className="mb-3 flex items-center justify-between">
