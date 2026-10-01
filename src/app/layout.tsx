@@ -4,8 +4,9 @@ import Link from "next/link";
 import { LogOut, Stethoscope } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/actions";
-import { PersonNav } from "@/components/PersonNav";
+import { PersonNav, PersonTabBar } from "@/components/PersonNav";
 import { QuickAddButton } from "@/components/QuickAddButton";
+import { SearchDialog } from "@/components/SearchDialog";
 import { TopLoader } from "@/components/TopLoader";
 import "./globals.css";
 
@@ -63,12 +64,15 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                 <span className="hidden sm:inline">Sổ bệnh án</span>
               </Link>
               {isMember && <PersonNav people={people} />}
-              <form action={signOut} className="shrink-0">
-                <button className="flex items-center gap-1.5 text-sm text-ink-soft hover:text-ink" aria-label="Đăng xuất">
-                  <LogOut className="h-4 w-4" strokeWidth={1.75} />
-                  <span className="hidden sm:inline">Đăng xuất</span>
-                </button>
-              </form>
+              <div className="flex shrink-0 items-center gap-4">
+                {isMember && <SearchDialog />}
+                <form action={signOut}>
+                  <button className="flex items-center gap-1.5 text-sm text-ink-soft hover:text-ink" aria-label="Đăng xuất">
+                    <LogOut className="h-4 w-4" strokeWidth={1.75} />
+                    <span className="hidden sm:inline">Đăng xuất</span>
+                  </button>
+                </form>
+              </div>
             </div>
           </header>
         )}
@@ -82,6 +86,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             children
           )}
         </main>
+        {user && isMember && <PersonTabBar people={people} />}
         {user && isMember && <QuickAddButton />}
       </body>
     </html>

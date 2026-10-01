@@ -755,7 +755,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      search_records: {
+        Args: { q: string }
+        Returns: {
+          detail: string | null
+          happened_on: string | null
+          id: string
+          kind: string
+          person_id: string
+          person_name: string
+          tag: string | null
+          title: string | null
+          visit_id: string | null
+          approximate: boolean
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

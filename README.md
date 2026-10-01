@@ -12,7 +12,10 @@ A private website for storing the medical records of two people: cases (bệnh �
 - [x] **Phase 4 – Quick add:** a single "+" upload; AI matches the document to a person and bệnh án instead of manual selection
 - [x] **Phase 5 – Sổ tiêm chủng:** vaccination history per person (vaccine, dose, date given, next due date), read from scanned vaccination certificates the same way lab results are today
 - [x] **Phase 6 – Redesign & AI-assisted upkeep:** full visual redesign (see [Design](#design)); the AI health summary renders as Markdown with restrained highlighting instead of a wall of text; to-dos can be edited with added context, which the AI resolves against the real family roster and recent visit history (not just rephrased); vaccination doses carry the AI's general knowledge of whether that vaccine is typically single-dose; "Thêm lần khám" leads with the photo upload, and AI fills in the visit's date/facility/khoa/bác sĩ instead of retyping what the photo already says
-- [ ] **Phase 7 – Extras:** reminders, a one-page summary for doctors, search
+- [ ] **Phase 7 – Extras:**
+  - [x] search: header popup (`/` or Ctrl+K) over everything, ignoring diacritics, with everyday Vietnamese terms per test ("mỡ máu", "men gan") and typo tolerance (`search_records` in Postgres)
+  - [ ] a one-page summary for doctors
+  - [ ] reminders
 - [ ] **Phase 8 – Chat agent:** replace the manual forms (add person/visit/case, upload, to-dos) with a conversational agent — tell it what happened at the doctor and it does the data entry
 
 ## Data model
