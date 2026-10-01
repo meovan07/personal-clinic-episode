@@ -53,6 +53,21 @@ Status: **8a (read-only chat) is implemented**; 8b–8d are not. For now the cha
 
 Code: `src/app/api/chat/route.ts` (streaming route, login + membership check), `src/lib/agent/tools.ts` (read tools), `src/lib/agent/instructions.ts` (system prompt + who's-who context), `src/components/AssistantChat.tsx` (chat panel).
 
+### Where we left off (01/10/2026)
+
+- **8a is built** on branch `phase-8a-read-only-chat` (not merged, not deployed). The 8 read tools were verified against the real data; the full chat was blocked until the OpenAI account had credit again (it had run out after 28/09, which also stops document reading — `billing_not_active`). Credit is now topped up and the key works.
+- **Model choice is still open.** Same agent, same tools, 7 real questions about our records (incl. traps: a test with only one result, a diagnosis question with no data, a write request):
+
+  | Model | Price in/out per 1M tokens | Avg time | Cost for all 7 | Answers |
+  |---|---|---|---|---|
+  | gpt-5.5 (current default) | $5 / $30 | 6 s | $0.13 | correct |
+  | gpt-6.1-sol | $2 / $10 | 11 s | $0.04 | correct, best structured (tables) |
+  | gpt-5.4-mini | $0.75 / $4.50 | 6 s | $0.025 | correct |
+  | gpt-6-luna | $0.10 / $0.50 | 5 s | $0.002 | correct, shortest |
+
+  All four handled the traps (no invented trend, no diagnosis, "can't write yet"). Leaning towards **gpt-6-luna** for chat (≈65× cheaper than gpt-5.5) with gpt-6.1-sol as the fallback if answers turn out too thin; the document-extraction model should be benchmarked separately on real lab sheets before changing it.
+- **Next steps:** pick the chat model (and test extraction models), set `OPENAI_MODEL` / a separate chat model variable, merge 8a, then start 8b (refactor `actions.ts` into `src/lib/services/*`, write tools with approval cards).
+
 ### Goal
 
 A chat opened from the existing bottom-right "+" button that can do anything the app can: answer questions over the records ("LDL của Hưng thay đổi thế nào?"), create and update records ("hôm nay Mai khám ở BV Gia Đình, bác sĩ dặn tái khám sau 2 tuần"), and read photos/PDFs sent in the chat. Every write needs the user's approval in the chat (human in the loop, HITL), and destructive actions are clearly marked as such.
