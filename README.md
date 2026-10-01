@@ -17,7 +17,7 @@ A private website for storing the medical records of two people: cases (bệnh �
   - [x] a summary for doctors: printable page per person (`/people/[id]/summary`) with allergies, active illnesses, recent medications, latest results vs. an earlier date, vaccinations and recent visits
   - [x] calendar: month view on the home and person pages (3 months on wide screens, 1 on phones) of visits and vaccinations done, upcoming to-dos and next doses, and overdue items
   - [ ] reminders that reach you (email / push notifications)
-- [ ] **Phase 8 – Chat agent:** replace the manual forms (add person/visit/case, upload, to-dos) with a conversational agent — tell it what happened at the doctor and it does the data entry
+- [ ] **Phase 8 – Chat agent:** replace the manual forms (add person/visit/case, upload, to-dos) with a conversational agent — tell it what happened at the doctor and it does the data entry. Technical design: [Phase 8 design](#phase-8-design-chat-agent)
 
 ## Data model
 
@@ -46,6 +46,91 @@ To add a test to the catalog, insert a row into `test_catalog` (and `unit_conver
 
 - **Tóm tắt sức khỏe** (person page) renders as Markdown (`src/components/HealthSummary.tsx`) — the prompt (`src/lib/ai/summarize.ts`) is told to highlight sparingly: only genuinely important facts (an abnormal value, a drug name, an upcoming date), never whole sentences.
 - **Editing a to-do** with added context doesn't just rephrase what you typed: `updateActionItem` hands the AI the real family roster and the person's recent visits/bệnh án so it can resolve a vague reference ("chồng" → an actual name) or match a vague test against what was really recorded, capped to a short title (`src/lib/ai/polish.ts`).
+
+## Phase 8 design: chat agent
+
+Status: **design only, not implemented.** The UX (how the "+" button offers "Tải tài liệu" vs. "Hỏi AI") will be decided later; this section settles what is technically possible and how it will be built.
+
+### Goal
+
+A chat opened from the existing bottom-right "+" button that can do anything the app can: answer questions over the records ("LDL của Hưng thay đổi thế nào?"), create and update records ("hôm nay Mai khám ở BV Gia Đình, bác sĩ dặn tái khám sau 2 tuần"), and read photos/PDFs sent in the chat. Every write needs the user's approval in the chat (human in the loop, HITL), and destructive actions are clearly marked as such.
+
+### Options considered (checked against the packages' current versions, Oct 2026)
+
+| Option | What it is | HITL | Fit here |
+|---|---|---|---|
+| **Vercel AI SDK v7** (`ai`, `@ai-sdk/openai`, `@ai-sdk/react`) | Library: `streamText` on a Next.js route + `useChat` hook | Built in: `toolApproval: { tool: "user-approval" }` on `streamText`; the client answers with `addToolApprovalResponse`; approvals can be HMAC-signed (`experimental_toolApprovalSecret`) so a client can't forge one | **Chosen.** Runs inside this Next.js app on Vercel, no extra server, we own the UI, provider-agnostic (OpenAI today, Claude or others later by swapping one import) |
+| Mastra (`@mastra/core` 1.x) | Agent framework on top of AI SDK: agents, workflows, memory, evals | `requireApproval` on tools, suspend/resume workflows | More than two users need. Revisit if we want long-term memory or multi-step workflows |
+| CopilotKit (1.x) | In-app copilot UI + runtime endpoint (AG-UI protocol) | `renderAndWaitForResponse` actions | Opinionated UI and an extra runtime; strongest when the copilot drives the UI itself rather than the database |
+| OpenAI Agents SDK (`@openai/agents` 0.x) | OpenAI's agent loop | `needsApproval` + interruptions | Works, but ties us to OpenAI and still needs our own chat UI and streaming glue |
+| "Built-in ChatGPT" (ChatGPT Apps / MCP server) | Expose our tools to the ChatGPT app | ChatGPT's own confirmations | The chat would live in ChatGPT, not behind our "+" button. Possible later as an extra entry point, reusing the same tools |
+
+### Architecture
+
+```
+"+" button → mode menu (later) → <ChatPanel> (useChat, @ai-sdk/react)
+   │  POST /api/chat  (route handler, streaming, maxDuration 300)
+   ▼
+streamText({ model: openai(OPENAI_MODEL), tools, toolApproval, stopWhen: isStepCount(10) })
+   │  tool calls
+   ▼
+src/lib/services/*  ← the same functions the server actions use
+   │  Supabase client created from the user's cookies
+   ▼
+Postgres with row-level security (members only)
+```
+
+- **Same permissions as the user.** Tools use the signed-in user's Supabase session, so row-level security applies exactly as in the UI: the agent can never see or change more than the person chatting.
+- **Shared services (prerequisite refactor).** The logic in `src/app/actions.ts` (create/update/delete for people, cases, visits, documents, medications, to-dos, vaccinations, extraction) moves into plain functions in `src/lib/services/*` that take a Supabase client and return data. Server actions keep `redirect`/`revalidatePath`; agent tools call the same functions. One implementation, two front doors.
+- **Streaming UI** with `toUIMessageStreamResponse()` on the server and `useChat` on the client. Tool calls render as cards (e.g. a results table, a visit summary) instead of raw JSON.
+
+### Tools and approval policy
+
+| Tier | Tools | Approval |
+|---|---|---|
+| Read | `search_records` (the existing Postgres search), `get_person_overview`, `list_visits`, `get_visit`, `get_test_history` (one test over time), `list_todos`, `list_vaccinations`, `get_calendar` | Runs automatically |
+| Write | `create_visit`, `update_visit`, `create_case`, `update_case` (e.g. mark đã khỏi), `add_medication`, `add_todo`, `update_todo`, `complete_todo`, `add_vaccination`, `ingest_document` (photo/PDF from the chat → existing extraction pipeline → confirm) | **Approval card** showing exactly what will be written (before → after for updates) |
+| Destructive | `delete_visit`, `delete_case`, `delete_document`, `delete_medication`, `delete_todo`, `delete_vaccination` | **Red approval card** listing everything the delete removes (e.g. a visit's documents and results) |
+| Not exposed | deleting a person, managing members/accounts | Only in the normal UI |
+
+How approval works: `streamText` is called with a `toolApproval` map (`"approved"` for reads, `"user-approval"` for writes and deletes). When the model calls a gated tool, the stream ends with a `tool-approval-request` part; the chat shows the card; the user's choice is sent back with `addToolApprovalResponse` and the request continues: approved → the tool runs, denied → the model is told and can propose something else. Approval requests are HMAC-signed with a server secret (`CHAT_APPROVAL_SECRET`), and every tool re-validates its input with zod on the server.
+
+### Safety
+
+- **No raw SQL tool.** Queries go through typed read tools and `search_records`, so the model cannot write arbitrary SQL.
+- **IDs come from tool results only.** The system prompt and input schemas require IDs returned by an earlier tool call; a made-up ID fails RLS or validation instead of touching the wrong row.
+- **Prompt injection.** Text read from documents is treated as data. Even if a scanned page contained instructions, any write it led to would still stop at an approval card.
+- **Medical scope.** The agent reports and organizes what is in the records; it doesn't diagnose, matching the AI extraction rules.
+- **Audit log.** Each executed write/delete is recorded in an `agent_actions` table (who, when, tool, input, result) for undo and debugging.
+- **Privacy.** Requests use `store: false` on OpenAI's side, like extraction.
+
+### Data
+
+New tables, members-only RLS like every other table:
+- `chat_threads (id, created_by, title, created_at)`
+- `chat_messages (id, thread_id, role, parts jsonb, created_at)` — stores AI SDK UI messages so a conversation can be resumed
+- `agent_actions (id, thread_id, user_id, tool, input jsonb, result jsonb, created_at)`
+
+### Context given to the model
+
+Today's date in Vietnam time, the two people (ids, names), their open bệnh án and recent visits as a short summary. Anything more is fetched through read tools, so the prompt stays small.
+
+### Configuration
+
+`OPENAI_MODEL` (shared with extraction, default `gpt-5.5`) and `CHAT_APPROVAL_SECRET`. A step limit (`stopWhen: isStepCount(10)`) and a per-message token cap keep a single request from running away.
+
+### Rollout
+
+1. **8a – Ask:** read tools only. Questions over the records with sourced answers (links to visits/results).
+2. **8b – Do:** write and destructive tools behind approval cards; `agent_actions` log.
+3. **8c – Show:** send a photo/PDF in the chat → extraction → approval card with the extracted values.
+4. **8d – UX:** the "+" mode menu, conversation history, and polish.
+
+### Open questions
+
+- Should creates also need approval, or only updates and deletes? (Default above: every write is approved.)
+- Keep chat history forever, or expire it after a while?
+- Voice input in the chat (Vietnamese speech to text)?
 
 ## Design
 
