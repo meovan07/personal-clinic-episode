@@ -15,7 +15,8 @@ A private website for storing the medical records of two people: cases (bệnh �
 - [ ] **Phase 7 – Extras:**
   - [x] search: header popup (`/` or Ctrl+K) over everything, ignoring diacritics, with everyday Vietnamese terms per test ("mỡ máu", "men gan") and typo tolerance (`search_records` in Postgres)
   - [x] a summary for doctors: printable page per person (`/people/[id]/summary`) with allergies, active illnesses, recent medications, latest results vs. an earlier date, vaccinations and recent visits
-  - [ ] reminders
+  - [x] calendar: month view on the home and person pages (3 months on wide screens, 1 on phones) of visits and vaccinations done, upcoming to-dos and next doses, and overdue items
+  - [ ] reminders that reach you (email / push notifications)
 - [ ] **Phase 8 – Chat agent:** replace the manual forms (add person/visit/case, upload, to-dos) with a conversational agent — tell it what happened at the doctor and it does the data entry
 
 ## Data model

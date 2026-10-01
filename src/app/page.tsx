@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { Clock, Sparkles, TriangleAlert, UserPlus } from "lucide-react";
 import { ActionItems } from "@/components/ActionItems";
+import { HealthCalendar } from "@/components/HealthCalendar";
 import { VisitList } from "@/components/VisitList";
+import { prepareCalendar, vietnamToday } from "@/lib/calendar";
+import { loadCalendarEvents } from "@/lib/calendar-data";
 import { createClient } from "@/lib/supabase/server";
 import { age, formatDate } from "@/lib/format";
 
@@ -17,7 +20,7 @@ function initial(name: string) {
 
 export default async function Home() {
   const supabase = await createClient();
-  const [people, visits, actions, inbox] = await Promise.all([
+  const [people, visits, actions, inbox, calendarEvents] = await Promise.all([
     supabase
       .from("people")
       .select("id, full_name, birth_date, cases(status), visits(visit_date)")
@@ -36,7 +39,9 @@ export default async function Home() {
       .from("inbox_items")
       .select("id, status, inbox_files(file_name)")
       .order("created_at"),
+    loadCalendarEvents(supabase),
   ]);
+  const calendar = prepareCalendar(calendarEvents, vietnamToday());
 
   return (
     <div className="space-y-8">
@@ -101,6 +106,11 @@ export default async function Home() {
             );
           })}
         </div>
+      </section>
+
+      <section>
+        <h2 className="section-title">Lịch</h2>
+        <HealthCalendar data={calendar} />
       </section>
 
       <section>

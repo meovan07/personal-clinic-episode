@@ -6,11 +6,14 @@ import { ActionItems } from "@/components/ActionItems";
 import { AiSummaryButton } from "@/components/AiSummaryButton";
 import { Badge } from "@/components/Badge";
 import { ConfirmForm } from "@/components/ConfirmForm";
+import { HealthCalendar } from "@/components/HealthCalendar";
 import { HealthSummary } from "@/components/HealthSummary";
 import { ObservationTrend, type TrendSeries } from "@/components/ObservationTrend";
 import { PageHeader } from "@/components/PageHeader";
 import { VaccinationSummary } from "@/components/VaccinationSummary";
 import { VisitList } from "@/components/VisitList";
+import { prepareCalendar, vietnamToday } from "@/lib/calendar";
+import { loadCalendarEvents } from "@/lib/calendar-data";
 import { createClient } from "@/lib/supabase/server";
 import { age, formatDate } from "@/lib/format";
 import { CASE_STATUS, CASE_STATUS_TONE, SEX } from "@/lib/labels";
@@ -21,7 +24,7 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
   const { data: person } = await supabase.from("people").select("*").eq("id", id).maybeSingle();
   if (!person) notFound();
 
-  const [cases, visits, actions, summaries, vaccinations] = await Promise.all([
+  const [cases, visits, actions, summaries, vaccinations, calendarEvents] = await Promise.all([
     supabase.from("cases").select("*, visits(count)").eq("person_id", id).order("started_on", { ascending: false }),
     supabase
       .from("visits")
@@ -44,7 +47,9 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
       .select("id, vaccine_name, disease, given_on, next_due_on, typically_single_dose")
       .eq("person_id", id)
       .order("given_on", { ascending: true, nullsFirst: true }),
+    loadCalendarEvents(supabase, id),
   ]);
+  const calendar = prepareCalendar(calendarEvents, vietnamToday());
   const [latestSummary, ...olderSummaries] = summaries.data ?? [];
 
   // Chart the value of each lab test across visits, so trends (e.g. men gan, mỡ máu) are visible at a glance.
@@ -133,6 +138,11 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
           {person.notes && <p className="muted whitespace-pre-line">{person.notes}</p>}
         </div>
       )}
+
+      <section>
+        <h2 className="section-title">Lịch</h2>
+        <HealthCalendar data={calendar} />
+      </section>
 
       <section>
         <div className="mb-3 flex items-center justify-between">
