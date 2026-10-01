@@ -17,7 +17,7 @@ A private website for storing the medical records of two people: cases (bệnh �
   - [x] a summary for doctors: printable page per person (`/people/[id]/summary`) with allergies, active illnesses, recent medications, latest results vs. an earlier date, vaccinations and recent visits
   - [x] calendar: month view on the home and person pages (3 months on wide screens, 1 on phones) of visits and vaccinations done, upcoming to-dos and next doses, and overdue items
   - [ ] reminders that reach you (email / push notifications)
-- [ ] **Phase 8 – Chat agent:** replace the manual forms (add person/visit/case, upload, to-dos) with a conversational agent — tell it what happened at the doctor and it does the data entry. Technical design: [Phase 8 design](#phase-8-design-chat-agent)
+- [ ] **Phase 8 – Chat agent** (8a read-only chat done): replace the manual forms (add person/visit/case, upload, to-dos) with a conversational agent — tell it what happened at the doctor and it does the data entry. Technical design: [Phase 8 design](#phase-8-design-chat-agent)
 
 ## Data model
 
@@ -49,7 +49,9 @@ To add a test to the catalog, insert a row into `test_catalog` (and `unit_conver
 
 ## Phase 8 design: chat agent
 
-Status: **design only, not implemented.** The UX (how the "+" button offers "Tải tài liệu" vs. "Hỏi AI") will be decided later; this section settles what is technically possible and how it will be built.
+Status: **8a (read-only chat) is implemented**; 8b–8d are not. For now the chat opens from a ✨ button stacked above the "+"; the "+" mode menu ("Tải tài liệu" vs. "Hỏi AI") is part of 8d.
+
+Code: `src/app/api/chat/route.ts` (streaming route, login + membership check), `src/lib/agent/tools.ts` (read tools), `src/lib/agent/instructions.ts` (system prompt + who's-who context), `src/components/AssistantChat.tsx` (chat panel).
 
 ### Goal
 
@@ -121,7 +123,7 @@ Today's date in Vietnam time, the two people (ids, names), their open bệnh án
 
 ### Rollout
 
-1. **8a – Ask:** read tools only. Questions over the records with sourced answers (links to visits/results).
+1. ✅ **8a – Ask:** read tools only. Questions over the records with sourced answers (links to visits/results). No chat history yet: a conversation lasts until the page is reloaded.
 2. **8b – Do:** write and destructive tools behind approval cards; `agent_actions` log.
 3. **8c – Show:** send a photo/PDF in the chat → extraction → approval card with the extracted values.
 4. **8d – UX:** the "+" mode menu, conversation history, and polish.

@@ -534,6 +534,7 @@ export type Database = {
           category: string | null
           code: string
           name_vi: string
+          search_terms: string[]
           standard_unit: string | null
         }
         Insert: {
@@ -541,6 +542,7 @@ export type Database = {
           category?: string | null
           code: string
           name_vi: string
+          search_terms?: string[]
           standard_unit?: string | null
         }
         Update: {
@@ -548,6 +550,7 @@ export type Database = {
           category?: string | null
           code?: string
           name_vi?: string
+          search_terms?: string[]
           standard_unit?: string | null
         }
         Relationships: []

@@ -18,12 +18,12 @@ import {
   X,
 } from "lucide-react";
 import { Badge } from "@/components/Badge";
+import { hitHref, type SearchHit } from "@/lib/search";
 import { createClient } from "@/lib/supabase/client";
-import type { Database } from "@/lib/database.types";
 import { formatDate } from "@/lib/format";
 import { CASE_STATUS, CASE_STATUS_TONE, DOC_TYPE } from "@/lib/labels";
 
-type Hit = Database["public"]["Functions"]["search_records"]["Returns"][number];
+type Hit = SearchHit;
 
 const FLAG: Record<string, { label: string; tone: "danger" | "low" }> = {
   high: { label: "Cao", tone: "danger" },
@@ -36,55 +36,46 @@ const KINDS: {
   kind: string;
   label: string;
   icon: LucideIcon;
-  href: (h: Hit) => string;
 }[] = [
   {
     kind: "visit",
     label: "Lần khám",
     icon: Stethoscope,
-    href: (h) => `/visits/${h.id}`,
   },
   {
     kind: "observation",
     label: "Chỉ số xét nghiệm",
     icon: FlaskConical,
-    href: (h) => `/visits/${h.visit_id}`,
   },
   {
     kind: "document",
     label: "Tài liệu",
     icon: FileText,
-    href: (h) => `/visits/${h.visit_id}`,
   },
   {
     kind: "medication",
     label: "Thuốc",
     icon: Pill,
-    href: (h) => `/visits/${h.visit_id}`,
   },
   {
     kind: "case",
     label: "Bệnh án",
     icon: FolderOpen,
-    href: (h) => `/cases/${h.id}`,
   },
   {
     kind: "action_item",
     label: "Việc cần làm",
     icon: ListChecks,
-    href: (h) => (h.visit_id ? `/visits/${h.visit_id}` : `/people/${h.person_id}`),
   },
   {
     kind: "vaccination",
     label: "Tiêm chủng",
     icon: Syringe,
-    href: (h) => `/people/${h.person_id}/vaccinations`,
   },
   {
     kind: "person",
     label: "Hồ sơ",
     icon: UserRound,
-    href: (h) => `/people/${h.id}`,
   },
 ];
 
@@ -180,7 +171,7 @@ export function SearchDialog() {
       hits: hits
         .filter((h) => h.kind === k.kind)
         .map((h) => {
-          flat.push({ hit: h, href: k.href(h) });
+          flat.push({ hit: h, href: hitHref(h) });
           return { hit: h, index: flat.length - 1 };
         }),
     })).filter((g) => g.hits.length > 0);
@@ -299,7 +290,7 @@ export function SearchDialog() {
                           <li key={h.id}>
                             <Link
                               id={`search-hit-${i}`}
-                              href={g.href(h)}
+                              href={hitHref(h)}
                               onClick={() => setOpen(false)}
                               onMouseMove={() => setActive(i)}
                               className={`flex items-start justify-between gap-3 px-4 py-2.5 ${
