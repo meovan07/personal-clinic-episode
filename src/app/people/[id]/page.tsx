@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { FolderPlus, Pencil, Syringe, TriangleAlert } from "lucide-react";
+import { FileText, FolderPlus, Pencil, Syringe, TriangleAlert } from "lucide-react";
 import { deletePerson } from "@/app/actions";
 import { ActionItems } from "@/components/ActionItems";
 import { AiSummaryButton } from "@/components/AiSummaryButton";
@@ -102,6 +102,10 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
           <>
             <Link href={`/visits/new?person=${id}`} className="btn-primary">
               Lần khám
+            </Link>
+            <Link href={`/people/${id}/summary`} className="btn">
+              <FileText className="h-4 w-4" strokeWidth={1.75} />
+              Tóm tắt cho bác sĩ
             </Link>
             <Link href={`/people/${id}/edit`} className="btn">
               <Pencil className="h-4 w-4" strokeWidth={1.75} />

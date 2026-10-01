@@ -125,3 +125,16 @@ a {
     background: rgb(28 36 32 / 0.45);
   }
 }
+
+/* Printing (the doctor summary): A4, white paper, and keep colored flags/borders. */
+@page {
+  size: A4;
+  margin: 12mm;
+}
+@media print {
+  body {
+    background: #fff;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}

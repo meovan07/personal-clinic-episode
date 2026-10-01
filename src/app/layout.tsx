@@ -55,9 +55,11 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="vi" className={`${sans.variable} ${mono.variable} h-full antialiased`}>
       <body className="min-h-full font-sans">
-        <TopLoader />
+        <div className="print:hidden">
+          <TopLoader />
+        </div>
         {user && (
-          <header className="sticky top-0 z-10 border-b border-line bg-surface/95 pt-[env(safe-area-inset-top)] backdrop-blur">
+          <header className="sticky top-0 z-10 border-b print:hidden border-line bg-surface/95 pt-[env(safe-area-inset-top)] backdrop-blur">
             <div className="mx-auto flex max-w-4xl items-center justify-between gap-4 px-4 py-3">
               <Link href="/" className="flex shrink-0 items-center gap-2 font-semibold text-pine hover:text-pine-dark">
                 <Stethoscope className="h-5 w-5" strokeWidth={2} />
@@ -76,7 +78,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             </div>
           </header>
         )}
-        <main className="mx-auto max-w-4xl px-4 py-6 pb-24 sm:pb-6">
+        <main className="mx-auto max-w-4xl px-4 py-6 pb-24 sm:pb-6 print:max-w-none print:p-0">
           {user && !isMember ? (
             <div className="card">
               <p className="font-medium">Tài khoản {user.email} chưa được cấp quyền.</p>
@@ -86,8 +88,12 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             children
           )}
         </main>
-        {user && isMember && <PersonTabBar people={people} />}
-        {user && isMember && <QuickAddButton />}
+        {user && isMember && (
+          <div className="print:hidden">
+            <PersonTabBar people={people} />
+            <QuickAddButton />
+          </div>
+        )}
       </body>
     </html>
   );
