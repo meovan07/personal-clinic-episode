@@ -1,4 +1,4 @@
-import { canonicalName } from "@/lib/names";
+import { canonicalName, onePlace } from "@/lib/names";
 import type { Supabase } from "@/lib/services/records";
 
 export type NameField = "facility" | "department" | "doctor" | "vaccine" | "disease" | "medication";
@@ -24,7 +24,7 @@ export async function nameNormalizer(supabase: Supabase) {
     medication: (medications.data ?? []).map((r) => r.name),
   };
   return (field: NameField, value: string | null | undefined): string | null => {
-    const name = canonicalName(value, known[field]);
+    const name = field === "facility" ? onePlace(value, known.facility) : canonicalName(value, known[field]);
     if (name) known[field].push(name); // later values in the same save match this one too
     return name;
   };

@@ -29,13 +29,7 @@
 Also listed in the README:
 1. ✅ Clean file names and compress photos before upload (`src/lib/upload.ts`).
 2. ✅ Each member sets their own display name on the Cài đặt page (migration `member_display_name`).
-3. ✅ (mostly) Consistent names across the data. Remaining one-off cleanup of existing department and doctor variants (run in the SQL Editor):
-   ```sql
-   update visits set department = 'Khoa Xét nghiệm' where department = 'Khoa xét nghiệm';
-   update visits set department = 'Phòng khám Phụ khoa 1 / Khoa Xét nghiệm / Phòng Siêu âm' where department = 'PK PHỤ KHOA 1 / Khoa Xét nghiệm / Phòng Siêu âm';
-   update visits set doctor = 'ThS. BS. Trương Thị Bích Ngọc' where doctor = 'THS.BS TRƯƠNG THỊ BÍCH NGỌC';
-   update visits set doctor = 'ThS. BS. Trương Thị Bích Ngọc; ThS. BS. Nguyễn Bảo Toàn' where doctor = 'THS.BS TRƯƠNG THỊ BÍCH NGỌC; ThS.BS. Nguyễn Bảo Toàn';
-   ```
+3. ✅ Consistent names across the data (existing hospital, department and doctor variants merged 02/10/2026; a visit keeps one place when a document prints several).
    Original note: hospitals ("Bệnh viện Đa khoa Gia Đình" / "BỆNH VIỆN ĐA KHOA GIA ĐÌNH" / "BV Gia Đình"), doctors, departments, vaccines, diseases, medications and test names outside the catalog all vary as printed. Normalize when saving (canonical lists, matching new values to existing ones) and merge existing variants; `tidyName` only fixes capitals on screen.
 
 ## Open questions

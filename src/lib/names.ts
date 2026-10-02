@@ -64,3 +64,17 @@ export function canonicalName(value: string | null | undefined, existing: Iterab
   )[0]?.[0];
   return best ?? tidyName(v);
 }
+
+/**
+ * A document can print several places ("Medilab; Phòng khám Hòa Hảo…"). A visit happens in one: keep the part
+ * already in the records, otherwise the first.
+ */
+export function onePlace(value: string | null | undefined, existing: Iterable<string>): string | null {
+  const parts = (value ?? "")
+    .split(";")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  if (parts.length <= 1) return canonicalName(value, existing);
+  const known = new Set([...existing].map(canonicalKey));
+  return canonicalName(parts.find((p) => known.has(canonicalKey(p))) ?? parts[0], existing);
+}

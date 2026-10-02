@@ -30,7 +30,7 @@ Live at https://personal-clinic-episode.vercel.app (members only).
 
 - [x] **Clean file names and compress before upload.** Photos are shrunk in the browser (longest side 2000 px, JPEG ~82%, HEIC converted where the browser can read it) and get readable names (`anh-2026-10-02-1.jpg`, `ket-qua-xn-1.pdf`); the duplicate check still uses the original. `src/lib/upload.ts`.
 - [x] **Let each member set their own name.** Cài đặt → Tên hiển thị. Migration `member_display_name` (applied 02/10/2026) lets a member update only their own row, only `display_name`.
-- [x] **Consistent names across the data.** New values reuse the spelling already in the records when they match ignoring capitals, diacritics, punctuation, titles (ThS., BS.) and abbreviations (BV = Bệnh viện): hospitals, departments, doctors, vaccines, diseases, medications (`src/lib/names.ts`, `src/lib/services/names.ts`, tested). Test names that differ only by a unit in brackets are grouped. Existing hospital variants were merged on 02/10/2026; department and doctor variants still need the SQL in `docs/roadmap.md`.
+- [x] **Consistent names across the data.** New values reuse the spelling already in the records when they match ignoring capitals, diacritics, punctuation, titles (ThS., BS.) and abbreviations (BV = Bệnh viện): hospitals, departments, doctors, vaccines, diseases, medications (`src/lib/names.ts`, `src/lib/services/names.ts`, tested). Test names that differ only by a unit in brackets are grouped. When a document prints several places ("Medilab; Phòng khám Hòa Hảo…"), the one already in the records is kept. Existing variants of hospitals, departments and doctors were merged on 02/10/2026.
 
 More ideas and the full status are in [docs/roadmap.md](docs/roadmap.md).
 

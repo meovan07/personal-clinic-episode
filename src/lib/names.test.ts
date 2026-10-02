@@ -29,3 +29,14 @@ test("test names differing only by a unit in brackets group together", () => {
   assert.equal(testNameKey("Tổng số tinh trùng (10^6)"), testNameKey("Tổng số tinh trùng"));
   assert.notEqual(testNameKey("HBeAg (ECLIA-Roche)"), testNameKey("HBeAg định lượng (Abbott)"));
 });
+
+test("several places in one value: keep the one already known, else the first", async () => {
+  const { onePlace } = await import("./names");
+  const known = ["Trung tâm Xét nghiệm Y khoa Medilab"];
+  assert.equal(
+    onePlace("TRUNG TÂM XÉT NGHIỆM Y KHOA MEDILAB; CÔNG TY TNHH Y TẾ HÒA HẢO PHÒNG KHÁM ĐA KHOA HÒA HẢO", known),
+    "Trung tâm Xét nghiệm Y khoa Medilab",
+  );
+  assert.equal(onePlace("PHÒNG KHÁM A; PHÒNG KHÁM B", []), "Phòng Khám A");
+  assert.equal(onePlace("VNVC", ["VNVC"]), "VNVC");
+});

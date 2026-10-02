@@ -65,7 +65,11 @@ export async function readInboxItem(supabase: Supabase, id: string): Promise<{ e
       );
       suggestedVisitId =
         candidates.find(
-          (v) => !result.facility || !v.facility || canonicalKey(v.facility) === canonicalKey(result.facility!),
+          (v) =>
+            !result.facility ||
+            !v.facility ||
+            // A document may print several places separated by ";"; any of them matching the visit counts.
+            result.facility.split(";").some((p) => canonicalKey(p) === canonicalKey(v.facility!)),
         )?.id ?? null;
     }
 
