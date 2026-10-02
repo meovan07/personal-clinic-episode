@@ -56,7 +56,8 @@ Code: `src/app/api/chat/route.ts` (streaming route, login + membership check), `
 ### Where we left off (01/10/2026)
 
 - **8a is built** on branch `phase-8a-read-only-chat` (not merged, not deployed). The 8 read tools were verified against the real data; the full chat was blocked until the OpenAI account had credit again (it had run out after 28/09, which also stops document reading — `billing_not_active`). Credit is now topped up and the key works.
-- **Model choice is still open.** Same agent, same tools, 7 real questions about our records (incl. traps: a test with only one result, a diagnosis question with no data, a write request):
+- **Chat model:** `gpt-6-luna` is now the default for the chat (`CHAT_MODEL`), per the benchmark below; document extraction keeps `OPENAI_MODEL` until it gets its own benchmark.
+- **Benchmark:** Same agent, same tools, 7 real questions about our records (incl. traps: a test with only one result, a diagnosis question with no data, a write request):
 
   | Model | Price in/out per 1M tokens | Avg time | Cost for all 7 | Answers |
   |---|---|---|---|---|
@@ -66,7 +67,17 @@ Code: `src/app/api/chat/route.ts` (streaming route, login + membership check), `
   | gpt-6-luna | $0.10 / $0.50 | 5 s | $0.002 | correct, shortest |
 
   All four handled the traps (no invented trend, no diagnosis, "can't write yet"). Leaning towards **gpt-6-luna** for chat (≈65× cheaper than gpt-5.5) with gpt-6.1-sol as the fallback if answers turn out too thin; the document-extraction model should be benchmarked separately on real lab sheets before changing it.
-- **Next steps:** pick the chat model (and test extraction models), set `OPENAI_MODEL` / a separate chat model variable, merge 8a, then start 8b (refactor `actions.ts` into `src/lib/services/*`, write tools with approval cards).
+- **Next steps:** benchmark extraction models, merge the 8a branch (chat + memory), then start 8b (refactor `actions.ts` into `src/lib/services/*`, write tools with approval cards).
+
+### Memory (built on the 8a branch)
+
+| Layer | How it works | Storage |
+|---|---|---|
+| **Short-term** (the conversation) | Each conversation is saved per user and survives a reload; past ones can be reopened or deleted from **Lịch sử**. The client sends only the new message; the server loads the history. The answer is saved even if the panel is closed mid-reply. | `chat_threads`, `chat_messages` — private to the member who started them (RLS) |
+| **Compaction** | When a thread has more than 24 messages not yet summarized, everything but the last ~10 is folded into a running summary (cut always at a user message so a question and its answer stay together). Old lookup results are trimmed from what the model sees (`pruneMessages`). Done in-app rather than with OpenAI's server-side compaction, which returns an opaque blob and is OpenAI-only. | `chat_threads.summary`, `summarized_count` |
+| **Long-term** | Silent and automatic: after each answer, a background step (`after()`, never delays the chat) reads the exchange and adds, updates or deletes memories — lasting context the user mentioned (plans, symptoms, doctors, how they like answers), never what the records already hold or secrets. The assistant uses them to personalize answers without talking about it. Each memory records who said it, so one member's preferences don't apply to the other. A list (to check or delete) sits at the bottom of **Lịch sử** → "Xem trợ lý đang nhớ gì". | `agent_memories` — shared by both members |
+
+Code: `src/lib/agent/memory.ts` (threads, compaction, background memory extraction), `src/app/api/chat/route.ts`. Chat model: `CHAT_MODEL` (default `gpt-6-luna`); document extraction still uses `OPENAI_MODEL`.
 
 ### Goal
 

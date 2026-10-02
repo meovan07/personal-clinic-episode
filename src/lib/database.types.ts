@@ -72,6 +72,51 @@ export type Database = {
           },
         ]
       }
+      agent_memories: {
+        Row: {
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          person_id: string | null
+          source_thread_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          person_id?: string | null
+          source_thread_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          person_id?: string | null
+          source_thread_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_memories_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_memories_source_thread_id_fkey"
+            columns: ["source_thread_id"]
+            isOneToOne: false
+            referencedRelation: "chat_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_summaries: {
         Row: {
           content: string
@@ -144,6 +189,71 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      chat_messages: {
+        Row: {
+          created_at: string
+          id: string
+          parts: Json
+          role: string
+          seq: number
+          thread_id: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          parts: Json
+          role: string
+          seq?: never
+          thread_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          parts?: Json
+          role?: string
+          seq?: never
+          thread_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "chat_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_threads: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          summarized_count: number
+          summary: string | null
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          id: string
+          summarized_count?: number
+          summary?: string | null
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          summarized_count?: number
+          summary?: string | null
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       document_files: {
         Row: {
