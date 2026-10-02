@@ -81,6 +81,13 @@ The popup (`SearchDialog.tsx`) opens from the header, `/` or Ctrl/⌘+K.
 - iPhone Safari never offers to install by itself, so the home page shows a one-time hint (`InstallHint.tsx`) on iOS outside the installed app.
 - The proxy lets the manifest, icons, service worker and offline page load signed out; otherwise the app can't be installed from the login page.
 
+### Push reminders
+
+- **Turning on** (`NotificationSettings.tsx`, home page under the calendar): asks for permission from the tap (iOS requires a user gesture), subscribes with the VAPID public key and saves the subscription with `savePushSubscription` into `push_subscriptions` (one row per device, each member sees only their own). A test notification follows. On iPhone it only works inside the installed app, and the card says so outside it.
+- **Daily job** (`/api/reminders`, Vercel Cron at 01:00 UTC = 08:00 Vietnam time): calls `public.reminder_feed(token)` with `CRON_SECRET`, builds the calendar events with the same rules as the pages (`buildCalendarEvents`), and `morningDigest` (`src/lib/reminders.ts`, tested) turns what's due today or tomorrow into one message. It's sent to every subscribed device of both members; devices the push service reports as gone are removed with `forget_push_subscription`. Nothing due → nothing sent; overdue items aren't repeated daily.
+- **No admin key.** The job runs signed out. `reminder_feed()` and `forget_push_subscription()` are `SECURITY DEFINER` functions that only answer when the token's SHA-256 matches a row in `private.cron_tokens`, and they return only subscriptions, names, open dated to-dos and vaccination doses.
+- **Showing it** (`public/sw.js`): shows the notification with the app icon; tapping it opens or focuses the app on the reminder's page (or the home page when there are several).
+
 ### On-screen keyboard (iOS)
 
 iOS Safari doesn't shrink the page when the keyboard opens, so fixed elements misbehave. `AppShell.tsx` handles it app-wide:

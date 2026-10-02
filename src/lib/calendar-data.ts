@@ -25,11 +25,36 @@ export async function loadCalendarEvents(supabase: Supabase, personId?: string):
     todosQuery = todosQuery.eq("person_id", personId);
   }
   const [visits, vaccinations, todos] = await Promise.all([visitsQuery, vaccinationsQuery, todosQuery]);
+  return buildCalendarEvents({
+    visits: visits.data ?? [],
+    vaccinations: vaccinations.data ?? [],
+    todos: todos.data ?? [],
+  });
+}
 
+type Named = { person_id: string; people: { full_name: string } };
+export type CalendarRows = {
+  visits: (Named & { id: string; visit_date: string | null; facility: string | null })[];
+  /** Ordered by given_on, earliest first (undated first). */
+  vaccinations: (Named & {
+    id: string;
+    vaccine_name: string;
+    disease: string | null;
+    dose_label: string | null;
+    given_on: string | null;
+    next_due_on: string | null;
+  })[];
+  /** Open to-dos that have a due date. */
+  todos: (Named & { id: string; content: string; due_on: string | null; visit_id: string | null })[];
+};
+
+// The rules for turning rows into calendar events, shared by the pages and the daily reminder job.
+export function buildCalendarEvents({ visits, vaccinations, todos }: CalendarRows): CalendarEvent[] {
   const events: CalendarEvent[] = [];
-  for (const v of visits.data ?? []) {
+  for (const v of visits) {
+    if (!v.visit_date) continue;
     events.push({
-      date: v.visit_date!,
+      date: v.visit_date,
       kind: "visit",
       title: v.facility ?? "Lần khám",
       href: `/visits/${v.id}`,
@@ -38,8 +63,8 @@ export async function loadCalendarEvents(supabase: Supabase, personId?: string):
   }
 
   // Next-dose dates only count while no later dose of the same series has been recorded.
-  const dosesByPerson = new Map<string, NonNullable<typeof vaccinations.data>>();
-  for (const x of vaccinations.data ?? []) {
+  const dosesByPerson = new Map<string, CalendarRows["vaccinations"]>();
+  for (const x of vaccinations) {
     dosesByPerson.set(x.person_id, [...(dosesByPerson.get(x.person_id) ?? []), x]);
     if (x.given_on) {
       events.push({
@@ -67,11 +92,12 @@ export async function loadCalendarEvents(supabase: Supabase, personId?: string):
 
   // The AI often turns "tiêm mũi tiếp theo" into a to-do on the same date as the vaccination book's
   // next-dose appointment; show that appointment once.
-  for (const a of todos.data ?? []) {
+  for (const a of todos) {
+    if (!a.due_on) continue;
     const isDoseReminder = /tiêm|vắc ?xin|vaccine/i.test(a.content);
     if (isDoseReminder && doseDueKeys.has(`${a.person_id}|${a.due_on}`)) continue;
     events.push({
-      date: a.due_on!,
+      date: a.due_on,
       kind: "todo",
       title: a.content,
       href: a.visit_id ? `/visits/${a.visit_id}` : `/people/${a.person_id}`,

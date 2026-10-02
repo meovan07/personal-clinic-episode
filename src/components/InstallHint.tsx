@@ -47,7 +47,7 @@ export function InstallHint() {
           Bấm <Share className="inline h-4 w-4 align-[-3px]" strokeWidth={1.75} aria-label="Chia sẻ" /> ở thanh dưới
           Safari, chọn <SquarePlus className="inline h-4 w-4 align-[-3px]" strokeWidth={1.75} aria-hidden />{" "}
           <span className="font-medium text-ink">Thêm vào Màn hình chính</span>. Mở từ biểu tượng mới để dùng toàn màn
-          hình như một ứng dụng.
+          hình và nhận nhắc lịch.
         </p>
       </div>
       <button type="button" onClick={dismiss} className="shrink-0 text-ink-faint hover:text-ink" aria-label="Ẩn">

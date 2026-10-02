@@ -3,6 +3,7 @@ import { Clock, Sparkles, TriangleAlert, UserPlus } from "lucide-react";
 import { ActionItems } from "@/components/ActionItems";
 import { HealthCalendar } from "@/components/HealthCalendar";
 import { InstallHint } from "@/components/InstallHint";
+import { NotificationSettings } from "@/components/NotificationSettings";
 import { VisitList } from "@/components/VisitList";
 import { prepareCalendar, vietnamToday } from "@/lib/calendar";
 import { loadCalendarEvents } from "@/lib/calendar-data";
@@ -110,7 +111,10 @@ export default async function Home() {
 
       <section>
         <h2 className="section-title">Lịch</h2>
-        <HealthCalendar data={calendar} />
+        <div className="space-y-3">
+          <HealthCalendar data={calendar} />
+          <NotificationSettings />
+        </div>
       </section>
 
       <section>

@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { Extraction, extractDocument, type ExtractFile } from "@/lib/ai/extract";
+import { z } from "zod";
 import { summarizePerson, type PersonSnapshot } from "@/lib/ai/summarize";
+import { pushConfigured, sendPush } from "@/lib/push";
 import * as inbox from "@/lib/services/inbox";
 import * as records from "@/lib/services/records";
 import { check, removeFilesUnder } from "@/lib/services/records";
@@ -504,4 +506,52 @@ export async function confirmInboxItem(
   const { visitId } = await inbox.saveInboxItem(supabase, inboxId, { ...input, reviewed });
   revalidatePath("/", "layout");
   redirect(`/visits/${visitId}`);
+}
+
+// ---------- Push notifications (reminders) ----------
+
+const PushSubscriptionInput = z.object({
+  endpoint: z.string().url().max(1000),
+  keys: z.object({ p256dh: z.string().min(1).max(200), auth: z.string().min(1).max(100) }),
+});
+
+/** Stores this device's push subscription for the signed-in member (re-subscribing replaces it). */
+export async function savePushSubscription(input: unknown, userAgent: string | null) {
+  const sub = PushSubscriptionInput.parse(input);
+  const supabase = await createClient();
+  check(
+    await supabase.from("push_subscriptions").upsert(
+      {
+        endpoint: sub.endpoint,
+        p256dh: sub.keys.p256dh,
+        auth: sub.keys.auth,
+        user_agent: userAgent?.slice(0, 300) ?? null,
+      },
+      { onConflict: "endpoint" },
+    ),
+  );
+}
+
+export async function removePushSubscription(endpoint: string) {
+  const supabase = await createClient();
+  check(await supabase.from("push_subscriptions").delete().eq("endpoint", endpoint));
+}
+
+/** Sends a test notification to the signed-in member's devices. */
+export async function sendTestPush(): Promise<{ sent: number; error: string | null }> {
+  if (!pushConfigured()) return { sent: 0, error: "Máy chủ chưa có khoá thông báo (VAPID)." };
+  const supabase = await createClient();
+  const subs = check(await supabase.from("push_subscriptions").select("endpoint, p256dh, auth"));
+  let sent = 0;
+  for (const sub of subs) {
+    const result = await sendPush(sub, {
+      title: "Thông báo đã bật",
+      body: "Mỗi sáng khoảng 8 giờ, Sổ bệnh án sẽ nhắc việc và lịch tiêm của hôm nay và ngày mai.",
+      url: "/",
+      tag: "test",
+    });
+    if (result === "sent") sent++;
+    if (result === "gone") await supabase.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
+  }
+  return { sent, error: sent ? null : "Không gửi được tới thiết bị nào. Thử tắt rồi bật lại thông báo." };
 }

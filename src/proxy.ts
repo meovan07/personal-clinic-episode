@@ -38,7 +38,7 @@ export async function proxy(request: NextRequest) {
 export const config = {
   // icon/apple-icon are Next's generated-icon routes (app/icon.tsx, app/apple-icon.tsx) -
   // they have no file extension in the URL, so the image-extension exclusion below misses them.
-  // api/keep-alive is called by Vercel Cron without a login (see that route). The manifest, app icons,
+  // api/keep-alive and api/reminders are called by Vercel Cron without a login (see those routes). The manifest, app icons,
   // service worker and offline page must load signed out too, or the app can't be installed.
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon$|apple-icon$|api/keep-alive$|manifest.webmanifest$|app-icons/|sw\\.js$|offline\\.html$|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon$|apple-icon$|api/keep-alive$|api/reminders$|manifest.webmanifest$|app-icons/|sw\\.js$|offline\\.html$|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
 };

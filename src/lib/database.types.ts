@@ -643,6 +643,36 @@ export type Database = {
           },
         ]
       }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       people: {
         Row: {
           allergies: string | null
@@ -909,6 +939,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      forget_push_subscription: {
+        Args: { p_endpoint: string; p_token: string }
+        Returns: undefined
+      }
+      reminder_feed: {
+        Args: { p_token: string }
+        Returns: Json
+      }
       search_records: {
         Args: { q: string }
         Returns: {
