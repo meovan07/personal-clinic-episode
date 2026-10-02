@@ -70,7 +70,7 @@ A page-by-page review at phone size, as someone without medical knowledge.
 | 1. Foundation | ✅ tokens, type, light/dark, `Sheet`, `MoreMenu`, `DueChip`, Cài đặt page, `PhotoGallery` |
 | 2. Home | ✅ `AttentionList`, person cards, `WeekStrip`, split to-dos, `VisitList` as one list |
 | 3. Person page | ✅ `Tabs`, `ResultRow` + `test-info.ts`, `ReadMore` for the AI summary |
-| 4. Visit page | ⏳ photo viewer done; summary, results with `ResultRow`, forms in sheets, delete in "⋯" still to do |
+| 4. Visit page | ✅ photo strip and viewer, results out-of-range first with explanations (normal ones folded), add-medication in a sheet, deletes behind "⋯", documents moved to the bottom (~9,000 → ~4,250 px) |
 | 5. The rest | ⏳ bệnh án page, vaccination form, review screens, desktop two columns |
 | 6. Everywhere | partly: relative dates and tidy names used on home, person and visit lists |
 
