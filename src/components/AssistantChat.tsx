@@ -600,6 +600,13 @@ function MemoryList() {
 
 // Phase 8 assistant. Opened from a button stacked above the "+" (the "+" menu comes in 8d).
 // Mounted once in the layout and kept mounted while closed, so an answer keeps streaming in the background.
+// The chat panel is opened from the "+" menu (QuickAddButton), which lives in another part of the tree.
+const OPEN_EVENT = "assistant:open";
+
+export function openAssistant() {
+  window.dispatchEvent(new Event(OPEN_EVENT));
+}
+
 export function AssistantChat() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -630,6 +637,26 @@ export function AssistantChat() {
     else newThread();
   }
 
+  // Opened from the "+" menu; Esc closes it.
+  const openPanelRef = useRef(openPanel);
+  useEffect(() => {
+    openPanelRef.current = openPanel;
+  });
+  useEffect(() => {
+    const onOpen = () => openPanelRef.current();
+    const onKey = (e: KeyboardEvent) => {
+      // Not while a half-written message is in the box, so it isn't lost to a stray Esc.
+      const typing = e.target instanceof HTMLTextAreaElement && e.target.value.trim() !== "";
+      if (e.key === "Escape" && !typing) setOpen(false);
+    };
+    window.addEventListener(OPEN_EVENT, onOpen);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener(OPEN_EVENT, onOpen);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, []);
+
   // On phones the panel covers the page, so following a link closes it; on wider screens it stays open beside it.
   function onNavigate() {
     if (window.innerWidth < 640) setOpen(false);
@@ -642,23 +669,11 @@ export function AssistantChat() {
 
   return (
     <>
-      {!open && (
-        <button
-          type="button"
-          onClick={openPanel}
-          aria-label="Hỏi trợ lý AI"
-          title="Hỏi trợ lý AI"
-          className="fixed bottom-[9.5rem] right-5 z-10 flex h-12 w-12 items-center justify-center rounded-full border border-line bg-surface text-pine shadow-lg hover:bg-paper-dim sm:bottom-[5.75rem] sm:right-6"
-        >
-          <Sparkles className="h-5 w-5" strokeWidth={1.75} />
-        </button>
-      )}
-
       <div
         role="dialog"
         aria-label="Trợ lý AI"
         hidden={!open}
-        className="fixed inset-0 z-40 flex flex-col bg-surface pt-[env(safe-area-inset-top)] sm:inset-auto sm:bottom-5 sm:right-5 sm:h-[min(42rem,calc(100vh-2.5rem))] sm:w-[26rem] sm:rounded-2xl sm:border sm:border-line sm:pt-0 sm:shadow-2xl"
+        className="anim-panel fixed inset-0 z-40 flex flex-col bg-surface pt-[env(safe-area-inset-top)] sm:inset-auto sm:bottom-5 sm:right-5 sm:h-[min(42rem,calc(100vh-2.5rem))] sm:w-[26rem] sm:rounded-2xl sm:border sm:border-line sm:pt-0 sm:shadow-2xl"
       >
         <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
           {view === "chat" ? (

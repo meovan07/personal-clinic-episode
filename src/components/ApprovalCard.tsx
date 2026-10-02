@@ -94,7 +94,7 @@ export function ApprovalCard({
   const Icon = destructive ? Trash2 : PencilLine;
 
   return (
-    <div className={`rounded-lg border text-sm ${destructive ? "border-stamp/50" : "border-line-strong"}`}>
+    <div className={`anim-rise rounded-lg border text-sm ${destructive ? "border-stamp/50" : "border-line-strong"}`}>
       <div
         className={`flex items-center gap-2 rounded-t-lg px-3 py-2 font-medium ${
           destructive ? "bg-stamp-tint text-stamp" : "bg-pine-tint text-pine"

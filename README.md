@@ -49,7 +49,7 @@ To add a test to the catalog, insert a row into `test_catalog` (and `unit_conver
 
 ## Phase 8 design: chat agent
 
-Status: **8a (read-only chat), 8b (changes with approval cards) and 8c (documents sent in the chat) are live**; 8d is not. For now the chat opens from a ✨ button stacked above the "+"; the "+" mode menu ("Tải tài liệu" vs. "Hỏi AI") is part of 8d.
+Status: **8a (read-only chat), 8b (changes with approval cards) and 8c (documents sent in the chat) are live, and so is 8d (the "+" menu and polish).** The chat opens from the "+" button's menu.
 
 Code: `src/app/api/chat/route.ts` (streaming route, login + membership check), `src/lib/agent/tools.ts` (read tools), `src/lib/agent/write-tools.ts` (write tools + approval cards), `src/lib/services/records.ts` (create/update/delete shared with the forms), `src/lib/agent/instructions.ts` (system prompt + who's-who context), `src/components/AssistantChat.tsx` + `ApprovalCard.tsx` (chat panel).
 
@@ -97,7 +97,13 @@ Code: `src/app/api/chat/route.ts` (streaming route, login + membership check), `
 
   The gold values started as gpt-5.5 output (then reviewed), so the comparison slightly favours it; gpt-6-luna still matched it on every value and dose at ~1/50 of the cost. `extractDocument` takes an optional `model` so this can be re-run.
 - **Extraction now defaults to gpt-6-luna** (set `OPENAI_MODEL` on Vercel to override, e.g. back to `gpt-5.5`).
-- **Next steps:** 8b and 8c are live (see above); then 8d (the "+" mode menu and chat polish).
+- **Next steps:** Phase 8 is complete with 8d (see below). Left over from the roadmap: reminders/notifications (channel still to choose).
+
+### 8d: one "+" button, small polish (02/10/2026)
+
+- **"+" is now a menu** with two choices: **Hỏi trợ lý AI** (opens the chat) and **Tải ảnh / PDF kết quả khám** (the existing upload → AI read → review flow). The separate ✨ button is gone. The page dims slightly while the menu is open; a tap outside or Esc closes it, and the "+" turns into an ×. The menu opens the chat through a window event (`openAssistant()` in `AssistantChat.tsx`), since the two live in different parts of the layout.
+- **Esc closes the chat panel**, except while a half-written message is in the box.
+- **Animations:** the menu items rise in one after the other, the dimmed background fades in, the chat panel slides up when opened and approval cards pop in (`anim-*` classes in `globals.css`). They're short (150–220 ms) and turned off when the device asks for reduced motion.
 
 ### Memory (built on the 8a branch)
 
@@ -182,7 +188,7 @@ Today's date in Vietnam time, the two people (ids, names), their open bệnh án
 1. ✅ **8a – Ask:** read tools only. Questions over the records with sourced answers (links to visits/results). No chat history yet: a conversation lasts until the page is reloaded.
 2. ✅ **8b – Do:** write and destructive tools behind approval cards; `agent_actions` log.
 3. ✅ **8c – Show:** send a photo/PDF in the chat → extraction → approval card with the extracted values.
-4. **8d – UX:** the "+" mode menu, conversation history, and polish.
+4. ✅ **8d – UX:** the "+" mode menu, conversation history (done in 8a), and polish.
 
 ### Open questions
 

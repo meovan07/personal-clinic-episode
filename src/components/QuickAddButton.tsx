@@ -1,15 +1,16 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Plus, X } from "lucide-react";
+import { FileUp, Plus, Sparkles, X } from "lucide-react";
 import { createInboxItem, processInboxItem, type UploadedFile } from "@/app/actions";
+import { openAssistant } from "@/components/AssistantChat";
 import { createClient } from "@/lib/supabase/client";
 import { hashAndCheckDuplicates, rollbackUpload, uploadToStorage } from "@/lib/upload";
 import { formatBytes } from "@/lib/format";
 
-// Global "+" button: pick photos/PDFs, AI figures out who they belong to and which bệnh án they continue.
-// See /inbox/[id]/review for the confirm step.
+// Global "+" button. It opens a small menu: ask the AI assistant (chat panel), or upload photos/PDFs that
+// the AI reads to figure out who they belong to and which bệnh án they continue (confirmed at /inbox/[id]/review).
 //
 // On a phone, choosing "Camera" from the file picker opens the native camera and returns exactly one
 // photo per trip (the `multiple` attribute only helps when picking several existing photos from the
@@ -22,6 +23,28 @@ export function QuickAddButton() {
   const [files, setFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // The menu closes on Esc or a tap anywhere else.
+  useEffect(() => {
+    if (!menuOpen) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setMenuOpen(false);
+    }
+    function onPointer(e: PointerEvent) {
+      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false);
+    }
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("pointerdown", onPointer);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("pointerdown", onPointer);
+    };
+  }, [menuOpen]);
+
+  const menuItem =
+    "flex items-center gap-2.5 whitespace-nowrap rounded-full border border-line bg-surface py-2.5 pl-3.5 pr-4 text-sm font-medium text-ink shadow-lg hover:bg-paper-dim";
 
   function addPicked(picked: File[]) {
     if (picked.length === 0) return;
@@ -43,7 +66,9 @@ export function QuickAddButton() {
       setBusy("Đang kiểm tra…");
       const hashes = await hashAndCheckDuplicates(files);
 
-      uploaded = await uploadToStorage(supabase, files, hashes, "inbox", (i, total) => setBusy(`Đang tải ${i + 1}/${total}…`));
+      uploaded = await uploadToStorage(supabase, files, hashes, "inbox", (i, total) =>
+        setBusy(`Đang tải ${i + 1}/${total}…`),
+      );
 
       setBusy("Đang lưu…");
       const { id } = await createInboxItem(uploaded);
@@ -75,20 +100,60 @@ export function QuickAddButton() {
         onChange={(e) => addPicked(Array.from(e.target.files ?? []))}
       />
 
+      {/* Dims the page while the menu is open so its two choices stand out; a tap on it closes the menu. */}
+      {menuOpen && <div aria-hidden className="anim-fade fixed inset-0 z-20 bg-ink/15" />}
+
       {files.length === 0 ? (
-        <div className="fixed bottom-20 right-4 z-20 flex flex-col items-end gap-2 sm:bottom-5 sm:right-5">
+        <div
+          ref={menuRef}
+          className="fixed bottom-20 right-4 z-30 flex flex-col items-end gap-2 sm:bottom-5 sm:right-5"
+        >
           {error && (
             <div className="max-w-[80vw] rounded-lg border border-stamp/30 bg-stamp-tint px-3 py-2 text-sm text-stamp shadow-lg sm:max-w-xs">
               {error}
             </div>
           )}
+          {menuOpen && (
+            <div role="menu" aria-label="Thêm" className="flex flex-col items-end gap-2">
+              <button
+                type="button"
+                role="menuitem"
+                className={`${menuItem} anim-rise`}
+                style={{ animationDelay: "40ms" }}
+                onClick={() => {
+                  setMenuOpen(false);
+                  openAssistant();
+                }}
+              >
+                <Sparkles className="h-4 w-4 text-pine" strokeWidth={1.75} />
+                Hỏi trợ lý AI
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                className={`${menuItem} anim-rise`}
+                onClick={() => {
+                  setMenuOpen(false);
+                  inputRef.current?.click();
+                }}
+              >
+                <FileUp className="h-4 w-4 text-pine" strokeWidth={1.75} />
+                Tải ảnh / PDF kết quả khám
+              </button>
+            </div>
+          )}
           <button
             type="button"
-            aria-label="Thêm tài liệu"
-            onClick={() => inputRef.current?.click()}
-            className="flex h-14 w-14 items-center justify-center rounded-full bg-pine text-white shadow-lg hover:bg-pine-dark"
+            aria-label={menuOpen ? "Đóng" : "Thêm"}
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((o) => !o)}
+            className="flex h-14 w-14 items-center justify-center rounded-full bg-pine text-white shadow-lg transition-transform hover:bg-pine-dark active:scale-95 motion-reduce:transition-none"
           >
-            <Plus className="h-7 w-7" strokeWidth={2} />
+            <Plus
+              className={`h-7 w-7 transition-transform duration-200 motion-reduce:transition-none ${menuOpen ? "rotate-45" : ""}`}
+              strokeWidth={2}
+            />
           </button>
         </div>
       ) : (

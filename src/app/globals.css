@@ -138,3 +138,40 @@ a {
     -webkit-print-color-adjust: exact;
   }
 }
+
+/* Small entrance animations: the "+" menu, the chat panel and approval cards. Short and calm, and
+   switched off entirely for people who asked their device to reduce motion. */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+}
+.anim-rise {
+  animation: rise-in 180ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.anim-fade {
+  animation: fade-in 150ms ease-out both;
+}
+/* Re-runs every time the panel is shown again (display: none -> shown restarts CSS animations). */
+.anim-panel {
+  animation: panel-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .anim-rise,
+  .anim-fade,
+  .anim-panel {
+    animation: none;
+  }
+}
