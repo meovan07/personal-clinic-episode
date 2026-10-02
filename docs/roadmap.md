@@ -34,6 +34,7 @@
 
 | Date | Change |
 |---|---|
+| 02/10/2026 | Assistant: `update_vaccination` to move a due dose or stop its reminder ("bỏ qua mũi đó, sang năm tiêm"); chat bubbles use the same text size on both sides. |
 | 02/10/2026 | **Phase 9, stage 5:** bệnh án page with the results worth following for that illness (trend or out of range) and its to-dos; vaccination add form in a sheet; two-column home on wide screens. Result aggregation shared in `src/lib/results.ts` (tested). |
 | 02/10/2026 | **Phase 9, stage 4:** visit page with results out-of-range first and explained (normal ones folded), add-medication form in a sheet, deletes behind "⋯", tidy hospital name, documents at the bottom. |
 | 02/10/2026 | **Phase 9, stages 1–3:** Cài đặt page (logout, reminders, install), "⋯" menus and bottom sheets, due chips ("Quá hạn 8 tháng"), tidy hospital names. Home: "Cần chú ý" first, a card per person, 7-day strip with the month on demand, to-dos split from the doctor's advice, 3 latest visits plus an all-visits page. Person page with tabs; results grouped by body part with plain explanations for all 48 catalog tests (`src/lib/test-info.ts`). |

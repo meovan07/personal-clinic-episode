@@ -58,6 +58,7 @@ const TOOL_LABEL: Record<string, string> = {
   update_todo: "Soạn thay đổi việc cần làm",
   delete_todo: "Chuẩn bị xoá việc cần làm",
   add_vaccination: "Soạn mũi tiêm",
+  update_vaccination: "Soạn thay đổi mũi tiêm",
   delete_vaccination: "Chuẩn bị xoá mũi tiêm",
   save_document: "Chuẩn bị lưu tài liệu",
   discard_document: "Chuẩn bị bỏ tài liệu",
@@ -181,7 +182,7 @@ function Message({
             <span className="min-w-0 break-words">{attached.join(", ")}</span>
           </div>
         )}
-        <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-pine px-3 py-2 text-on-pine">
+        <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-pine px-3 py-2 text-sm leading-relaxed text-on-pine">
           {text}
         </div>
       </div>

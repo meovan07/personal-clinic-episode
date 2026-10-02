@@ -29,7 +29,7 @@ Built with the Vercel AI SDK v7 (`ai`, `@ai-sdk/openai`, `@ai-sdk/react`, pinned
 | Kind | Tools | Runs |
 |---|---|---|
 | Read | `search_records`, `get_person_overview`, `list_visits`, `get_visit`, `get_test_history`, `list_todos`, `list_vaccinations`, `get_calendar`, `read_document` | Immediately |
-| Change | `create_case`, `update_case`, `create_visit`, `update_visit`, `add_medication`, `add_todo`, `update_todo` (also ticks a to-do off), `add_vaccination`, `save_document` | After approval (green card) |
+| Change | `create_case`, `update_case`, `create_visit`, `update_visit`, `add_medication`, `add_todo`, `update_todo` (also ticks a to-do off), `add_vaccination`, `update_vaccination` (move or skip a due dose), `save_document` | After approval (green card) |
 | Delete | `delete_case`, `delete_visit`, `delete_document`, `delete_medication`, `delete_todo`, `delete_vaccination`, `discard_document` | After approval (red card) |
 | Not available | Deleting a person, managing accounts, editing lab values | Only in the normal UI (lab values on the review page) |
 

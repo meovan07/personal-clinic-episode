@@ -133,6 +133,10 @@ export async function addVaccination(supabase: Supabase, row: TablesInsert<"vacc
   return check(await supabase.from("vaccinations").insert(row).select("id").single());
 }
 
+export async function updateVaccination(supabase: Supabase, id: string, patch: TablesUpdate<"vaccinations">) {
+  return check(await supabase.from("vaccinations").update(patch).eq("id", id).select("id").single());
+}
+
 export async function deleteVaccination(supabase: Supabase, id: string) {
   check(await supabase.from("vaccinations").delete().eq("id", id));
 }

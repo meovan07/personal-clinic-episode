@@ -555,6 +555,47 @@ export function createWriteTools(supabase: Supabase, { threadId }: { threadId: s
       },
     }),
 
+    update_vaccination: spec({
+      description:
+        "Change a recorded vaccine dose, e.g. move the next dose's due date (next_due_on) when the user postponed it, " +
+        "or set next_due_on to null to stop reminding about a dose they decided to skip. Also fixes date, dose label, " +
+        "facility or notes. Only include fields that change; null clears a field. To record a dose actually given, " +
+        "use add_vaccination instead.",
+      inputSchema: z.object({
+        vaccination_id: uuid,
+        vaccine_name: text(200).optional(),
+        disease: patchText(200),
+        dose_label: patchText(50),
+        given_on: patchDate,
+        next_due_on: patchDate,
+        facility: patchText(200),
+        notes: patchText(1000),
+      }),
+      preview: async (input) => {
+        const v = await one(
+          supabase.from("vaccinations").select("*, people(full_name)").eq("id", input.vaccination_id).maybeSingle(),
+          "Không tìm thấy mũi tiêm này.",
+        );
+        return {
+          title:
+            input.next_due_on === null && Object.keys(only(input, ["vaccination_id", "next_due_on"])).length === 0
+              ? "Bỏ nhắc mũi tiêm"
+              : "Sửa mũi tiêm",
+          destructive: false,
+          person: v.people.full_name,
+          target: [v.disease ?? v.vaccine_name, v.dose_label, v.given_on && formatDate(v.given_on)]
+            .filter(Boolean)
+            .join(" · "),
+          fields: await fieldRows(VACCINATION_FIELDS, input, v),
+        };
+      },
+      run: async (input) => {
+        const before = check(await supabase.from("vaccinations").select("*").eq("id", input.vaccination_id).single());
+        await records.updateVaccination(supabase, input.vaccination_id, only(input, ["vaccination_id"]));
+        return { before, result: { id: input.vaccination_id, url: `/people/${before.person_id}/vaccinations` } };
+      },
+    }),
+
     delete_vaccination: spec({
       description: "Delete one recorded vaccine dose.",
       destructive: true,
