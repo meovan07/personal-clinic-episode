@@ -24,6 +24,13 @@
    - Benchmark the models for the health summary and to-do polishing (`src/lib/ai/summarize.ts`, `polish.ts`, still `gpt-5.5`), as was done for extraction and chat.
    - Clean up test data left from development: a memory "Pate thích câu trả lời ngắn gọn…" and a few test conversations in the assistant's history.
 
+## To-do (from use)
+
+Also listed in the README:
+1. Clean file names and compress photos before upload (`src/lib/upload.ts`).
+2. Let each member set their own display name on the Cài đặt page (needs an RLS policy to update one's own `members` row).
+3. One name per hospital: store facilities once, match new documents to them, and merge existing variants ("Bệnh viện Đa khoa Gia Đình" / "BỆNH VIỆN ĐA KHOA GIA ĐÌNH" / "BV Gia Đình"). `tidyName` only fixes capitals on screen.
+
 ## Open questions
 
 - Keep chat history forever, or expire it after a while?

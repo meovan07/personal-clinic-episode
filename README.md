@@ -26,6 +26,14 @@ Live at https://personal-clinic-episode.vercel.app (members only).
 | [docs/assistant.md](docs/assistant.md) | The chat assistant: tools, approval cards, memory, attachments, safety |
 | [docs/development.md](docs/development.md) | Local setup, environment variables, migrations, tests, deploying |
 
+## To-do
+
+- [ ] **Clean file names and compress before upload.** Photos keep the phone's name (`IMG_1234.HEIC`) and full size. Rename them to something readable (e.g. person, date, document type), shrink photos in the browser before upload (e.g. longest side ~2000 px, JPEG ~80%, HEIC converted) so uploads and the AI read are faster and storage stays small; PDFs as they are. Pipeline: `src/lib/upload.ts`.
+- [ ] **Let each member set their own name.** The greeting and the assistant use `members.display_name`, which today is just part of the email. Add a field on the Cài đặt page to change it (needs an RLS policy letting a member update their own `members` row).
+- [ ] **One name per hospital.** The same place appears as "Bệnh viện Đa khoa Gia Đình", "BỆNH VIỆN ĐA KHOA GIA ĐÌNH", "BV Gia Đình". `tidyName` only fixes capitals on screen. Store facilities once (a `facilities` table, or normalize when saving), match new documents to an existing one, and merge the variants already in the data.
+
+More ideas and the full status are in [docs/roadmap.md](docs/roadmap.md).
+
 ## Quick start
 
 ```bash
