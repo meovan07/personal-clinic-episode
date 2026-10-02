@@ -8,7 +8,9 @@ import {
 } from "@/lib/ai/extract";
 import { today } from "@/lib/format";
 import { normalizeObservation } from "@/lib/normalize";
-import { check, type Supabase } from "@/lib/services/records";
+import { canonicalKey } from "@/lib/names";
+import { nameNormalizer } from "@/lib/services/names";
+import { check, createVisit, type Supabase } from "@/lib/services/records";
 import { isSameDose, pendingDoses } from "@/lib/vaccinations";
 
 // Documents that arrive without a known visit ("+" quick add, or a photo sent in the chat): the AI reads
@@ -62,7 +64,9 @@ export async function readInboxItem(supabase: Supabase, id: string): Promise<{ e
           .eq("visit_date", result.document_date),
       );
       suggestedVisitId =
-        candidates.find((v) => !result.facility || !v.facility || v.facility === result.facility)?.id ?? null;
+        candidates.find(
+          (v) => !result.facility || !v.facility || canonicalKey(v.facility) === canonicalKey(result.facility!),
+        )?.id ?? null;
     }
 
     check(
@@ -135,19 +139,15 @@ export async function saveInboxItem(
           .single(),
       ).id;
     }
-    visitId = check(
-      await supabase
-        .from("visits")
-        .insert({
-          person_id: input.personId,
-          case_id: caseId,
-          visit_date: input.visit.visit_date,
-          facility: input.visit.facility,
-          department: input.visit.department,
-          doctor: input.visit.doctor,
-        })
-        .select("id")
-        .single(),
+    visitId = (
+      await createVisit(supabase, {
+        person_id: input.personId,
+        case_id: caseId,
+        visit_date: input.visit.visit_date,
+        facility: input.visit.facility,
+        department: input.visit.department,
+        doctor: input.visit.doctor,
+      })
     ).id;
   }
 
@@ -196,6 +196,7 @@ export async function applyExtraction(
       .eq("id", visitId)
       .single(),
   );
+  const name = await nameNormalizer(supabase);
   const [catalog, conversions] = await Promise.all([
     supabase.from("test_catalog").select("code, name_vi, aliases, standard_unit").then(check),
     supabase.from("unit_conversions").select("test_code, from_unit, factor").then(check),
@@ -222,7 +223,7 @@ export async function applyExtraction(
     .map((m) => ({
       visit_id: visitId,
       document_id: documentId,
-      name: m.name.trim(),
+      name: name("medication", m.name) ?? m.name.trim(),
       dose: m.dose,
       schedule: m.schedule,
       duration_days: m.duration_days,
@@ -243,13 +244,13 @@ export async function applyExtraction(
       person_id: visit.person_id,
       visit_id: visitId,
       document_id: documentId,
-      vaccine_name: v.vaccine_name.trim(),
-      disease: v.disease,
+      vaccine_name: name("vaccine", v.vaccine_name) ?? v.vaccine_name.trim(),
+      disease: name("disease", v.disease),
       dose_label: v.dose_label,
       given_on: v.given_on,
       next_due_on: v.next_due_on,
       lot_number: v.lot_number,
-      facility: v.facility ?? reviewed.facility,
+      facility: name("facility", v.facility ?? reviewed.facility),
       typically_single_dose: v.typically_single_dose,
     }))
     .filter((v) => !knownDoses.some((k) => isSameDose(k, v)));
@@ -278,7 +279,7 @@ export async function applyExtraction(
   // Fill in visit details the user left empty.
   const visitPatch: { visit_date?: string; facility?: string; department?: string; doctor?: string } = {};
   for (const k of ["facility", "department", "doctor"] as const) {
-    const found = reviewed[k];
+    const found = name(k, reviewed[k]);
     if (!visit[k] && found) visitPatch[k] = found;
   }
   if (!visit.visit_date && reviewed.document_date) visitPatch.visit_date = reviewed.document_date;

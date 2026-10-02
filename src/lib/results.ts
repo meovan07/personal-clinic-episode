@@ -1,5 +1,5 @@
 import type { ResultRowData } from "@/components/ResultRow";
-import { nameKey } from "@/lib/normalize";
+import { testNameKey } from "@/lib/names";
 import { explainResult } from "@/lib/test-info";
 
 export type ObservationRow = {
@@ -29,7 +29,7 @@ export function latestResults(rows: ObservationRow[], visitDates: Map<string, st
   for (const o of rows) {
     const date = visitDates.get(o.visit_id);
     if (!date) continue;
-    const key = o.test_code ?? `raw:${nameKey(o.raw_name)}`;
+    const key = o.test_code ?? `raw:${testNameKey(o.raw_name)}`;
     byTest.set(key, [...(byTest.get(key) ?? []), { o, date }]);
   }
   const show = (o: ObservationRow) => (o.value !== null ? String(o.value) : (o.value_text ?? ""));

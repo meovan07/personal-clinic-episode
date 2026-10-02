@@ -1,5 +1,6 @@
 import type { TablesInsert, TablesUpdate } from "@/lib/database.types";
 import { polishActionItem, refineActionItem } from "@/lib/ai/polish";
+import { nameNormalizer } from "@/lib/services/names";
 import type { createClient } from "@/lib/supabase/server";
 
 // Create/update/delete for the records, shared by the server actions (forms) and the chat assistant's tools.
@@ -46,12 +47,28 @@ export async function deleteCase(supabase: Supabase, id: string) {
 
 // ---------- Visits ----------
 
+// Facility, department and doctor reuse the spelling already in the records (see lib/names.ts).
+async function withVisitNames<
+  T extends { facility?: string | null; department?: string | null; doctor?: string | null },
+>(supabase: Supabase, row: T): Promise<T> {
+  if (!row.facility && !row.department && !row.doctor) return row;
+  const name = await nameNormalizer(supabase);
+  return {
+    ...row,
+    ...(row.facility !== undefined && { facility: name("facility", row.facility) }),
+    ...(row.department !== undefined && { department: name("department", row.department) }),
+    ...(row.doctor !== undefined && { doctor: name("doctor", row.doctor) }),
+  };
+}
+
 export async function createVisit(supabase: Supabase, row: TablesInsert<"visits">) {
-  return check(await supabase.from("visits").insert(row).select("id").single());
+  const named = await withVisitNames(supabase, row);
+  return check(await supabase.from("visits").insert(named).select("id").single());
 }
 
 export async function updateVisit(supabase: Supabase, id: string, patch: TablesUpdate<"visits">) {
-  return check(await supabase.from("visits").update(patch).eq("id", id).select("id").single());
+  const named = await withVisitNames(supabase, patch);
+  return check(await supabase.from("visits").update(named).eq("id", id).select("id").single());
 }
 
 export async function deleteVisit(supabase: Supabase, id: string) {
@@ -69,7 +86,9 @@ export async function deleteDocument(supabase: Supabase, id: string) {
 // ---------- Medications ----------
 
 export async function addMedication(supabase: Supabase, row: TablesInsert<"medications">) {
-  return check(await supabase.from("medications").insert(row).select("id").single());
+  const name = await nameNormalizer(supabase);
+  const named = { ...row, name: name("medication", row.name) ?? row.name };
+  return check(await supabase.from("medications").insert(named).select("id").single());
 }
 
 export async function deleteMedication(supabase: Supabase, id: string) {
@@ -130,7 +149,14 @@ export async function deleteTodo(supabase: Supabase, id: string) {
 // ---------- Vaccinations ----------
 
 export async function addVaccination(supabase: Supabase, row: TablesInsert<"vaccinations">) {
-  return check(await supabase.from("vaccinations").insert(row).select("id").single());
+  const name = await nameNormalizer(supabase);
+  const named = {
+    ...row,
+    vaccine_name: name("vaccine", row.vaccine_name) ?? row.vaccine_name,
+    disease: name("disease", row.disease),
+    facility: name("facility", row.facility),
+  };
+  return check(await supabase.from("vaccinations").insert(named).select("id").single());
 }
 
 export async function updateVaccination(supabase: Supabase, id: string, patch: TablesUpdate<"vaccinations">) {
