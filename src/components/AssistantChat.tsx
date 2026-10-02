@@ -2,9 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport, getToolName, isToolUIPart, type UIMessage } from "ai";
+import {
+  DefaultChatTransport,
+  getToolName,
+  isToolUIPart,
+  lastAssistantMessageIsCompleteWithApprovalResponses,
+  type UIMessage,
+} from "ai";
 import ReactMarkdown, { type Components } from "react-markdown";
 import {
   ArrowLeft,
@@ -18,6 +24,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import { ApprovalCard, isApprovalPart } from "@/components/ApprovalCard";
 import { createClient } from "@/lib/supabase/client";
 import { formatDate } from "@/lib/format";
 
@@ -31,6 +38,21 @@ const TOOL_LABEL: Record<string, string> = {
   list_todos: "Xem việc cần làm",
   list_vaccinations: "Xem sổ tiêm chủng",
   get_calendar: "Xem lịch",
+  // Write tools show this only while the change is being prepared; then the approval card takes over.
+  create_case: "Soạn bệnh án mới",
+  update_case: "Soạn thay đổi bệnh án",
+  delete_case: "Chuẩn bị xoá bệnh án",
+  create_visit: "Soạn lần khám mới",
+  update_visit: "Soạn thay đổi lần khám",
+  delete_visit: "Chuẩn bị xoá lần khám",
+  delete_document: "Chuẩn bị xoá tài liệu",
+  add_medication: "Soạn thuốc mới",
+  delete_medication: "Chuẩn bị xoá thuốc",
+  add_todo: "Soạn việc cần làm",
+  update_todo: "Soạn thay đổi việc cần làm",
+  delete_todo: "Chuẩn bị xoá việc cần làm",
+  add_vaccination: "Soạn mũi tiêm",
+  delete_vaccination: "Chuẩn bị xoá mũi tiêm",
 };
 
 const SUGGESTIONS = [
@@ -38,6 +60,7 @@ const SUGGESTIONS = [
   "Sắp tới có lịch hẹn hay việc gì cần làm?",
   "Lần khám gần nhất của Mai có gì bất thường?",
   "Hưng đã tiêm những mũi gì?",
+  "Nhắc Mai tái khám sau 2 tuần",
 ];
 
 // The conversation that was open last, so a reload continues it. Per-browser convenience only.
@@ -45,6 +68,7 @@ const THREAD_KEY = "assistant.thread";
 
 type View = "chat" | "history" | "memory";
 type ToolPart = Parameters<typeof getToolName>[0];
+type Answer = (id: string, approved: boolean) => void;
 
 function readStoredThread(): string | null {
   try {
@@ -124,7 +148,17 @@ function AssistantText({ text, onNavigate }: { text: string; onNavigate: () => v
   return <ReactMarkdown components={components}>{text}</ReactMarkdown>;
 }
 
-function Message({ message, onNavigate }: { message: UIMessage; onNavigate: () => void }) {
+function Message({
+  message,
+  onNavigate,
+  onAnswer,
+  canAnswer,
+}: {
+  message: UIMessage;
+  onNavigate: () => void;
+  onAnswer: Answer;
+  canAnswer: boolean;
+}) {
   if (message.role === "user") {
     const text = message.parts.map((p) => (p.type === "text" ? p.text : "")).join("");
     return (
@@ -141,7 +175,11 @@ function Message({ message, onNavigate }: { message: UIMessage; onNavigate: () =
         part.type === "text" ? (
           <AssistantText key={i} text={part.text} onNavigate={onNavigate} />
         ) : isToolUIPart(part) ? (
-          <ToolStatus key={i} part={part} />
+          isApprovalPart(part) ? (
+            <ApprovalCard key={i} part={part} onAnswer={onAnswer} canAnswer={canAnswer} onNavigate={onNavigate} />
+          ) : (
+            <ToolStatus key={i} part={part} />
+          )
         ) : null,
       )}
     </div>
@@ -161,9 +199,12 @@ function ChatSession({
   focusKey: number;
 }) {
   const [input, setInput] = useState("");
-  const { messages, sendMessage, status, stop, error, regenerate } = useChat({
+  const router = useRouter();
+  const { messages, sendMessage, status, stop, error, regenerate, addToolApprovalResponse } = useChat({
     id: threadId,
     messages: initialMessages,
+    // Once every card in the last answer is approved or declined, the conversation continues by itself.
+    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
     transport: new DefaultChatTransport({
       api: "/api/chat",
       // The server keeps the history; only the newest message travels.
@@ -182,6 +223,18 @@ function ChatSession({
     inputRef.current?.focus();
   }, [focusKey]);
 
+  // When an approved change has been saved, refresh the page behind the chat so it shows it.
+  const savedChanges = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    const done = messages
+      .flatMap((m) => m.parts)
+      .filter((p) => isToolUIPart(p) && p.state === "output-available" && p.approval && !p.approval.isAutomatic)
+      .map((p) => (p as ToolPart).toolCallId);
+    const seen = savedChanges.current;
+    savedChanges.current = new Set(done);
+    if (seen && done.some((id) => !seen.has(id))) router.refresh();
+  }, [messages, router]);
+
   function send(text: string) {
     const trimmed = text.trim();
     if (!trimmed || busy) return;
@@ -195,7 +248,10 @@ function ChatSession({
       <div ref={listRef} className="flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 py-4">
         {messages.length === 0 && (
           <div>
-            <p className="muted mb-3">Hỏi về các lần khám, chỉ số xét nghiệm, thuốc, lịch hẹn hay tiêm chủng. Ví dụ:</p>
+            <p className="muted mb-3">
+              Hỏi về các lần khám, chỉ số xét nghiệm, thuốc, lịch hẹn hay tiêm chủng, hoặc nhờ ghi lại giúp (bạn xác
+              nhận trước khi lưu). Ví dụ:
+            </p>
             <div className="flex flex-col items-start gap-2">
               {SUGGESTIONS.map((s) => (
                 <button key={s} type="button" className="btn text-left" onClick={() => send(s)}>
@@ -206,7 +262,20 @@ function ChatSession({
           </div>
         )}
         {messages.map((m) => (
-          <Message key={m.id} message={m} onNavigate={onNavigate} />
+          <Message
+            key={m.id}
+            message={m}
+            onNavigate={onNavigate}
+            canAnswer={!busy}
+            onAnswer={(id, approved) =>
+              addToolApprovalResponse({
+                id,
+                approved,
+                // Tells the model it was the user's own choice, not an error.
+                ...(approved ? {} : { reason: "The user chose not to make this change." }),
+              })
+            }
+          />
         ))}
         {status === "submitted" && (
           <div className="flex items-center gap-2 text-xs text-ink-soft">
@@ -243,7 +312,7 @@ function ChatSession({
           }}
           rows={1}
           maxLength={4000}
-          placeholder="Hỏi về hồ sơ của hai bạn…"
+          placeholder="Hỏi hoặc nhờ cập nhật hồ sơ…"
           aria-label="Tin nhắn"
           className="input max-h-32 min-h-10 flex-1 resize-none"
         />
@@ -474,7 +543,7 @@ export function AssistantChat() {
                 <Sparkles className="h-4 w-4" strokeWidth={2} />
                 Trợ lý AI
               </div>
-              <p className="text-xs text-ink-soft">Hỏi về hồ sơ của hai bạn. Chưa sửa được hồ sơ.</p>
+              <p className="text-xs text-ink-soft">Hỏi hoặc nhờ cập nhật hồ sơ. Mọi thay đổi đều chờ bạn đồng ý.</p>
             </div>
           ) : (
             <button

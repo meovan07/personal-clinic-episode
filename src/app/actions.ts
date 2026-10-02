@@ -9,11 +9,12 @@ import {
   type ExtractFile,
   type ExtractionResult,
 } from "@/lib/ai/extract";
-import { polishActionItem, refineActionItem } from "@/lib/ai/polish";
 import { summarizePerson, type PersonSnapshot } from "@/lib/ai/summarize";
 import { today } from "@/lib/format";
 import { normalizeObservation } from "@/lib/normalize";
 import { isSameDose, pendingDoses } from "@/lib/vaccinations";
+import * as records from "@/lib/services/records";
+import { check, removeFilesUnder, type Supabase } from "@/lib/services/records";
 import { createClient } from "@/lib/supabase/server";
 
 function str(fd: FormData, key: string): string | null {
@@ -27,11 +28,6 @@ function required(fd: FormData, key: string): string {
   const v = str(fd, key);
   if (!v) throw new Error(`Thiếu thông tin: ${key}`);
   return v;
-}
-
-function check<T>(result: { data: T; error: { message: string } | null }): NonNullable<T> {
-  if (result.error) throw new Error(result.error.message);
-  return result.data as NonNullable<T>;
 }
 
 // ---------- Auth ----------
@@ -94,17 +90,14 @@ export async function saveCase(fd: FormData) {
     ended_on: str(fd, "ended_on"),
     notes: str(fd, "notes"),
   };
-  const saved = id
-    ? check(await supabase.from("cases").update(row).eq("id", id).select("id").single())
-    : check(await supabase.from("cases").insert(row).select("id").single());
+  const saved = id ? await records.updateCase(supabase, id, row) : await records.createCase(supabase, row);
   revalidatePath("/", "layout");
   redirect(`/cases/${saved.id}`);
 }
 
 export async function deleteCase(id: string, personId: string) {
   const supabase = await createClient();
-  // Visits stay (they just leave the case), so no files are removed here.
-  check(await supabase.from("cases").delete().eq("id", id));
+  await records.deleteCase(supabase, id);
   revalidatePath("/", "layout");
   redirect(`/people/${personId}`);
 }
@@ -124,9 +117,7 @@ export async function saveVisit(fd: FormData) {
     reason: str(fd, "reason"),
     notes: str(fd, "notes"),
   };
-  const saved = id
-    ? check(await supabase.from("visits").update(row).eq("id", id).select("id").single())
-    : check(await supabase.from("visits").insert(row).select("id").single());
+  const saved = id ? await records.updateVisit(supabase, id, row) : await records.createVisit(supabase, row);
   revalidatePath("/", "layout");
   redirect(`/visits/${saved.id}`);
 }
@@ -146,15 +137,14 @@ export async function createVisit(fd: FormData): Promise<string> {
     reason: str(fd, "reason"),
     notes: str(fd, "notes"),
   };
-  const saved = check(await supabase.from("visits").insert(row).select("id").single());
+  const saved = await records.createVisit(supabase, row);
   revalidatePath("/", "layout");
   return saved.id;
 }
 
 export async function deleteVisit(id: string, personId: string) {
   const supabase = await createClient();
-  await removeFilesUnder(supabase, (q) => q.eq("documents.visit_id", id));
-  check(await supabase.from("visits").delete().eq("id", id));
+  await records.deleteVisit(supabase, id);
   revalidatePath("/", "layout");
   redirect(`/people/${personId}`);
 }
@@ -167,7 +157,11 @@ export type DuplicateFile = { sha256: string; file_name: string; visit_id: strin
 export async function findDuplicateFiles(hashes: string[]): Promise<DuplicateFile[]> {
   const supabase = await createClient();
   const [docs, inbox] = await Promise.all([
-    supabase.from("document_files").select("sha256, file_name, documents!inner(visit_id)").in("sha256", hashes).then(check),
+    supabase
+      .from("document_files")
+      .select("sha256, file_name, documents!inner(visit_id)")
+      .in("sha256", hashes)
+      .then(check),
     supabase.from("inbox_files").select("sha256, file_name").in("sha256", hashes).then(check),
   ]);
   return [
@@ -214,25 +208,8 @@ export async function createDocument(input: {
 
 export async function deleteDocument(id: string, visitId: string) {
   const supabase = await createClient();
-  await removeFilesUnder(supabase, (q) => q.eq("document_id", id));
-  check(await supabase.from("documents").delete().eq("id", id));
+  await records.deleteDocument(supabase, id);
   revalidatePath(`/visits/${visitId}`);
-}
-
-type Supabase = Awaited<ReturnType<typeof createClient>>;
-
-// Deletes the stored originals for the matching document_files before their rows cascade away.
-async function removeFilesUnder(
-  supabase: Supabase,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  filter: (q: any) => any,
-) {
-  const query = supabase.from("document_files").select("storage_path, documents!inner(visit_id, visits!inner(person_id))");
-  const rows = check(await filter(query)) as { storage_path: string }[];
-  if (rows.length > 0) {
-    const { error } = await supabase.storage.from("documents").remove(rows.map((r) => r.storage_path));
-    if (error) throw new Error(error.message);
-  }
 }
 
 // ---------- Medications ----------
@@ -241,22 +218,20 @@ export async function addMedication(fd: FormData) {
   const supabase = await createClient();
   const visitId = required(fd, "visit_id");
   const days = str(fd, "duration_days");
-  check(
-    await supabase.from("medications").insert({
-      visit_id: visitId,
-      name: required(fd, "name"),
-      dose: str(fd, "dose"),
-      schedule: str(fd, "schedule"),
-      duration_days: days ? Number(days) : null,
-      notes: str(fd, "notes"),
-    }),
-  );
+  await records.addMedication(supabase, {
+    visit_id: visitId,
+    name: required(fd, "name"),
+    dose: str(fd, "dose"),
+    schedule: str(fd, "schedule"),
+    duration_days: days ? Number(days) : null,
+    notes: str(fd, "notes"),
+  });
   revalidatePath(`/visits/${visitId}`);
 }
 
 export async function deleteMedication(id: string, visitId: string) {
   const supabase = await createClient();
-  check(await supabase.from("medications").delete().eq("id", id));
+  await records.deleteMedication(supabase, id);
   revalidatePath(`/visits/${visitId}`);
 }
 
@@ -264,68 +239,33 @@ export async function deleteMedication(id: string, visitId: string) {
 
 export async function addActionItem(fd: FormData) {
   const supabase = await createClient();
-  const raw = required(fd, "content");
-  const content = await polishActionItem(raw).catch(() => raw); // AI polish is best-effort
-  check(
-    await supabase.from("action_items").insert({
-      person_id: required(fd, "person_id"),
-      visit_id: str(fd, "visit_id"),
-      content,
-      due_on: str(fd, "due_on"),
-    }),
-  );
+  await records.addTodo(supabase, {
+    person_id: required(fd, "person_id"),
+    visit_id: str(fd, "visit_id"),
+    content: required(fd, "content"),
+    due_on: str(fd, "due_on"),
+  });
   revalidatePath("/", "layout");
 }
 
-// The added context isn't just stored, and isn't just rephrased in isolation either: the AI
-// gets the real family roster and the person's recent visits/cases so it can actually resolve
-// a vague reference ("chồng" -> the other family member's real name) or a vague test name
-// against what was actually recorded, instead of only parroting back what the user typed.
 export async function updateActionItem(fd: FormData) {
   const supabase = await createClient();
   const id = required(fd, "id");
-  const raw = required(fd, "content");
   const notes = str(fd, "notes");
-
-  const item = check(await supabase.from("action_items").select("person_id").eq("id", id).single());
-  const [people, person, visits, cases] = await Promise.all([
-    supabase.from("people").select("id, full_name, sex").order("created_at").then(check),
-    supabase.from("people").select("full_name").eq("id", item.person_id).single().then(check),
-    supabase
-      .from("visits")
-      .select("visit_date, facility, reason")
-      .eq("person_id", item.person_id)
-      .order("visit_date", { ascending: false, nullsFirst: false })
-      .limit(5)
-      .then(check),
-    supabase.from("cases").select("title, status").eq("person_id", item.person_id).then(check),
-  ]);
-  const recentContext = [
-    ...cases.map((c) => `- Bệnh án: ${c.title} (${c.status})`),
-    ...visits.map((v) => `- Khám ${v.visit_date ?? "(chưa rõ ngày)"}: ${v.reason ?? v.facility ?? "(không ghi lý do)"}`),
-  ].join("\n");
-
-  const content = await refineActionItem({ content: raw, notes, people, forPersonName: person.full_name, recentContext }).catch(
-    () => raw,
-  );
-  check(
-    await supabase
-      .from("action_items")
-      .update({ content, due_on: str(fd, "due_on"), notes })
-      .eq("id", id),
-  );
+  const content = await records.refineTodo(supabase, id, required(fd, "content"), notes);
+  await records.updateTodo(supabase, id, { content, due_on: str(fd, "due_on"), notes });
   revalidatePath("/", "layout");
 }
 
 export async function setActionItemDone(id: string, done: boolean) {
   const supabase = await createClient();
-  check(await supabase.from("action_items").update({ done }).eq("id", id));
+  await records.updateTodo(supabase, id, { done });
   revalidatePath("/", "layout");
 }
 
 export async function deleteActionItem(id: string) {
   const supabase = await createClient();
-  check(await supabase.from("action_items").delete().eq("id", id));
+  await records.deleteTodo(supabase, id);
   revalidatePath("/", "layout");
 }
 
@@ -334,25 +274,23 @@ export async function deleteActionItem(id: string) {
 export async function addVaccination(fd: FormData) {
   const supabase = await createClient();
   const personId = required(fd, "person_id");
-  check(
-    await supabase.from("vaccinations").insert({
-      person_id: personId,
-      vaccine_name: required(fd, "vaccine_name"),
-      disease: str(fd, "disease"),
-      dose_label: str(fd, "dose_label"),
-      given_on: str(fd, "given_on"),
-      next_due_on: str(fd, "next_due_on"),
-      lot_number: str(fd, "lot_number"),
-      facility: str(fd, "facility"),
-      notes: str(fd, "notes"),
-    }),
-  );
+  await records.addVaccination(supabase, {
+    person_id: personId,
+    vaccine_name: required(fd, "vaccine_name"),
+    disease: str(fd, "disease"),
+    dose_label: str(fd, "dose_label"),
+    given_on: str(fd, "given_on"),
+    next_due_on: str(fd, "next_due_on"),
+    lot_number: str(fd, "lot_number"),
+    facility: str(fd, "facility"),
+    notes: str(fd, "notes"),
+  });
   revalidatePath(`/people/${personId}`, "layout");
 }
 
 export async function deleteVaccination(id: string, personId: string) {
   const supabase = await createClient();
-  check(await supabase.from("vaccinations").delete().eq("id", id));
+  await records.deleteVaccination(supabase, id);
   revalidatePath(`/people/${personId}`, "layout");
 }
 
@@ -362,7 +300,12 @@ export async function deleteVaccination(id: string, personId: string) {
 // form immediately instead of waiting for the document confirm step to back-fill them.
 type ReadResult = {
   error: string | null;
-  visitFields?: { visit_date: string | null; facility: string | null; department: string | null; doctor: string | null };
+  visitFields?: {
+    visit_date: string | null;
+    facility: string | null;
+    department: string | null;
+    doctor: string | null;
+  };
 };
 
 export async function readDocumentWithAI(documentId: string): Promise<ReadResult> {
@@ -375,7 +318,12 @@ export async function readDocumentWithAI(documentId: string): Promise<ReadResult
       .order("page_no", { referencedTable: "document_files" })
       .single(),
   );
-  check(await supabase.from("documents").update({ extraction_status: "pending", extraction_error: null }).eq("id", documentId));
+  check(
+    await supabase
+      .from("documents")
+      .update({ extraction_status: "pending", extraction_error: null })
+      .eq("id", documentId),
+  );
 
   try {
     const files: ExtractFile[] = [];
@@ -414,7 +362,10 @@ export async function readDocumentWithAI(documentId: string): Promise<ReadResult
     };
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
-    await supabase.from("documents").update({ extraction_status: "failed", extraction_error: message }).eq("id", documentId);
+    await supabase
+      .from("documents")
+      .update({ extraction_status: "failed", extraction_error: message })
+      .eq("id", documentId);
     return { error: message };
   } finally {
     revalidatePath(`/visits/${doc.visit_id}`);
@@ -430,7 +381,11 @@ async function applyExtraction(
   { visitId, documentId, reviewed }: { visitId: string; documentId: string; reviewed: ExtractionResult },
 ) {
   const visit = check(
-    await supabase.from("visits").select("person_id, visit_date, facility, department, doctor").eq("id", visitId).single(),
+    await supabase
+      .from("visits")
+      .select("person_id, visit_date, facility, department, doctor")
+      .eq("id", visitId)
+      .single(),
   );
   const [catalog, conversions] = await Promise.all([
     supabase.from("test_catalog").select("code, name_vi, aliases, standard_unit").then(check),
@@ -468,7 +423,10 @@ async function applyExtraction(
 
   // Skip doses already recorded from another photo of the same vaccination card (or added by hand).
   const knownDoses = check(
-    await supabase.from("vaccinations").select("vaccine_name, disease, given_on, next_due_on").eq("person_id", visit.person_id),
+    await supabase
+      .from("vaccinations")
+      .select("vaccine_name, disease, given_on, next_due_on")
+      .eq("person_id", visit.person_id),
   );
   const vaccinations = reviewed.vaccinations
     .filter((v) => v.vaccine_name.trim())
@@ -562,7 +520,12 @@ export async function generatePersonSummary(personId: string): Promise<{ error: 
         .eq("person_id", personId)
         .order("visit_date", { ascending: true, nullsFirst: false })
         .then(check),
-      supabase.from("action_items").select("content, due_on, notes").eq("person_id", personId).eq("done", false).then(check),
+      supabase
+        .from("action_items")
+        .select("content, due_on, notes")
+        .eq("person_id", personId)
+        .eq("done", false)
+        .then(check),
       supabase
         .from("vaccinations")
         .select("vaccine_name, disease, dose_label, given_on, next_due_on")
@@ -728,7 +691,13 @@ export async function processInboxItem(id: string): Promise<{ error: string | nu
 export type CaseChoice = { type: "existing"; id: string } | { type: "new"; title: string } | { type: "none" };
 export type VisitChoice =
   | { type: "existing"; id: string }
-  | { type: "new"; visit_date: string | null; facility: string | null; department: string | null; doctor: string | null };
+  | {
+      type: "new";
+      visit_date: string | null;
+      facility: string | null;
+      department: string | null;
+      doctor: string | null;
+    };
 
 // Turns a reviewed inbox item into a real document: resolves/creates the bệnh án and lần khám the user picked,
 // then applies the extraction the same way confirmExtraction does for the manual flow.

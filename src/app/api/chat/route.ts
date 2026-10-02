@@ -12,6 +12,7 @@ import {
 } from "ai";
 import { after } from "next/server";
 import { z } from "zod";
+import { applyApprovalResponses } from "@/lib/agent/continuation";
 import { buildInstructions } from "@/lib/agent/instructions";
 import {
   CHAT_MODEL,
@@ -23,17 +24,19 @@ import {
   updateMemoriesFromExchange,
 } from "@/lib/agent/memory";
 import { createReadTools } from "@/lib/agent/tools";
+import { createWriteTools } from "@/lib/agent/write-tools";
 import { vietnamToday } from "@/lib/calendar";
 import { createClient } from "@/lib/supabase/server";
 
 // A question can take several tool calls plus the model's answer, and sometimes a compaction pass first.
 export const maxDuration = 300;
 
-// The client sends only its newest message; the history lives in chat_messages.
+// The client sends only its newest message; the history lives in chat_messages. That message is either
+// a new user message, or the assistant message that asked for approval, now carrying the user's answers.
 const Body = z.object({
   id: z.string().uuid(),
   message: z
-    .object({ id: z.string().min(1).max(100), role: z.literal("user"), parts: z.array(z.unknown()) })
+    .object({ id: z.string().min(1).max(100), role: z.enum(["user", "assistant"]), parts: z.array(z.unknown()) })
     .passthrough(),
 });
 
@@ -56,10 +59,22 @@ export async function POST(req: Request) {
   const loaded = await loadOrCreateThread(supabase, threadId, message);
   if (!loaded) return new Response("Không tìm thấy cuộc trò chuyện.", { status: 404 });
 
-  const tools = createReadTools(supabase);
+  // Answering approval cards continues the last stored assistant message instead of adding a new one.
+  const continuing = message.role === "assistant";
+  let next = message;
+  if (continuing) {
+    const last = loaded.messages.at(-1);
+    const merged = last && applyApprovalResponses(last, message);
+    if (!merged) return new Response("Yêu cầu xác nhận này không còn hiệu lực.", { status: 409 });
+    next = merged;
+  }
+  const alreadySaved = continuing ? loaded.messages.length - 1 : loaded.messages.length;
+
+  const write = createWriteTools(supabase, { threadId });
+  const tools = { ...createReadTools(supabase), ...write.tools };
   let history: UIMessage[];
   try {
-    history = await validateUIMessages({ messages: [...loaded.messages, message], tools });
+    history = await validateUIMessages({ messages: [...loaded.messages.slice(0, alreadySaved), next], tools });
   } catch (e) {
     // e.g. a stored tool call from an older version whose input no longer matches; better a clear error than a crash.
     console.error("chat history invalid", e);
@@ -86,6 +101,8 @@ export async function POST(req: Request) {
     }),
     messages: recent,
     tools,
+    // Reads run on their own; every change waits for the user's answer on an approval card.
+    toolApproval: ({ toolCall }) => write.approval(toolCall.toolName, toolCall.input),
     stopWhen: isStepCount(10),
     // Errors here are rarely transient (billing, quota, bad input); don't make the user wait for 3 tries.
     maxRetries: 1,
@@ -116,8 +133,8 @@ export async function POST(req: Request) {
       originalMessages: history,
       generateMessageId: createIdGenerator({ prefix: "msg", size: 16 }),
       onEnd: async ({ messages }) => {
-        await saveNewMessages(supabase, threadId, messages, loaded.messages.length);
-        finishExchange(messages.slice(loaded.messages.length));
+        await saveNewMessages(supabase, threadId, messages, alreadySaved);
+        finishExchange(messages.slice(alreadySaved));
       },
       onError: (error) => {
         console.error("chat error", error);

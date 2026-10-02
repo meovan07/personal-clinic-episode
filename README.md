@@ -49,9 +49,19 @@ To add a test to the catalog, insert a row into `test_catalog` (and `unit_conver
 
 ## Phase 8 design: chat agent
 
-Status: **8a (read-only chat) is implemented**; 8b–8d are not. For now the chat opens from a ✨ button stacked above the "+"; the "+" mode menu ("Tải tài liệu" vs. "Hỏi AI") is part of 8d.
+Status: **8a (read-only chat) and 8b (changes with approval cards) are live**; 8c–8d are not. For now the chat opens from a ✨ button stacked above the "+"; the "+" mode menu ("Tải tài liệu" vs. "Hỏi AI") is part of 8d.
 
-Code: `src/app/api/chat/route.ts` (streaming route, login + membership check), `src/lib/agent/tools.ts` (read tools), `src/lib/agent/instructions.ts` (system prompt + who's-who context), `src/components/AssistantChat.tsx` (chat panel).
+Code: `src/app/api/chat/route.ts` (streaming route, login + membership check), `src/lib/agent/tools.ts` (read tools), `src/lib/agent/write-tools.ts` (write tools + approval cards), `src/lib/services/records.ts` (create/update/delete shared with the forms), `src/lib/agent/instructions.ts` (system prompt + who's-who context), `src/components/AssistantChat.tsx` + `ApprovalCard.tsx` (chat panel).
+
+### 8b: changes with approval (02/10/2026)
+
+- **Services.** Create/update/delete for bệnh án, visits, documents, medications, to-dos and vaccinations moved from `src/app/actions.ts` into `src/lib/services/records.ts`; the forms and the chat tools now call the same functions.
+- **14 write tools:** `create_case`, `update_case`, `delete_case`, `create_visit`, `update_visit`, `delete_visit`, `delete_document`, `add_medication`, `delete_medication`, `add_todo`, `update_todo` (also ticks a to-do off), `delete_todo`, `add_vaccination`, `delete_vaccination`. Lab results aren't editable from the chat, and adding documents stays on the "+" button until 8c.
+- **Approval cards.** Before anything is written, the server builds the card from the tool input and the rows as they are now: green for adds/updates (before → after, only fields that actually change), red for deletes with everything the delete takes along ("2 tài liệu (4 trang), 58 chỉ số xét nghiệm…") and what it keeps. A change that can't be made (record gone, visit of the other person, nothing changes) is refused automatically with the reason, without bothering the user. The user taps **Đồng ý / Xoá** or **Không**; the conversation then continues by itself. The page behind the chat refreshes after a saved change.
+- **Why approvals can't be forged:** the server keeps the conversation, so when the user answers a card the server takes only "approved yes/no" from the client and applies it to its own stored copy of the request. The tool input that runs is the one the server stored and showed on the card (`src/lib/agent/continuation.ts`, with tests). This replaces the HMAC secret (`CHAT_APPROVAL_SECRET`) planned below, which is only needed when the client holds the history.
+- **Re-checked at run time.** Each tool re-validates right before writing, then logs the change with the row as it was in `agent_actions` (append-only: members can read and add, nobody can edit or delete entries).
+- **Tested** in the browser: a to-do card ("Nhắc Mai tái khám sau 2 tuần" → due 16/10/2026) and a red delete card for a visit, both declined. The cards stay in the conversation after a reload, and the model doesn't retry. Approved writes have not been exercised on the real records yet.
+- **Deployed 02/10/2026** with the `agent_actions` migration applied to production.
 
 ### Where we left off (01/10/2026)
 
@@ -78,7 +88,7 @@ Code: `src/app/api/chat/route.ts` (streaming route, login + membership check), `
 
   The gold values started as gpt-5.5 output (then reviewed), so the comparison slightly favours it; gpt-6-luna still matched it on every value and dose at ~1/50 of the cost. `extractDocument` takes an optional `model` so this can be re-run.
 - **Extraction now defaults to gpt-6-luna** (set `OPENAI_MODEL` on Vercel to override, e.g. back to `gpt-5.5`).
-- **Next steps:** start 8b (refactor `actions.ts` into `src/lib/services/*`, write tools with approval cards).
+- **Next steps:** 8b is built (see above); then 8c (photo/PDF in the chat → extraction → approval card).
 
 ### Memory (built on the 8a branch)
 
@@ -128,7 +138,7 @@ Postgres with row-level security (members only)
 | Tier | Tools | Approval |
 |---|---|---|
 | Read | `search_records` (the existing Postgres search), `get_person_overview`, `list_visits`, `get_visit`, `get_test_history` (one test over time), `list_todos`, `list_vaccinations`, `get_calendar` | Runs automatically |
-| Write | `create_visit`, `update_visit`, `create_case`, `update_case` (e.g. mark đã khỏi), `add_medication`, `add_todo`, `update_todo`, `complete_todo`, `add_vaccination`, `ingest_document` (photo/PDF from the chat → existing extraction pipeline → confirm) | **Approval card** showing exactly what will be written (before → after for updates) |
+| Write | `create_visit`, `update_visit`, `create_case`, `update_case` (e.g. mark đã khỏi), `add_medication`, `add_todo`, `update_todo` (incl. done), `add_vaccination`; 8c: `ingest_document` (photo/PDF from the chat → existing extraction pipeline → confirm) | **Approval card** showing exactly what will be written (before → after for updates) |
 | Destructive | `delete_visit`, `delete_case`, `delete_document`, `delete_medication`, `delete_todo`, `delete_vaccination` | **Red approval card** listing everything the delete removes (e.g. a visit's documents and results) |
 | Not exposed | deleting a person, managing members/accounts | Only in the normal UI |
 
@@ -161,7 +171,7 @@ Today's date in Vietnam time, the two people (ids, names), their open bệnh án
 ### Rollout
 
 1. ✅ **8a – Ask:** read tools only. Questions over the records with sourced answers (links to visits/results). No chat history yet: a conversation lasts until the page is reloaded.
-2. **8b – Do:** write and destructive tools behind approval cards; `agent_actions` log.
+2. ✅ **8b – Do:** write and destructive tools behind approval cards; `agent_actions` log.
 3. **8c – Show:** send a photo/PDF in the chat → extraction → approval card with the extracted values.
 4. **8d – UX:** the "+" mode menu, conversation history, and polish.
 

@@ -9,7 +9,7 @@ import { pendingDoses } from "@/lib/vaccinations";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
-// Phase 8a: read-only tools. Every query runs with the signed-in user's Supabase session,
+// Read tools (Phase 8a); they run without approval. Every query runs with the signed-in user's Supabase session,
 // so row-level security limits the agent to exactly what that user can see in the app.
 // Results carry `url`s so the model can link its answers to the pages they came from.
 
@@ -27,7 +27,9 @@ export function createReadTools(supabase: Supabase) {
         "Full-text search over everything (visits, lab results, documents, medications, bệnh án, to-dos, vaccinations). " +
         "Ignores Vietnamese diacritics, understands everyday terms (mỡ máu, men gan, tiểu đường) and tolerates typos. " +
         "Good first step to find IDs.",
-      inputSchema: z.object({ query: z.string().min(1).describe("Words to search for, e.g. 'LDL', 'Medilab', 'tiêm cúm'") }),
+      inputSchema: z.object({
+        query: z.string().min(1).describe("Words to search for, e.g. 'LDL', 'Medilab', 'tiêm cúm'"),
+      }),
       execute: async ({ query }) => {
         const { data, error } = await supabase.rpc("search_records", { q: query });
         if (error) fail("Search failed", error);
@@ -110,7 +112,9 @@ export function createReadTools(supabase: Supabase) {
       execute: async ({ person_id, from, to, limit }) => {
         let q = supabase
           .from("visits")
-          .select("id, visit_date, facility, department, doctor, reason, people(full_name), cases(title), documents(count)")
+          .select(
+            "id, visit_date, facility, department, doctor, reason, people(full_name), cases(title), documents(count)",
+          )
           .order("visit_date", { ascending: false, nullsFirst: false })
           .limit(limit);
         if (person_id) q = q.eq("person_id", person_id);
@@ -134,18 +138,24 @@ export function createReadTools(supabase: Supabase) {
     }),
 
     get_visit: tool({
-      description: "Everything about one visit: details, document summaries, lab results, medications and to-dos.",
+      description:
+        "Everything about one visit: details, documents, lab results, medications and to-dos (with their ids).",
       inputSchema: z.object({ visit_id: uuid }),
       execute: async ({ visit_id }) => {
         const [visit, documents, observations, medications, todos] = await Promise.all([
           supabase.from("visits").select("*, people(full_name), cases(id, title)").eq("id", visit_id).maybeSingle(),
-          supabase.from("documents").select("title, doc_type, summary, extraction_status").eq("visit_id", visit_id),
+          supabase.from("documents").select("id, title, doc_type, summary, extraction_status").eq("visit_id", visit_id),
           supabase
             .from("observations")
-            .select("raw_name, value, value_text, unit, raw_value, raw_unit, ref_range_text, flag, test_catalog(name_vi)")
+            .select(
+              "raw_name, value, value_text, unit, raw_value, raw_unit, ref_range_text, flag, test_catalog(name_vi)",
+            )
             .eq("visit_id", visit_id),
-          supabase.from("medications").select("name, dose, schedule, duration_days, notes").eq("visit_id", visit_id),
-          supabase.from("action_items").select("content, due_on, done").eq("visit_id", visit_id),
+          supabase
+            .from("medications")
+            .select("id, name, dose, schedule, duration_days, notes")
+            .eq("visit_id", visit_id),
+          supabase.from("action_items").select("id, content, due_on, done").eq("visit_id", visit_id),
         ]);
         if (!visit.data) fail("Visit not found", visit.error);
         const v = visit.data!;
@@ -256,13 +266,16 @@ export function createReadTools(supabase: Supabase) {
       execute: async ({ person_id }) => {
         const { data, error } = await supabase
           .from("vaccinations")
-          .select("vaccine_name, disease, dose_label, given_on, next_due_on, facility, notes")
+          .select("id, vaccine_name, disease, dose_label, given_on, next_due_on, facility, notes")
           .eq("person_id", person_id)
           .order("given_on", { ascending: true, nullsFirst: true });
         if (error) fail("Could not list vaccinations", error);
         return {
           doses: data ?? [],
-          upcoming: pendingDoses(data ?? []).map((d) => ({ vaccine: d.disease ?? d.vaccine_name, due_on: d.next_due_on })),
+          upcoming: pendingDoses(data ?? []).map((d) => ({
+            vaccine: d.disease ?? d.vaccine_name,
+            due_on: d.next_due_on,
+          })),
           url: `/people/${person_id}/vaccinations`,
         };
       },
@@ -277,7 +290,14 @@ export function createReadTools(supabase: Supabase) {
         return prepareCalendar(events, vietnamToday())
           .events.filter((e) => e.date >= from && e.date <= to)
           .sort((a, b) => a.date.localeCompare(b.date))
-          .map((e) => ({ date: e.date, kind: e.kind, status: e.status, title: e.title, person: e.personName, url: e.href }));
+          .map((e) => ({
+            date: e.date,
+            kind: e.kind,
+            status: e.status,
+            title: e.title,
+            person: e.personName,
+            url: e.href,
+          }));
       },
     }),
   };

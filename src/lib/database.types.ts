@@ -72,6 +72,47 @@ export type Database = {
           },
         ]
       }
+      agent_actions: {
+        Row: {
+          before: Json | null
+          created_at: string
+          id: string
+          input: Json
+          result: Json | null
+          thread_id: string | null
+          tool: string
+          user_id: string | null
+        }
+        Insert: {
+          before?: Json | null
+          created_at?: string
+          id?: string
+          input: Json
+          result?: Json | null
+          thread_id?: string | null
+          tool: string
+          user_id?: string | null
+        }
+        Update: {
+          before?: Json | null
+          created_at?: string
+          id?: string
+          input?: Json
+          result?: Json | null
+          thread_id?: string | null
+          tool?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_actions_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "chat_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_memories: {
         Row: {
           content: string
