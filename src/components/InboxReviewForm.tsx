@@ -70,11 +70,18 @@ export function InboxReviewForm({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  const set = <K extends keyof ExtractionResult>(key: K, value: ExtractionResult[K]) => setData((d) => ({ ...d, [key]: value }));
+  const set = <K extends keyof ExtractionResult>(key: K, value: ExtractionResult[K]) =>
+    setData((d) => ({ ...d, [key]: value }));
   const setObs = (i: number, patch: Partial<Obs>) =>
-    set("observations", data.observations.map((o, j) => (j === i ? { ...o, ...patch } : o)));
+    set(
+      "observations",
+      data.observations.map((o, j) => (j === i ? { ...o, ...patch } : o)),
+    );
   const setMed = (i: number, patch: Partial<Med>) =>
-    set("medications", data.medications.map((m, j) => (j === i ? { ...m, ...patch } : m)));
+    set(
+      "medications",
+      data.medications.map((m, j) => (j === i ? { ...m, ...patch } : m)),
+    );
 
   const personCases = useMemo(() => cases.filter((c) => c.person_id === personId), [cases, personId]);
   const canMergeVisit = !!suggestedVisit && personId === suggestedPersonId;
@@ -87,7 +94,13 @@ export function InboxReviewForm({
       try {
         const visit: VisitChoice = merging
           ? { type: "existing", id: suggestedVisit!.id }
-          : { type: "new", visit_date: nul(visitDate), facility: nul(facility), department: nul(department), doctor: nul(doctor) };
+          : {
+              type: "new",
+              visit_date: nul(visitDate),
+              facility: nul(facility),
+              department: nul(department),
+              doctor: nul(doctor),
+            };
         const caseChoice: CaseChoice = merging
           ? { type: "none" }
           : caseMode === "existing" && caseExistingId
@@ -225,7 +238,12 @@ export function InboxReviewForm({
               <div className="grid gap-3 sm:grid-cols-2">
                 <label className="block">
                   <span className="label">Ngày khám</span>
-                  <input type="date" className="input" value={visitDate} onChange={(e) => setVisitDate(e.target.value)} />
+                  <input
+                    type="date"
+                    className="input"
+                    value={visitDate}
+                    onChange={(e) => setVisitDate(e.target.value)}
+                  />
                 </label>
                 <label className="block">
                   <span className="label">Nơi khám</span>
@@ -263,11 +281,20 @@ export function InboxReviewForm({
           </div>
           <label className="block">
             <span className="label">Tóm tắt</span>
-            <textarea className="input" rows={3} value={data.summary} onChange={(e) => set("summary", e.target.value)} />
+            <textarea
+              className="input"
+              rows={3}
+              value={data.summary}
+              onChange={(e) => set("summary", e.target.value)}
+            />
           </label>
           <div>
             <span className="label">Chẩn đoán</span>
-            <StringList items={data.diagnoses} onChange={(v) => set("diagnoses", v)} placeholder="VD: Viêm dạ dày (K29)" />
+            <StringList
+              items={data.diagnoses}
+              onChange={(v) => set("diagnoses", v)}
+              placeholder="VD: Viêm dạ dày (K29)"
+            />
           </div>
         </section>
 
@@ -340,7 +367,12 @@ export function InboxReviewForm({
                     type="button"
                     className="btn"
                     aria-label="Xóa chỉ số"
-                    onClick={() => set("observations", data.observations.filter((_, j) => j !== i))}
+                    onClick={() =>
+                      set(
+                        "observations",
+                        data.observations.filter((_, j) => j !== i),
+                      )
+                    }
                   >
                     <X className="h-4 w-4" strokeWidth={1.75} />
                   </button>
@@ -394,7 +426,12 @@ export function InboxReviewForm({
                   type="button"
                   className="btn"
                   aria-label="Xóa thuốc"
-                  onClick={() => set("medications", data.medications.filter((_, j) => j !== i))}
+                  onClick={() =>
+                    set(
+                      "medications",
+                      data.medications.filter((_, j) => j !== i),
+                    )
+                  }
                 >
                   <X className="h-4 w-4" strokeWidth={1.75} />
                 </button>
@@ -416,7 +453,11 @@ export function InboxReviewForm({
         <section className="card space-y-3">
           <div>
             <span className="label">Bác sĩ dặn (sẽ thành việc cần làm)</span>
-            <StringList items={data.doctor_advice} onChange={(v) => set("doctor_advice", v)} placeholder="VD: Giảm cân 3-5kg" />
+            <StringList
+              items={data.doctor_advice}
+              onChange={(v) => set("doctor_advice", v)}
+              placeholder="VD: Giảm cân 3-5kg"
+            />
           </div>
           <label className="block">
             <span className="label">Ngày tái khám</span>

@@ -72,7 +72,9 @@ export function EditActionItem({
             <input type="date" name="due_on" defaultValue={dueOn ?? ""} className="input" />
           </label>
           <label className="block">
-            <span className="label">Bối cảnh thêm (AI sẽ đối chiếu với gia đình &amp; lịch sử khám để viết lại nội dung)</span>
+            <span className="label">
+              Bối cảnh thêm (AI sẽ đối chiếu với gia đình &amp; lịch sử khám để viết lại nội dung)
+            </span>
             <textarea
               name="notes"
               rows={3}

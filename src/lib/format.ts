@@ -38,7 +38,11 @@ export function relativeDue(date: string, todayIso: string): { label: string; to
   if (d < 0) {
     const late = -d;
     const label =
-      late < 30 ? `Quá hạn ${late} ngày` : late < 365 ? `Quá hạn ${Math.round(late / 30)} tháng` : `Quá hạn ${Math.round(late / 365)} năm`;
+      late < 30
+        ? `Quá hạn ${late} ngày`
+        : late < 365
+          ? `Quá hạn ${Math.round(late / 30)} tháng`
+          : `Quá hạn ${Math.round(late / 365)} năm`;
     return { label, tone: "danger" };
   }
   if (d === 0) return { label: "Hôm nay", tone: "low" };

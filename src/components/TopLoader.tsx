@@ -27,7 +27,8 @@ export function TopLoader() {
       const link = (e.target as HTMLElement).closest("a");
       if (!link || link.target === "_blank") return;
       const href = link.getAttribute("href");
-      if (!href || href === pathname || href.startsWith("#") || href.startsWith("http") || href.startsWith("mailto:")) return;
+      if (!href || href === pathname || href.startsWith("#") || href.startsWith("http") || href.startsWith("mailto:"))
+        return;
       // Small delay so already-prefetched (instant) navigations never flash the bar.
       timer = setTimeout(() => setVisible(true), 100);
     }

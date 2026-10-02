@@ -75,7 +75,9 @@ export function NewVisitForm({
       setBusy("Đang kiểm tra…");
       const hashes = await hashAndCheckDuplicates(files);
 
-      uploaded = await uploadToStorage(supabase, files, hashes, newVisitId, (i, total) => setBusy(`Đang tải ${i + 1}/${total}…`));
+      uploaded = await uploadToStorage(supabase, files, hashes, newVisitId, (i, total) =>
+        setBusy(`Đang tải ${i + 1}/${total}…`),
+      );
 
       setBusy("Đang lưu tài liệu…");
       const documentId = await createDocument({ visitId: newVisitId, title: null, docType: "other", files: uploaded });

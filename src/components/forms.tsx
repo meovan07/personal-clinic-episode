@@ -39,10 +39,20 @@ export function PersonForm({ person }: { person?: Tables<"people"> }) {
         </Field>
       </div>
       <Field label="Dị ứng">
-        <input name="allergies" className="input" placeholder="Thuốc, thức ăn…" defaultValue={person?.allergies ?? ""} />
+        <input
+          name="allergies"
+          className="input"
+          placeholder="Thuốc, thức ăn…"
+          defaultValue={person?.allergies ?? ""}
+        />
       </Field>
       <Field label="Bệnh mãn tính / tiền sử">
-        <textarea name="chronic_conditions" rows={2} className="input" defaultValue={person?.chronic_conditions ?? ""} />
+        <textarea
+          name="chronic_conditions"
+          rows={2}
+          className="input"
+          defaultValue={person?.chronic_conditions ?? ""}
+        />
       </Field>
       <Field label="Ghi chú">
         <textarea name="notes" rows={2} className="input" defaultValue={person?.notes ?? ""} />
@@ -122,7 +132,12 @@ export function VisitForm({
         </Field>
       </div>
       <Field label="Nơi khám">
-        <input name="facility" className="input" placeholder="VD: BV Bạch Mai, Medlatec…" defaultValue={visit?.facility ?? ""} />
+        <input
+          name="facility"
+          className="input"
+          placeholder="VD: BV Bạch Mai, Medlatec…"
+          defaultValue={visit?.facility ?? ""}
+        />
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Khoa">

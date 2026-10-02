@@ -1,26 +1,17 @@
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
-import {
-  CalendarClock,
-  ChevronRight,
-  Clock,
-  ListChecks,
-  PartyPopper,
-  Sparkles,
-  TriangleAlert,
-  UserPlus,
-} from "lucide-react";
+import { ChevronRight, Clock, Sparkles, TriangleAlert, UserPlus } from "lucide-react";
 import { ActionItems } from "@/components/ActionItems";
 import { Badge } from "@/components/Badge";
-import { DueChip } from "@/components/DueChip";
+import { AttentionList } from "@/components/AttentionList";
 import { HealthCalendar } from "@/components/HealthCalendar";
 import { InstallHint } from "@/components/InstallHint";
 import { VisitList } from "@/components/VisitList";
 import { WeekStrip } from "@/components/WeekStrip";
-import { prepareCalendar, vietnamToday, type DatedEvent } from "@/lib/calendar";
+import { prepareCalendar, vietnamToday } from "@/lib/calendar";
 import { loadCalendarEvents } from "@/lib/calendar-data";
 import { createClient } from "@/lib/supabase/server";
-import { age, formatDate, relativeAgo, relativeDue } from "@/lib/format";
+import { age, formatDate, relativeAgo } from "@/lib/format";
 
 const INBOX_STATUS: Record<string, { label: string; icon: LucideIcon }> = {
   processing: { label: "Đang xử lý…", icon: Clock },
@@ -28,18 +19,7 @@ const INBOX_STATUS: Record<string, { label: string; icon: LucideIcon }> = {
   failed: { label: "Lỗi khi đọc, bấm để thử lại", icon: TriangleAlert },
 };
 
-const ATTENTION_ICON: Partial<Record<DatedEvent["kind"], LucideIcon>> = {
-  todo: ListChecks,
-  dose_due: CalendarClock,
-};
-
 const WEEKDAY = ["Chủ nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
-
-function addDays(iso: string, n: number) {
-  const d = new Date(`${iso}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + n);
-  return d.toISOString().slice(0, 10);
-}
 
 function initial(name: string) {
   return name.trim().split(/\s+/).at(-1)?.charAt(0).toUpperCase() || "?";
@@ -74,13 +54,6 @@ export default async function Home() {
 
   const today = vietnamToday();
   const calendar = prepareCalendar(calendarEvents, today);
-  const weekEnd = addDays(today, 7);
-  // Overdue things and anything due in the next 7 days; visits and given doses are history, not tasks.
-  const attention = calendar.events
-    .filter((e) => (e.kind === "todo" || e.kind === "dose_due") && (e.status === "overdue" || e.date <= weekEnd))
-    .filter((e) => e.status !== "past")
-    .sort((a, b) => a.date.localeCompare(b.date));
-  const nextLater = calendar.upcoming.find((e) => e.date > weekEnd);
   const datedTodos = (todos.data ?? []).filter((t) => t.due_on);
   const advice = (todos.data ?? []).filter((t) => !t.due_on);
   const weekday = WEEKDAY[new Date(`${today}T00:00:00Z`).getUTCDay()];
@@ -123,40 +96,7 @@ export default async function Home() {
 
       <section>
         <h2 className="section-title">Cần chú ý</h2>
-        {attention.length === 0 ? (
-          <div className="card flex items-start gap-3">
-            <PartyPopper className="mt-0.5 h-5 w-5 shrink-0 text-flag-normal" strokeWidth={1.75} />
-            <div>
-              <p>Không có việc gì gấp trong 7 ngày tới.</p>
-              {nextLater && (
-                <p className="muted mt-0.5">
-                  Tiếp theo: {nextLater.title} · {nextLater.personName} ({relativeDue(nextLater.date, today).label.toLowerCase()})
-                </p>
-              )}
-            </div>
-          </div>
-        ) : (
-          <ul className="card divide-y divide-line py-1">
-            {attention.map((e, i) => {
-              const Icon = ATTENTION_ICON[e.kind] ?? ListChecks;
-              return (
-                <li key={i}>
-                  <Link href={e.href} className="flex items-center gap-3 py-3 hover:text-pen">
-                    <Icon
-                      className={`h-5 w-5 shrink-0 ${e.status === "overdue" ? "text-stamp" : "text-flag-low"}`}
-                      strokeWidth={1.75}
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="block">{e.title}</span>
-                      <span className="muted">{e.personName}</span>
-                    </span>
-                    <DueChip date={e.date} today={today} />
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        )}
+        <AttentionList events={calendar.events} upcoming={calendar.upcoming} today={today} />
       </section>
 
       <section>
@@ -199,7 +139,9 @@ export default async function Home() {
                     </Badge>
                   ))}
                   {overdue.length > 0 && <Badge tone="danger">{overdue.length} việc quá hạn</Badge>}
-                  {followed.length === 0 && overdue.length === 0 && <Badge tone="pine">Không có gì đang theo dõi</Badge>}
+                  {followed.length === 0 && overdue.length === 0 && (
+                    <Badge tone="pine">Không có gì đang theo dõi</Badge>
+                  )}
                 </div>
               </Link>
             );
@@ -251,4 +193,3 @@ export default async function Home() {
     </div>
   );
 }
-

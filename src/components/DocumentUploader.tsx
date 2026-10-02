@@ -25,7 +25,9 @@ export function DocumentUploader({ visitId }: { visitId: string }) {
       setBusy("Đang kiểm tra…");
       const hashes = await hashAndCheckDuplicates(files);
 
-      uploaded = await uploadToStorage(supabase, files, hashes, visitId, (i, total) => setBusy(`Đang tải ${i + 1}/${total}…`));
+      uploaded = await uploadToStorage(supabase, files, hashes, visitId, (i, total) =>
+        setBusy(`Đang tải ${i + 1}/${total}…`),
+      );
 
       setBusy("Đang lưu…");
       await createDocument({ visitId, title: title.trim() || null, docType, files: uploaded });

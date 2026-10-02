@@ -10,7 +10,9 @@ const TONE: Record<string, string> = {
 // lab flags and due/overdue badges all read the same way instead of copy-pasted inline styles.
 export function Badge({ tone = "neutral", children }: { tone?: keyof typeof TONE; children: React.ReactNode }) {
   return (
-    <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${TONE[tone]}`}>
+    <span
+      className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${TONE[tone]}`}
+    >
       {children}
     </span>
   );

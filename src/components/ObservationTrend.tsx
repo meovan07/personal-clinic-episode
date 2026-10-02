@@ -73,7 +73,12 @@ export function ObservationTrend({ series }: { series: TrendSeries }) {
             {formatDate(first.date)}: {first.value} → {formatDate(last.date)}: {last.value}
           </div>
         </div>
-        <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="h-8 w-24 shrink-0" preserveAspectRatio="none" role="presentation">
+        <svg
+          viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+          className="h-8 w-24 shrink-0"
+          preserveAspectRatio="none"
+          role="presentation"
+        >
           <path d={area} style={{ fill: LINE_COLOR }} fillOpacity={0.2} stroke="none" />
           <path
             d={line}
