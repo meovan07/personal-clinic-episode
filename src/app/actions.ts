@@ -555,3 +555,23 @@ export async function sendTestPush(): Promise<{ sent: number; error: string | nu
   }
   return { sent, error: sent ? null : "Không gửi được tới thiết bị nào. Thử tắt rồi bật lại thông báo." };
 }
+
+// ---------- Profile ----------
+
+/** The signed-in member's own display name (greeting, assistant). RLS allows only their own row and this column. */
+export async function updateDisplayName(fd: FormData) {
+  const name = required(fd, "display_name").replace(/\s+/g, " ").slice(0, 40);
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Chưa đăng nhập.");
+  const { data, error } = await supabase
+    .from("members")
+    .update({ display_name: name })
+    .eq("user_id", user.id)
+    .select("user_id");
+  if (error) throw new Error(error.message);
+  if (!data?.length) throw new Error("Chưa đổi được tên. Cần chạy migration member_display_name trên Supabase.");
+  revalidatePath("/", "layout");
+}

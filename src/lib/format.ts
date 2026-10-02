@@ -77,3 +77,17 @@ export function relativeAgo(date: string, todayIso: string): string {
   if (days < 365) return `${Math.round(days / 30)} tháng trước`;
   return formatDate(date);
 }
+
+/** "Kết quả XN (1).PDF" -> "ket-qua-xn-1.pdf": no diacritics, spaces or odd characters. */
+export function cleanFileName(name: string): string {
+  const dot = name.lastIndexOf(".");
+  const base = (dot > 0 ? name.slice(0, dot) : name)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[đĐ]/g, "d")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  const ext = dot > 0 ? name.slice(dot + 1).toLowerCase() : "";
+  return `${base || "tai-lieu"}${ext ? `.${ext}` : ""}`;
+}

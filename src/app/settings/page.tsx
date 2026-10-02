@@ -1,7 +1,8 @@
 import { LogOut, MonitorSmartphone, Moon, Share, SquarePlus } from "lucide-react";
-import { signOut } from "@/app/actions";
+import { signOut, updateDisplayName } from "@/app/actions";
 import { NotificationSettings } from "@/components/NotificationSettings";
 import { PageHeader } from "@/components/PageHeader";
+import { SubmitButton } from "@/components/SubmitButton";
 import { createClient } from "@/lib/supabase/server";
 
 // Things rarely changed, kept off the main pages: account, reminders, installing the app, appearance.
@@ -20,17 +21,31 @@ export default async function SettingsPage() {
 
       <section>
         <h2 className="section-title">Tài khoản</h2>
-        <div className="card flex flex-wrap items-center justify-between gap-3">
-          <div className="min-w-0">
-            <div className="font-medium">{member?.display_name ?? "Thành viên"}</div>
-            <div className="muted truncate">{user?.email}</div>
-          </div>
-          <form action={signOut}>
-            <button className="btn">
-              <LogOut className="h-4 w-4" strokeWidth={1.75} />
-              Đăng xuất
-            </button>
+        <div className="card space-y-4">
+          <form action={updateDisplayName} className="space-y-2">
+            <label className="block">
+              <span className="label">Tên hiển thị</span>
+              <span className="muted mb-2 block">Dùng để chào bạn và để trợ lý biết ai đang nói chuyện.</span>
+              <input
+                name="display_name"
+                required
+                maxLength={40}
+                defaultValue={member?.display_name ?? ""}
+                className="input"
+                autoComplete="nickname"
+              />
+            </label>
+            <SubmitButton className="btn">Lưu tên</SubmitButton>
           </form>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
+            <div className="muted min-w-0 truncate">{user?.email}</div>
+            <form action={signOut}>
+              <button className="btn">
+                <LogOut className="h-4 w-4" strokeWidth={1.75} />
+                Đăng xuất
+              </button>
+            </form>
+          </div>
         </div>
       </section>
 
@@ -52,8 +67,8 @@ export default async function SettingsPage() {
           <p className="flex items-start gap-2">
             <SquarePlus className="mt-0.5 h-4 w-4 shrink-0 text-ink-soft" strokeWidth={1.75} />
             <span>
-              <span className="font-medium">Android, máy tính (Chrome, Edge):</span> bấm Cài đặt ứng dụng trên thanh
-              địa chỉ hoặc trong menu trình duyệt.
+              <span className="font-medium">Android, máy tính (Chrome, Edge):</span> bấm Cài đặt ứng dụng trên thanh địa
+              chỉ hoặc trong menu trình duyệt.
             </span>
           </p>
         </div>

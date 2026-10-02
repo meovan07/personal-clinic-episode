@@ -27,8 +27,8 @@
 ## To-do (from use)
 
 Also listed in the README:
-1. Clean file names and compress photos before upload (`src/lib/upload.ts`).
-2. Let each member set their own display name on the Cài đặt page (needs an RLS policy to update one's own `members` row).
+1. ✅ Clean file names and compress photos before upload (`src/lib/upload.ts`).
+2. ✅ Each member sets their own display name on the Cài đặt page (migration `member_display_name`).
 3. Consistent names across the data: hospitals ("Bệnh viện Đa khoa Gia Đình" / "BỆNH VIỆN ĐA KHOA GIA ĐÌNH" / "BV Gia Đình"), doctors, departments, vaccines, diseases, medications and test names outside the catalog all vary as printed. Normalize when saving (canonical lists, matching new values to existing ones) and merge existing variants; `tidyName` only fixes capitals on screen.
 
 ## Open questions
@@ -41,6 +41,7 @@ Also listed in the README:
 
 | Date | Change |
 |---|---|
+| 02/10/2026 | Uploads: photos shrunk to 2000 px JPEG and given readable names before upload. Cài đặt: change your own display name (migration `member_display_name`). |
 | 02/10/2026 | Assistant: `update_vaccination` to move a due dose or stop its reminder ("bỏ qua mũi đó, sang năm tiêm"); chat bubbles use the same text size on both sides. |
 | 02/10/2026 | **Phase 9, stage 5:** bệnh án page with the results worth following for that illness (trend or out of range) and its to-dos; vaccination add form in a sheet; two-column home on wide screens. Result aggregation shared in `src/lib/results.ts` (tested). |
 | 02/10/2026 | **Phase 9, stage 4:** visit page with results out-of-range first and explained (normal ones folded), add-medication form in a sheet, deletes behind "⋯", tidy hospital name, documents at the bottom. |

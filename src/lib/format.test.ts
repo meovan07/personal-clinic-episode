@@ -22,3 +22,11 @@ test("tidyName: capitals become normal case, abbreviations stay", () => {
   assert.equal(tidyName("Bệnh viện Đa khoa Gia Đình"), "Bệnh viện Đa khoa Gia Đình");
   assert.equal(tidyName(null), "");
 });
+
+test("cleanFileName: no diacritics, spaces or odd characters; extension kept", async () => {
+  const { cleanFileName } = await import("./format");
+  assert.equal(cleanFileName("Kết quả XN (1).PDF"), "ket-qua-xn-1.pdf");
+  assert.equal(cleanFileName("Đơn thuốc BV Gia Đình.jpg"), "don-thuoc-bv-gia-dinh.jpg");
+  assert.equal(cleanFileName("IMG_1234.HEIC"), "img-1234.heic");
+  assert.equal(cleanFileName("???.png"), "tai-lieu.png");
+});
