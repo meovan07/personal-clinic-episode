@@ -61,13 +61,24 @@ Code: `src/app/api/chat/route.ts` (streaming route, login + membership check), `
 
   | Model | Price in/out per 1M tokens | Avg time | Cost for all 7 | Answers |
   |---|---|---|---|---|
-  | gpt-5.5 (current default) | $5 / $30 | 6 s | $0.13 | correct |
+  | gpt-5.5 (previous default) | $5 / $30 | 6 s | $0.13 | correct |
   | gpt-6.1-sol | $2 / $10 | 11 s | $0.04 | correct, best structured (tables) |
   | gpt-5.4-mini | $0.75 / $4.50 | 6 s | $0.025 | correct |
   | gpt-6-luna | $0.10 / $0.50 | 5 s | $0.002 | correct, shortest |
 
   All four handled the traps (no invented trend, no diagnosis, "can't write yet"). Leaning towards **gpt-6-luna** for chat (≈65× cheaper than gpt-5.5) with gpt-6.1-sol as the fallback if answers turn out too thin; the document-extraction model should be benchmarked separately on real lab sheets before changing it.
-- **Next steps:** benchmark extraction models, merge the 8a branch (chat + memory), then start 8b (refactor `actions.ts` into `src/lib/services/*`, write tools with approval cards).
+- **Extraction benchmark (02/10/2026):** 5 already-reviewed documents (two phone-photo lab sheets with 26 and 47 values, a Medilab PDF, a VNVC vaccination card, a visit note), graded against the reviewed values:
+
+  | Model | Lab values (86) | Vaccine doses (5) | Avg time | Cost, 5 docs |
+  |---|---|---|---|---|
+  | gpt-5.5 (previous default) | 86/86 | 5/5 | 12 s | $0.310 |
+  | gpt-6-luna | 86/86 | 5/5 | 13 s | $0.006 |
+  | gpt-6.1-sol | 86/86 | 2/5 | 21 s | $0.110 |
+  | gpt-5.4-mini | 85/86 | 4/5 | 7 s | $0.050 |
+
+  The gold values started as gpt-5.5 output (then reviewed), so the comparison slightly favours it; gpt-6-luna still matched it on every value and dose at ~1/50 of the cost. `extractDocument` takes an optional `model` so this can be re-run.
+- **Extraction now defaults to gpt-6-luna** (set `OPENAI_MODEL` on Vercel to override, e.g. back to `gpt-5.5`).
+- **Next steps:** start 8b (refactor `actions.ts` into `src/lib/services/*`, write tools with approval cards).
 
 ### Memory (built on the 8a branch)
 

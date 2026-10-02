@@ -129,15 +129,19 @@ function buildContent(files: ExtractFile[]): { content: ResponseInputContent[]; 
   return { content, skipped };
 }
 
+// Model for reading documents; separate from the chat model (CHAT_MODEL) because the trade-offs differ.
+export const EXTRACTION_MODEL = process.env.OPENAI_MODEL || "gpt-6-luna";
+
 export async function extractDocument(
   files: ExtractFile[],
   catalog: { code: string; name_vi: string }[],
-): Promise<{ result: ExtractionResult; skipped: string[] }> {
+  { model = EXTRACTION_MODEL }: { model?: string } = {},
+): Promise<{ result: ExtractionResult; skipped: string[]; usage: OpenAI.Responses.ResponseUsage | undefined }> {
   const { content, skipped } = buildContent(files);
   const catalogText = catalog.map((c) => `${c.code}: ${c.name_vi}`).join("\n");
   const client = new OpenAI();
   const response = await client.responses.parse({
-    model: process.env.OPENAI_MODEL || "gpt-5.5",
+    model,
     reasoning: { effort: "low" },
     store: false, // don't keep medical documents on OpenAI's side
     instructions: `${INSTRUCTIONS}\n\nTest catalog:\n${catalogText}`,
@@ -153,7 +157,7 @@ export async function extractDocument(
   if (!response.output_parsed) {
     throw new Error("AI không trả về kết quả hợp lệ. Thử lại sau.");
   }
-  return { result: response.output_parsed, skipped };
+  return { result: response.output_parsed, skipped, usage: response.usage };
 }
 
 // ---------- Inbox: extraction + person/bệnh án matching in one pass ----------
@@ -205,7 +209,7 @@ export async function extractAndMatchDocument(
 
   const client = new OpenAI();
   const response = await client.responses.parse({
-    model: process.env.OPENAI_MODEL || "gpt-5.5",
+    model: EXTRACTION_MODEL,
     reasoning: { effort: "low" },
     store: false, // don't keep medical documents on OpenAI's side
     instructions: `${INSTRUCTIONS}\n${MATCH_INSTRUCTIONS}\n\nTest catalog:\n${catalogText}\n\nGia đình và bệnh án hiện có:\n${rosterText}`,
