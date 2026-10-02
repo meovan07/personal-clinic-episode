@@ -26,7 +26,7 @@ export function VisitList({ visits, showPerson = false }: { visits: VisitRow[]; 
               <span className="w-12 shrink-0 text-center leading-tight tabular-nums">
                 {v.visit_date ? (
                   <>
-                    <span className="block font-serif text-xl">{d}</span>
+                    <span className="block font-serif text-lg">{d}</span>
                     <span className="block text-xs text-ink-soft">
                       th{Number(m)} · {y}
                     </span>

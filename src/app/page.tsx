@@ -146,7 +146,7 @@ export default async function Home() {
                         {initial(p.full_name)}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-lg font-medium">{p.full_name}</div>
+                        <div className="truncate font-semibold">{p.full_name}</div>
                         <div className="muted">
                           {a !== null && `${a} tuổi`}
                           {lastVisit && ` · khám gần nhất ${relativeAgo(lastVisit, today)}`}

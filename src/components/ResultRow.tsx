@@ -54,7 +54,7 @@ export function ResultRow({ r }: { r: ResultRowData }) {
   const long = `${r.value} ${r.unit ?? ""}`.length > 16;
   const value = (
     <span className="tabular-nums">
-      <span className={`font-medium ${long ? "" : "text-lg"} ${valueColor}`}>{r.value}</span>{" "}
+      <span className={`font-semibold ${valueColor}`}>{r.value}</span>{" "}
       {r.unit && <span className="text-sm text-ink-soft">{r.unit}</span>}
     </span>
   );
