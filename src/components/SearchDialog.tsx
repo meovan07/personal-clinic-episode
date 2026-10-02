@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/Badge";
 import { hitHref, type SearchHit } from "@/lib/search";
+import { lockPageScroll } from "@/lib/scroll-lock";
 import { createClient } from "@/lib/supabase/client";
 import { formatDate } from "@/lib/format";
 import { CASE_STATUS, CASE_STATUS_TONE, DOC_TYPE } from "@/lib/labels";
@@ -133,11 +134,7 @@ export function SearchDialog() {
     if (!open) return;
     inputRef.current?.focus();
     inputRef.current?.select();
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previous;
-    };
+    return lockPageScroll();
   }, [open]);
 
   // Debounced search; a response that arrives after a newer keystroke is ignored.
@@ -213,111 +210,117 @@ export function SearchDialog() {
           descendants, which would shrink the overlay to the header's box. */}
       {open &&
         createPortal(
-          <div
-            className="fixed inset-0 z-40 bg-surface sm:bg-ink/30 sm:px-4 sm:pt-[10vh]"
-            onMouseDown={(e) => e.target === e.currentTarget && setOpen(false)}
-          >
+          <>
+            {/* Phones: solid backdrop past the screen edges, as in the assistant panel. */}
+            <div aria-hidden className="fixed inset-x-0 -top-[50vh] -bottom-[100vh] z-40 bg-surface sm:hidden" />
             <div
-              role="dialog"
-              aria-modal="true"
-              aria-label="Tìm kiếm"
-              className="absolute inset-x-0 top-[var(--vv-top,0px)] mx-auto flex h-[var(--vv-height,100dvh)] max-w-2xl flex-col bg-surface sm:static pt-[env(safe-area-inset-top)] sm:h-auto sm:max-h-[75vh] sm:rounded-xl sm:border sm:border-line sm:pt-0 sm:shadow-xl"
+              className="fixed inset-0 z-40 bg-surface sm:bg-ink/30 sm:px-4 sm:pt-[10vh]"
+              onMouseDown={(e) => e.target === e.currentTarget && setOpen(false)}
             >
-              <div className="flex items-center gap-2 border-b border-line px-4 py-3">
-                <Search className="h-5 w-5 shrink-0 text-ink-faint" strokeWidth={1.75} />
-                <input
-                  ref={inputRef}
-                  type="text"
-                  inputMode="search"
-                  enterKeyHint="search"
-                  autoComplete="off"
-                  value={query}
-                  onChange={(e) => changeQuery(e.target.value)}
-                  onKeyDown={onInputKey}
-                  placeholder="Tìm lần khám, chỉ số, thuốc, tiêm chủng…"
-                  aria-label="Tìm kiếm"
-                  className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-ink-faint"
-                />
-                {loading && (
-                  <span className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-line-strong border-t-pine" />
-                )}
-                <button
-                  type="button"
-                  onClick={() => setOpen(false)}
-                  className="shrink-0 text-ink-faint hover:text-ink"
-                  aria-label="Đóng"
-                >
-                  <X className="h-5 w-5" strokeWidth={1.75} />
-                </button>
-              </div>
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-label="Tìm kiếm"
+                className="absolute inset-x-0 top-[var(--vv-top,0px)] mx-auto flex h-[var(--vv-height,100dvh)] max-w-2xl flex-col bg-surface sm:static pt-[env(safe-area-inset-top)] sm:h-auto sm:max-h-[75vh] sm:rounded-xl sm:border sm:border-line sm:pt-0 sm:shadow-xl"
+              >
+                <div className="flex items-center gap-2 border-b border-line px-4 py-3">
+                  <Search className="h-5 w-5 shrink-0 text-ink-faint" strokeWidth={1.75} />
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    inputMode="search"
+                    enterKeyHint="search"
+                    autoComplete="off"
+                    value={query}
+                    onChange={(e) => changeQuery(e.target.value)}
+                    onKeyDown={onInputKey}
+                    placeholder="Tìm lần khám, chỉ số, thuốc, tiêm chủng…"
+                    aria-label="Tìm kiếm"
+                    className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-ink-faint"
+                  />
+                  {loading && (
+                    <span className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-line-strong border-t-pine" />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setOpen(false)}
+                    className="shrink-0 text-ink-faint hover:text-ink"
+                    aria-label="Đóng"
+                  >
+                    <X className="h-5 w-5" strokeWidth={1.75} />
+                  </button>
+                </div>
 
-              <div className="flex-1 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)]">
-                {!query.trim() && (
-                  <div className="p-4">
-                    <p className="muted mb-2">Gõ có dấu hay không dấu đều được. Thử:</p>
-                    <div className="flex flex-wrap gap-2">
-                      {SUGGESTIONS.map((s) => (
-                        <button key={s} type="button" className="btn" onClick={() => changeQuery(s)}>
-                          {s}
-                        </button>
-                      ))}
+                <div className="flex-1 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)]">
+                  {!query.trim() && (
+                    <div className="p-4">
+                      <p className="muted mb-2">Gõ có dấu hay không dấu đều được. Thử:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {SUGGESTIONS.map((s) => (
+                          <button key={s} type="button" className="btn" onClick={() => changeQuery(s)}>
+                            {s}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {error && <p className="p-4 text-sm text-stamp">Lỗi tìm kiếm: {error}</p>}
+                  {error && <p className="p-4 text-sm text-stamp">Lỗi tìm kiếm: {error}</p>}
 
-                {query.trim() && !loading && !error && hits.length === 0 && (
-                  <p className="muted p-4">Không tìm thấy kết quả cho “{query.trim()}”.</p>
-                )}
+                  {query.trim() && !loading && !error && hits.length === 0 && (
+                    <p className="muted p-4">Không tìm thấy kết quả cho “{query.trim()}”.</p>
+                  )}
 
-                {hits.some((h) => h.approximate) && (
-                  <p className="mx-4 mt-3 rounded-lg bg-flag-low-tint px-3 py-2 text-sm text-flag-low">
-                    Không có kết quả khớp chính xác. Đây là kết quả gần đúng (có thể bạn gõ sai chính tả).
-                  </p>
-                )}
+                  {hits.some((h) => h.approximate) && (
+                    <p className="mx-4 mt-3 rounded-lg bg-flag-low-tint px-3 py-2 text-sm text-flag-low">
+                      Không có kết quả khớp chính xác. Đây là kết quả gần đúng (có thể bạn gõ sai chính tả).
+                    </p>
+                  )}
 
-                {groups.map((g) => (
-                  <section key={g.kind} className="py-2">
-                    <h2 className="flex items-center gap-2 px-4 py-1 text-xs font-semibold uppercase tracking-wide text-ink-soft">
-                      <g.icon className="h-4 w-4 text-pine" strokeWidth={1.75} />
-                      {g.label}
-                      <span className="font-normal text-ink-faint">{g.hits.length}</span>
-                    </h2>
-                    <ul>
-                      {g.hits.map(({ hit: h, index: i }) => {
-                        return (
-                          <li key={h.id}>
-                            <Link
-                              id={`search-hit-${i}`}
-                              href={hitHref(h)}
-                              onClick={() => setOpen(false)}
-                              onMouseMove={() => setActive(i)}
-                              className={`flex items-start justify-between gap-3 px-4 py-2.5 ${
-                                i === active ? "bg-paper-dim" : ""
-                              }`}
-                            >
-                              <div className="min-w-0">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <span className="font-medium">{hitTitle(h)}</span>
-                                  {tagBadge(h)}
+                  {groups.map((g) => (
+                    <section key={g.kind} className="py-2">
+                      <h2 className="flex items-center gap-2 px-4 py-1 text-xs font-semibold uppercase tracking-wide text-ink-soft">
+                        <g.icon className="h-4 w-4 text-pine" strokeWidth={1.75} />
+                        {g.label}
+                        <span className="font-normal text-ink-faint">{g.hits.length}</span>
+                      </h2>
+                      <ul>
+                        {g.hits.map(({ hit: h, index: i }) => {
+                          return (
+                            <li key={h.id}>
+                              <Link
+                                id={`search-hit-${i}`}
+                                href={hitHref(h)}
+                                onClick={() => setOpen(false)}
+                                onMouseMove={() => setActive(i)}
+                                className={`flex items-start justify-between gap-3 px-4 py-2.5 ${
+                                  i === active ? "bg-paper-dim" : ""
+                                }`}
+                              >
+                                <div className="min-w-0">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className="font-medium">{hitTitle(h)}</span>
+                                    {tagBadge(h)}
+                                  </div>
+                                  {h.detail && <div className="muted line-clamp-2">{h.detail}</div>}
                                 </div>
-                                {h.detail && <div className="muted line-clamp-2">{h.detail}</div>}
-                              </div>
-                              <div className="shrink-0 text-right text-sm text-ink-soft">
-                                <div>{h.person_name}</div>
-                                {h.happened_on && <div className="font-mono text-xs">{formatDate(h.happened_on)}</div>}
-                              </div>
-                            </Link>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </section>
-                ))}
+                                <div className="shrink-0 text-right text-sm text-ink-soft">
+                                  <div>{h.person_name}</div>
+                                  {h.happened_on && (
+                                    <div className="font-mono text-xs">{formatDate(h.happened_on)}</div>
+                                  )}
+                                </div>
+                              </Link>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </section>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>,
+          </>,
           document.body,
         )}
     </>

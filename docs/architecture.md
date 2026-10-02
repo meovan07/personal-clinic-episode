@@ -84,7 +84,7 @@ The popup (`SearchDialog.tsx`) opens from the header, `/` or Ctrl/⌘+K.
 ### On-screen keyboard (iOS)
 
 iOS Safari doesn't shrink the page when the keyboard opens, so fixed elements misbehave. `AppShell.tsx` handles it app-wide:
-- `--vv-top` / `--vv-height` follow the visible area (`visualViewport`, re-measured at 100/300/600 ms because iOS can report it mid-animation). On phones the chat panel and search popup cover the whole screen with their background, while their content column follows the visible area, so the header and input stay on screen and the page never shows through next to the keyboard.
+- `--vv-top` / `--vv-height` follow the visible area (`visualViewport`, re-measured at 100/300/600 ms because iOS can report it mid-animation). On phones the chat panel and search popup cover the whole screen with their background, while their content column follows the visible area, so the header and input stay on screen and the page never shows through next to the keyboard. Behind them sits a solid backdrop that reaches well past the screen edges, and `lockPageScroll()` (`src/lib/scroll-lock.ts`) locks both `<html>` and `<body>`, because iOS can still shift the page while the keyboard opens.
 - `html[data-keyboard]` is set while a text field has focus on a touch screen; the bottom tab bar and the "+" button (`.hide-with-keyboard`) hide instead of floating over the field, and `.safe-bottom` drops the home-indicator padding.
 - The chat box doesn't grab focus on phones (the keyboard would cover the suggestions), shows "send" on the return key and grows with the text. Day-count fields open the number pad, and empty date fields keep their height.
 

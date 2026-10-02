@@ -28,6 +28,7 @@ import {
 import { createInboxItem, type UploadedFile } from "@/app/actions";
 import { ApprovalCard, isApprovalPart } from "@/components/ApprovalCard";
 import type { DocumentAttachment } from "@/lib/agent/attachments";
+import { lockPageScroll } from "@/lib/scroll-lock";
 import { createClient } from "@/lib/supabase/client";
 import { formatBytes, formatDate } from "@/lib/format";
 import { hashAndCheckDuplicates, rollbackUpload, uploadToStorage } from "@/lib/upload";
@@ -617,11 +618,7 @@ export function AssistantChat() {
   // On phones the panel covers the page; stop the page underneath from scrolling along with it.
   useEffect(() => {
     if (!open || window.innerWidth >= 640) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previous;
-    };
+    return lockPageScroll();
   }, [open]);
   const [view, setView] = useState<View>("chat");
   const [session, setSession] = useState<{ threadId: string; messages: UIMessage[] } | null>(null);
@@ -682,6 +679,9 @@ export function AssistantChat() {
 
   return (
     <>
+      {/* Phones: a solid backdrop reaching far past the screen edges, so nothing of the page shows through
+          even when iOS shifts things around while the keyboard opens. */}
+      {open && <div aria-hidden className="fixed inset-x-0 -top-[50vh] -bottom-[100vh] z-40 bg-surface sm:hidden" />}
       <div
         role="dialog"
         aria-label="Trợ lý AI"
