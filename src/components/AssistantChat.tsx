@@ -18,15 +18,19 @@ import {
   CircleAlert,
   History,
   MessageSquarePlus,
+  Paperclip,
   Send,
   Sparkles,
   Square,
   Trash2,
   X,
 } from "lucide-react";
+import { createInboxItem, type UploadedFile } from "@/app/actions";
 import { ApprovalCard, isApprovalPart } from "@/components/ApprovalCard";
+import type { DocumentAttachment } from "@/lib/agent/attachments";
 import { createClient } from "@/lib/supabase/client";
-import { formatDate } from "@/lib/format";
+import { formatBytes, formatDate } from "@/lib/format";
+import { hashAndCheckDuplicates, rollbackUpload, uploadToStorage } from "@/lib/upload";
 
 // What each tool is doing, shown as a small status line while the agent works.
 const TOOL_LABEL: Record<string, string> = {
@@ -38,6 +42,7 @@ const TOOL_LABEL: Record<string, string> = {
   list_todos: "Xem việc cần làm",
   list_vaccinations: "Xem sổ tiêm chủng",
   get_calendar: "Xem lịch",
+  read_document: "Đọc tài liệu",
   // Write tools show this only while the change is being prepared; then the approval card takes over.
   create_case: "Soạn bệnh án mới",
   update_case: "Soạn thay đổi bệnh án",
@@ -53,6 +58,8 @@ const TOOL_LABEL: Record<string, string> = {
   delete_todo: "Chuẩn bị xoá việc cần làm",
   add_vaccination: "Soạn mũi tiêm",
   delete_vaccination: "Chuẩn bị xoá mũi tiêm",
+  save_document: "Chuẩn bị lưu tài liệu",
+  discard_document: "Chuẩn bị bỏ tài liệu",
 };
 
 const SUGGESTIONS = [
@@ -115,6 +122,7 @@ function ToolStatus({ part }: { part: ToolPart }) {
         <span className="h-3 w-3 animate-spin rounded-full border-2 border-line-strong border-t-pine" />
       )}
       {label}
+      {!done && !failed && name === "read_document" && " (khoảng 30-60 giây)"}
       {failed && " · không thực hiện được"}
     </div>
   );
@@ -161,8 +169,17 @@ function Message({
 }) {
   if (message.role === "user") {
     const text = message.parts.map((p) => (p.type === "text" ? p.text : "")).join("");
+    const attached = message.parts.flatMap((p) =>
+      p.type === "data-document" ? (p.data as DocumentAttachment).files : [],
+    );
     return (
-      <div className="flex justify-end">
+      <div className="flex flex-col items-end gap-1">
+        {attached.length > 0 && (
+          <div className="flex max-w-[85%] items-start gap-1.5 rounded-lg border border-line bg-surface px-3 py-1.5 text-xs text-ink-soft">
+            <Paperclip className="mt-px h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
+            <span className="min-w-0 break-words">{attached.join(", ")}</span>
+          </div>
+        )}
         <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-pine px-3 py-2 text-white">
           {text}
         </div>
@@ -235,12 +252,49 @@ function ChatSession({
     if (seen && done.some((id) => !seen.has(id))) router.refresh();
   }, [messages, router]);
 
-  function send(text: string) {
+  // Photos/PDFs picked for the next message. Uploaded into the inbox (like the "+" button) when sent,
+  // so the assistant can read them on the server; kept locally until then so several camera trips add up.
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  async function send(text: string) {
     const trimmed = text.trim();
-    if (!trimmed || busy) return;
+    if ((!trimmed && files.length === 0) || busy || uploading) return;
     storeThread(threadId);
-    sendMessage({ text: trimmed });
-    setInput("");
+    if (files.length === 0) {
+      sendMessage({ text: trimmed });
+      setInput("");
+      return;
+    }
+
+    setUploadError(null);
+    const supabase = createClient();
+    let uploaded: UploadedFile[] = [];
+    try {
+      setUploading("Đang kiểm tra…");
+      const hashes = await hashAndCheckDuplicates(files);
+      uploaded = await uploadToStorage(supabase, files, hashes, "inbox", (i, total) =>
+        setUploading(`Đang tải ${i + 1}/${total}…`),
+      );
+      const { id } = await createInboxItem(uploaded);
+      const attachment: DocumentAttachment = { inbox_id: id, files: files.map((f) => f.name) };
+      sendMessage({
+        role: "user",
+        parts: [
+          { type: "text", text: trimmed || "Đọc và lưu giúp mình tài liệu này." },
+          { type: "data-document", data: attachment },
+        ],
+      });
+      setFiles([]);
+      setInput("");
+    } catch (e) {
+      await rollbackUpload(supabase, uploaded);
+      setUploadError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setUploading(null);
+    }
   }
 
   return (
@@ -249,8 +303,8 @@ function ChatSession({
         {messages.length === 0 && (
           <div>
             <p className="muted mb-3">
-              Hỏi về các lần khám, chỉ số xét nghiệm, thuốc, lịch hẹn hay tiêm chủng, hoặc nhờ ghi lại giúp (bạn xác
-              nhận trước khi lưu). Ví dụ:
+              Hỏi về các lần khám, chỉ số xét nghiệm, thuốc, lịch hẹn hay tiêm chủng, nhờ ghi lại giúp, hoặc gửi ảnh/PDF
+              kết quả khám bằng nút kẹp giấy (bạn xác nhận trước khi lưu). Ví dụ:
             </p>
             <div className="flex flex-col items-start gap-2">
               {SUGGESTIONS.map((s) => (
@@ -293,6 +347,29 @@ function ChatSession({
         )}
       </div>
 
+      {(files.length > 0 || uploadError) && (
+        <div className="space-y-1 border-t border-line px-3 pt-2 text-xs">
+          {files.map((f, i) => (
+            <div key={i} className="flex items-center gap-1.5 text-ink-soft">
+              <Paperclip className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
+              <span className="min-w-0 flex-1 truncate">
+                {f.name} ({formatBytes(f.size)})
+              </span>
+              <button
+                type="button"
+                className="shrink-0 text-ink-faint hover:text-stamp"
+                aria-label={`Bỏ ${f.name}`}
+                disabled={!!uploading}
+                onClick={() => setFiles((fs) => fs.filter((_, j) => j !== i))}
+              >
+                <X className="h-3.5 w-3.5" strokeWidth={1.75} />
+              </button>
+            </div>
+          ))}
+          {uploading && <p className="text-ink-soft">{uploading}</p>}
+          {uploadError && <p className="text-stamp">{uploadError}</p>}
+        </div>
+      )}
       <form
         className="flex items-end gap-2 border-t border-line px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
         onSubmit={(e) => {
@@ -300,6 +377,31 @@ function ChatSession({
           send(input);
         }}
       >
+        <input
+          ref={fileRef}
+          type="file"
+          multiple
+          accept="image/*,application/pdf"
+          className="hidden"
+          onChange={(e) => {
+            const picked = Array.from(e.target.files ?? []);
+            if (picked.length) {
+              setUploadError(null);
+              setFiles((fs) => [...fs, ...picked]);
+            }
+            e.target.value = "";
+          }}
+        />
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          disabled={busy || !!uploading}
+          className="btn h-10 w-10 shrink-0 px-0"
+          aria-label="Đính kèm ảnh hoặc PDF"
+          title="Đính kèm ảnh hoặc PDF (nhiều trang: chọn/chụp thêm trước khi gửi)"
+        >
+          <Paperclip className="h-4 w-4" strokeWidth={1.75} />
+        </button>
         <textarea
           ref={inputRef}
           value={input}
@@ -323,7 +425,7 @@ function ChatSession({
         ) : (
           <button
             type="submit"
-            disabled={!input.trim()}
+            disabled={(!input.trim() && files.length === 0) || !!uploading}
             className="btn-primary h-10 w-10 shrink-0 px-0"
             aria-label="Gửi"
           >
@@ -332,6 +434,44 @@ function ChatSession({
         )}
       </form>
     </>
+  );
+}
+
+// Delete button for a row in the panel's lists: the first tap asks right there in the row
+// (no browser confirm() popup), the second one deletes.
+function InlineDelete({ label, onDelete }: { label: string; onDelete: () => Promise<void> }) {
+  const [asking, setAsking] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  if (!asking)
+    return (
+      <button
+        type="button"
+        onClick={() => setAsking(true)}
+        className="shrink-0 text-ink-faint hover:text-stamp"
+        aria-label={label}
+        title={label}
+      >
+        <Trash2 className="h-4 w-4" strokeWidth={1.75} />
+      </button>
+    );
+  return (
+    <span className="flex shrink-0 items-center gap-1.5">
+      <button type="button" className="btn px-2 py-1 text-xs" disabled={deleting} onClick={() => setAsking(false)}>
+        Huỷ
+      </button>
+      <button
+        type="button"
+        className="btn-danger-solid px-2 py-1 text-xs"
+        disabled={deleting}
+        autoFocus
+        onClick={async () => {
+          setDeleting(true);
+          await onDelete();
+        }}
+      >
+        {deleting ? "Đang xoá…" : "Xoá"}
+      </button>
+    </span>
   );
 }
 
@@ -365,7 +505,6 @@ function HistoryList({
   }, [version]);
 
   async function remove(id: string) {
-    if (!confirm("Xóa cuộc trò chuyện này?")) return;
     await createClient().from("chat_threads").delete().eq("id", id);
     setVersion((v) => v + 1);
   }
@@ -396,14 +535,7 @@ function HistoryList({
               <span className="block truncate">{t.title ?? "Cuộc trò chuyện"}</span>
               <span className="muted text-xs">{formatDate(t.updated_at)}</span>
             </button>
-            <button
-              type="button"
-              onClick={() => remove(t.id)}
-              className="text-ink-faint hover:text-stamp"
-              aria-label="Xóa"
-            >
-              <Trash2 className="h-4 w-4" strokeWidth={1.75} />
-            </button>
+            <InlineDelete label="Xóa cuộc trò chuyện" onDelete={() => remove(t.id)} />
           </li>
         ))}
       </ul>
@@ -433,7 +565,6 @@ function MemoryList() {
   }, [version]);
 
   async function remove(id: string) {
-    if (!confirm("Xóa điều này khỏi trí nhớ của trợ lý?")) return;
     await createClient().from("agent_memories").delete().eq("id", id);
     setVersion((v) => v + 1);
   }
@@ -458,14 +589,7 @@ function MemoryList() {
                   {m.people?.full_name ?? "Chung"} · {formatDate(m.updated_at)}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => remove(m.id)}
-                className="text-ink-faint hover:text-stamp"
-                aria-label="Xóa"
-              >
-                <Trash2 className="h-4 w-4" strokeWidth={1.75} />
-              </button>
+              <InlineDelete label="Xóa khỏi trí nhớ" onDelete={() => remove(m.id)} />
             </li>
           ))}
         </ul>

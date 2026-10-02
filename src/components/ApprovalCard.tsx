@@ -45,6 +45,13 @@ function Body({ preview }: { preview: ApprovalPreview }) {
           </ul>
         </div>
       )}
+      {!!preview.notes?.length && (
+        <ul className="mt-2 space-y-1 rounded-md bg-flag-low-tint px-2.5 py-1.5 text-xs text-flag-low">
+          {preview.notes.map((n) => (
+            <li key={n}>{n}</li>
+          ))}
+        </ul>
+      )}
       {!!preview.keeps?.length && (
         <ul className="mt-2 text-ink-soft">
           {preview.keeps.map((k) => (
@@ -101,6 +108,15 @@ export function ApprovalCard({
       <div className="px-3 py-2">
         {preview?.target && <p className="font-medium">{preview.target}</p>}
         {preview ? <Body preview={preview} /> : <p className="text-ink-soft">Không đọc được nội dung thay đổi.</p>}
+        {preview?.link && part.state === "approval-requested" && (
+          <Link
+            href={preview.link.href}
+            onClick={onNavigate}
+            className="mt-2 inline-block text-xs text-pen underline underline-offset-2"
+          >
+            {preview.link.label}
+          </Link>
+        )}
       </div>
 
       <div className="border-t border-line px-3 py-2">

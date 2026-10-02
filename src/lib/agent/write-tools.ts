@@ -2,7 +2,8 @@ import { tool, type ToolSet } from "ai";
 import { z } from "zod";
 import type { Json } from "@/lib/database.types";
 import { formatDate } from "@/lib/format";
-import { CASE_STATUS } from "@/lib/labels";
+import { CASE_STATUS, DOC_TYPE } from "@/lib/labels";
+import * as inbox from "@/lib/services/inbox";
 import * as records from "@/lib/services/records";
 import { check, type Supabase } from "@/lib/services/records";
 import type { ApprovalField, ApprovalPreview } from "@/lib/agent/approval";
@@ -574,6 +575,136 @@ export function createWriteTools(supabase: Supabase, { threadId }: { threadId: s
         const before = check(await supabase.from("vaccinations").select("*").eq("id", vaccination_id).single());
         await records.deleteVaccination(supabase, vaccination_id);
         return { before, result: { deleted: true, url: `/people/${before.person_id}/vaccinations` } };
+      },
+    }),
+    // ---------- Tài liệu gửi trong chat (8c) ----------
+    save_document: spec({
+      description:
+        "Save a document the user attached in the chat (after read_document) into the records, exactly as it was read: " +
+        "its results, medications, vaccinations and advice. Attach it to an existing visit with visit_id (e.g. " +
+        "suggested.existing_visit_id), or leave visit_id out to create a new visit from the document's date and facility; " +
+        "for a new visit, optionally put it in a bệnh án with case_id or start one with new_case_title.",
+      inputSchema: z.object({
+        inbox_id: uuid,
+        person_id: uuid,
+        visit_id: uuid.optional(),
+        case_id: uuid.optional(),
+        new_case_title: text(200).optional(),
+      }),
+      preview: async (input) => {
+        const item = await inbox.loadInboxItem(supabase, input.inbox_id);
+        if (!item) throw new Error("Tài liệu này không còn chờ lưu (đã lưu hoặc đã bỏ).");
+        const x = item.extraction;
+        if (!x) throw new Error("Tài liệu chưa được đọc xong; hãy gọi read_document trước.");
+        if (input.visit_id && (input.case_id || input.new_case_title))
+          throw new Error("Khi gắn vào lần khám đã có thì bệnh án theo lần khám đó; đừng gửi case_id/new_case_title.");
+        if (input.case_id && input.new_case_title) throw new Error("Chọn bệnh án có sẵn hoặc tạo mới, không cả hai.");
+        await ensureSamePerson(input.person_id, { caseId: input.case_id, visitId: input.visit_id });
+        const who = await person(input.person_id);
+
+        const FLAG: Record<string, string> = { high: "cao", low: "thấp", abnormal: "bất thường" };
+        const flagged = x.observations.filter((o) => o.flag && o.flag !== "normal");
+        const newVisit = [x.document_date ? formatDate(x.document_date) : "chưa rõ ngày", x.facility].filter(Boolean);
+        const fields: ApprovalField[] = [
+          { label: "Loại", after: DOC_TYPE[x.document_type] ?? x.document_type },
+          {
+            label: "Lần khám",
+            after: input.visit_id
+              ? `${visitLabel(await visitRow(input.visit_id))} (đã có)`
+              : `Mới · ${newVisit.join(" · ")}`,
+          },
+        ];
+        if (input.case_id) fields.push({ label: "Bệnh án", after: await caseTitle(input.case_id) });
+        if (input.new_case_title) fields.push({ label: "Bệnh án", after: `Mới: ${input.new_case_title}` });
+        if (x.diagnoses.length) fields.push({ label: "Chẩn đoán", after: x.diagnoses.join("; ") });
+        if (x.observations.length) {
+          const shown = flagged
+            .slice(0, 6)
+            .map((o) => `${o.raw_name} ${o.value}${o.unit ? ` ${o.unit}` : ""} (${FLAG[o.flag!]})`);
+          if (flagged.length > 6) shown.push(`+${flagged.length - 6}`);
+          fields.push({
+            label: "Chỉ số",
+            after:
+              `${x.observations.length} chỉ số` +
+              (flagged.length ? `, ngoài ngưỡng: ${shown.join(", ")}` : ", đều trong ngưỡng"),
+          });
+        }
+        if (x.medications.length) fields.push({ label: "Thuốc", after: x.medications.map((m) => m.name).join(", ") });
+        if (x.vaccinations.length)
+          fields.push({
+            label: "Mũi tiêm",
+            after: x.vaccinations
+              .map((v) =>
+                [v.vaccine_name, v.dose_label, v.given_on && formatDate(v.given_on)].filter(Boolean).join(" "),
+              )
+              .join(", "),
+          });
+        if (x.doctor_advice.length) fields.push({ label: "Lời dặn", after: x.doctor_advice.join("; ") });
+        if (x.follow_up_date) fields.push({ label: "Tái khám", after: formatDate(x.follow_up_date) });
+
+        const notes = [...x.uncertain];
+        if (x.matched_person_id && x.matched_person_id !== input.person_id)
+          notes.unshift(
+            `AI đoán tài liệu này của người khác${x.patient_name ? ` (tên trên giấy: ${x.patient_name})` : ""}. Kiểm tra lại người bệnh.`,
+          );
+        else if (x.person_match_confidence === "low")
+          notes.unshift("AI không chắc tài liệu này của ai. Kiểm tra lại người bệnh.");
+        return {
+          title: "Lưu tài liệu vào hồ sơ",
+          destructive: false,
+          person: who.full_name,
+          target: item.files.join(", "),
+          fields,
+          notes,
+          link: { href: `/inbox/${input.inbox_id}/review`, label: "Xem ảnh và sửa chi tiết" },
+        };
+      },
+      run: async (input) => {
+        const item = await inbox.loadInboxItem(supabase, input.inbox_id);
+        const x = item?.extraction;
+        if (!x) throw new Error("Tài liệu này không còn chờ lưu.");
+        const { visitId, documentId } = await inbox.saveInboxItem(supabase, input.inbox_id, {
+          personId: input.person_id,
+          case: input.case_id
+            ? { type: "existing", id: input.case_id }
+            : input.new_case_title
+              ? { type: "new", title: input.new_case_title }
+              : { type: "none" },
+          visit: input.visit_id
+            ? { type: "existing", id: input.visit_id }
+            : {
+                type: "new",
+                visit_date: x.document_date,
+                facility: x.facility,
+                department: x.department,
+                doctor: x.doctor,
+              },
+          reviewed: inbox.reviewedFrom(x),
+        });
+        return { result: { visit_id: visitId, document_id: documentId, url: `/visits/${visitId}` } };
+      },
+    }),
+
+    discard_document: spec({
+      description:
+        "Throw away a document the user attached in the chat without saving it (removes the uploaded files).",
+      destructive: true,
+      inputSchema: z.object({ inbox_id: uuid }),
+      preview: async ({ inbox_id }) => {
+        const item = await inbox.loadInboxItem(supabase, inbox_id);
+        if (!item) throw new Error("Tài liệu này không còn chờ lưu (đã lưu hoặc đã bỏ).");
+        return {
+          title: "Bỏ tài liệu vừa gửi",
+          destructive: true,
+          target: item.files.join(", "),
+          fields: [],
+          removes: [`${plural(item.files.length, "file")} đã tải lên, chưa lưu vào hồ sơ`],
+        };
+      },
+      run: async ({ inbox_id }) => {
+        const before = await inbox.loadInboxItem(supabase, inbox_id);
+        await inbox.discardInboxItem(supabase, inbox_id);
+        return { before, result: { deleted: true } };
       },
     }),
   };

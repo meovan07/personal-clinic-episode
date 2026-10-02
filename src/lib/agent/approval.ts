@@ -22,6 +22,10 @@ export type ApprovalPreview = {
   removes?: string[];
   /** What a delete leaves in place, e.g. visits that only leave the bệnh án. */
   keeps?: string[];
+  /** Things to double-check, e.g. parts of a document the AI couldn't read well. */
+  notes?: string[];
+  /** Where to see or edit the full details instead. */
+  link?: { href: string; label: string };
 };
 
 export function parsePreview(reason: string | undefined): ApprovalPreview | null {

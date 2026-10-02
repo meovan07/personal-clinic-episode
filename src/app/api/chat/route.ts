@@ -12,6 +12,7 @@ import {
 } from "ai";
 import { after } from "next/server";
 import { z } from "zod";
+import { attachmentText, DATA_SCHEMAS, DocumentAttachment } from "@/lib/agent/attachments";
 import { applyApprovalResponses } from "@/lib/agent/continuation";
 import { buildInstructions } from "@/lib/agent/instructions";
 import {
@@ -74,7 +75,11 @@ export async function POST(req: Request) {
   const tools = { ...createReadTools(supabase), ...write.tools };
   let history: UIMessage[];
   try {
-    history = await validateUIMessages({ messages: [...loaded.messages.slice(0, alreadySaved), next], tools });
+    history = await validateUIMessages({
+      messages: [...loaded.messages.slice(0, alreadySaved), next],
+      tools,
+      dataSchemas: DATA_SCHEMAS,
+    });
   } catch (e) {
     // e.g. a stored tool call from an older version whose input no longer matches; better a clear error than a crash.
     console.error("chat history invalid", e);
@@ -85,7 +90,13 @@ export async function POST(req: Request) {
   const thread = await compactIfNeeded(supabase, loaded.thread, history);
   const [memories, today] = [await loadMemories(supabase), vietnamToday()];
   const recent = pruneMessages({
-    messages: await convertToModelMessages(history.slice(thread.summarized_count)),
+    messages: await convertToModelMessages(history.slice(thread.summarized_count), {
+      // Attached documents reach the model as a note with their inbox id; it reads them with read_document.
+      convertDataPart: (part) =>
+        part.type === "data-document"
+          ? { type: "text", text: attachmentText(DocumentAttachment.parse(part.data)) }
+          : undefined,
+    }),
     // Old lookup results are bulky; the model only needs them for the last few turns.
     toolCalls: "before-last-4-messages",
     reasoning: "before-last-message",

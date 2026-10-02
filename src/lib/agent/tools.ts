@@ -5,6 +5,7 @@ import { prepareCalendar, vietnamToday } from "@/lib/calendar";
 import { loadCalendarEvents } from "@/lib/calendar-data";
 import { nameKey } from "@/lib/normalize";
 import { hitHref } from "@/lib/search";
+import { loadInboxItem, readInboxItem } from "@/lib/services/inbox";
 import { pendingDoses } from "@/lib/vaccinations";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
@@ -277,6 +278,78 @@ export function createReadTools(supabase: Supabase) {
             due_on: d.next_due_on,
           })),
           url: `/people/${person_id}/vaccinations`,
+        };
+      },
+    }),
+
+    read_document: tool({
+      description:
+        "Read a photo/PDF the user attached in the chat (by its inbox_id). Returns what the AI read from it " +
+        "(document type, date, facility, results, medications, vaccinations, advice) and its guess of whose it is, " +
+        "which bệnh án it continues and which existing visit it belongs to. Takes 30-60 seconds the first time.",
+      inputSchema: z.object({ inbox_id: uuid }),
+      execute: async ({ inbox_id }) => {
+        let item = await loadInboxItem(supabase, inbox_id);
+        if (!item) return { error: "This document isn't waiting in the inbox (already saved or discarded)." };
+        if (!item.extraction) {
+          const { error } = await readInboxItem(supabase, inbox_id);
+          if (error) return { error: `Could not read the document: ${error}` };
+          item = await loadInboxItem(supabase, inbox_id);
+        }
+        const x = item?.extraction;
+        if (!item || !x) return { error: "Could not read the document." };
+
+        const [person, kase, visit] = await Promise.all([
+          x.matched_person_id
+            ? supabase.from("people").select("full_name").eq("id", x.matched_person_id).maybeSingle()
+            : null,
+          x.matched_case_id ? supabase.from("cases").select("title").eq("id", x.matched_case_id).maybeSingle() : null,
+          item.suggestedVisitId
+            ? supabase.from("visits").select("visit_date, facility").eq("id", item.suggestedVisitId).maybeSingle()
+            : null,
+        ]);
+        return {
+          inbox_id,
+          files: item.files,
+          review_url: `/inbox/${inbox_id}/review`,
+          document: {
+            type: x.document_type,
+            date: x.document_date,
+            facility: x.facility,
+            department: x.department,
+            doctor: x.doctor,
+            patient_name_on_document: x.patient_name,
+            summary: x.summary,
+            diagnoses: x.diagnoses,
+            doctor_advice: x.doctor_advice,
+            follow_up_date: x.follow_up_date,
+          },
+          suggested: {
+            person_id: person?.data ? x.matched_person_id : null,
+            person: person?.data?.full_name ?? null,
+            person_confidence: x.person_match_confidence,
+            case_id: kase?.data ? x.matched_case_id : null,
+            case: kase?.data?.title ?? null,
+            new_case_title: x.is_new_case ? x.new_case_title : null,
+            existing_visit_id: visit?.data ? item.suggestedVisitId : null,
+            existing_visit: visit?.data ?? null,
+          },
+          results: x.observations.map((o) => ({
+            test: o.raw_name,
+            value: o.value,
+            unit: o.unit,
+            reference_range: o.ref_range,
+            flag: o.flag,
+          })),
+          medications: x.medications,
+          vaccinations: x.vaccinations.map((v) => ({
+            vaccine: v.vaccine_name,
+            disease: v.disease,
+            dose: v.dose_label,
+            given_on: v.given_on,
+            next_due_on: v.next_due_on,
+          })),
+          unclear: x.uncertain,
         };
       },
     }),
