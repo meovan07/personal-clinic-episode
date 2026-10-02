@@ -237,7 +237,8 @@ function ChatSession({
   }, [messages, status]);
 
   useEffect(() => {
-    inputRef.current?.focus();
+    // On phones the keyboard would cover the suggestions and the conversation; tap the box to type.
+    if (!window.matchMedia("(pointer: coarse)").matches) inputRef.current?.focus();
   }, [focusKey]);
 
   // When an approved change has been saved, refresh the page behind the chat so it shows it.
@@ -371,7 +372,7 @@ function ChatSession({
         </div>
       )}
       <form
-        className="flex items-end gap-2 border-t border-line px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+        className="safe-bottom flex items-end gap-2 border-t border-line px-3 py-3"
         onSubmit={(e) => {
           e.preventDefault();
           send(input);
@@ -414,9 +415,11 @@ function ChatSession({
           }}
           rows={1}
           maxLength={4000}
+          enterKeyHint="send"
+          autoCapitalize="sentences"
           placeholder="Hỏi hoặc nhờ cập nhật hồ sơ…"
           aria-label="Tin nhắn"
-          className="input max-h-32 min-h-10 flex-1 resize-none"
+          className="input max-h-32 min-h-10 flex-1 resize-none [field-sizing:content]"
         />
         {busy ? (
           <button type="button" onClick={() => stop()} className="btn h-10 w-10 shrink-0 px-0" aria-label="Dừng">
@@ -610,6 +613,16 @@ export function openAssistant() {
 export function AssistantChat() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+
+  // On phones the panel covers the page; stop the page underneath from scrolling along with it.
+  useEffect(() => {
+    if (!open || window.innerWidth >= 640) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [open]);
   const [view, setView] = useState<View>("chat");
   const [session, setSession] = useState<{ threadId: string; messages: UIMessage[] } | null>(null);
   const [focusKey, setFocusKey] = useState(0);
@@ -673,7 +686,7 @@ export function AssistantChat() {
         role="dialog"
         aria-label="Trợ lý AI"
         hidden={!open}
-        className="anim-panel fixed inset-0 z-40 flex flex-col bg-surface pt-[env(safe-area-inset-top)] sm:inset-auto sm:bottom-5 sm:right-5 sm:h-[min(42rem,calc(100vh-2.5rem))] sm:w-[26rem] sm:rounded-2xl sm:border sm:border-line sm:pt-0 sm:shadow-2xl"
+        className="anim-panel fixed inset-x-0 top-[var(--vv-top,0px)] z-40 flex h-[var(--vv-height,100dvh)] flex-col bg-surface pt-[env(safe-area-inset-top)] sm:inset-auto sm:bottom-5 sm:right-5 sm:h-[min(42rem,calc(100vh-2.5rem))] sm:w-[26rem] sm:rounded-2xl sm:border sm:border-line sm:pt-0 sm:shadow-2xl"
       >
         <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
           {view === "chat" ? (

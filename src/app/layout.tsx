@@ -4,6 +4,7 @@ import Link from "next/link";
 import { LogOut, Stethoscope } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/actions";
+import { AppShell } from "@/components/AppShell";
 import { AssistantChat } from "@/components/AssistantChat";
 import { PersonNav, PersonTabBar } from "@/components/PersonNav";
 import { QuickAddButton } from "@/components/QuickAddButton";
@@ -28,13 +29,24 @@ const mono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "Sổ bệnh án",
   description: "Lưu trữ bệnh án gia đình",
+  // Installed on an iPhone home screen: open full-screen, with this name under the icon.
+  appleWebApp: { capable: true, title: "Bệnh án", statusBarStyle: "default" },
+  // Next emits the standard mobile-web-app-capable; older iOS versions only read the apple- prefixed one.
+  other: { "apple-mobile-web-app-capable": "yes" },
 };
 
 // maximumScale 1 stops iOS auto-zooming the page when a <16px input/select is focused -
 // accepted tradeoff since pinch-zoom is rarely needed on this app's short forms/lists.
 // viewportFit "cover" is required for env(safe-area-inset-*) to resolve to anything but 0 -
 // without it, the header/bottom-nav safe-area padding below has no effect at all.
-export const viewport: Viewport = { width: "device-width", initialScale: 1, maximumScale: 1, viewportFit: "cover" };
+// themeColor tints the browser bar / status bar to match the header.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover",
+  themeColor: "#fdfbf4",
+};
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const supabase = await createClient();
@@ -56,6 +68,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="vi" className={`${sans.variable} ${mono.variable} h-full antialiased`}>
       <body className="min-h-full font-sans">
+        <AppShell />
         <div className="print:hidden">
           <TopLoader />
         </div>
@@ -70,7 +83,10 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
               <div className="flex shrink-0 items-center gap-4">
                 {isMember && <SearchDialog />}
                 <form action={signOut}>
-                  <button className="flex items-center gap-1.5 text-sm text-ink-soft hover:text-ink" aria-label="Đăng xuất">
+                  <button
+                    className="flex items-center gap-1.5 text-sm text-ink-soft hover:text-ink"
+                    aria-label="Đăng xuất"
+                  >
                     <LogOut className="h-4 w-4" strokeWidth={1.75} />
                     <span className="hidden sm:inline">Đăng xuất</span>
                   </button>

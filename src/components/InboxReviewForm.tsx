@@ -376,6 +376,7 @@ export function InboxReviewForm({
                 <input
                   className="input sm:col-span-2"
                   type="number"
+                  inputMode="numeric"
                   min={1}
                   value={m.duration_days ?? ""}
                   placeholder="Số ngày"

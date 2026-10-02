@@ -214,7 +214,7 @@ export function SearchDialog() {
       {open &&
         createPortal(
           <div
-            className="fixed inset-0 z-40 bg-ink/30 sm:px-4 sm:pt-[10vh]"
+            className="fixed inset-x-0 top-[var(--vv-top,0px)] z-40 h-[var(--vv-height,100dvh)] bg-ink/30 sm:inset-0 sm:h-auto sm:px-4 sm:pt-[10vh]"
             onMouseDown={(e) => e.target === e.currentTarget && setOpen(false)}
           >
             <div

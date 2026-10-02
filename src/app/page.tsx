@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Clock, Sparkles, TriangleAlert, UserPlus } from "lucide-react";
 import { ActionItems } from "@/components/ActionItems";
 import { HealthCalendar } from "@/components/HealthCalendar";
+import { InstallHint } from "@/components/InstallHint";
 import { VisitList } from "@/components/VisitList";
 import { prepareCalendar, vietnamToday } from "@/lib/calendar";
 import { loadCalendarEvents } from "@/lib/calendar-data";
@@ -21,10 +22,7 @@ function initial(name: string) {
 export default async function Home() {
   const supabase = await createClient();
   const [people, visits, actions, inbox, calendarEvents] = await Promise.all([
-    supabase
-      .from("people")
-      .select("id, full_name, birth_date, cases(status), visits(visit_date)")
-      .order("created_at"),
+    supabase.from("people").select("id, full_name, birth_date, cases(status), visits(visit_date)").order("created_at"),
     supabase
       .from("visits")
       .select("id, visit_date, facility, reason, cases(title), people(full_name), documents(count)")
@@ -35,16 +33,14 @@ export default async function Home() {
       .select("id, content, due_on, done, visit_id, notes, people(full_name)")
       .eq("done", false)
       .order("due_on", { ascending: true, nullsFirst: false }),
-    supabase
-      .from("inbox_items")
-      .select("id, status, inbox_files(file_name)")
-      .order("created_at"),
+    supabase.from("inbox_items").select("id, status, inbox_files(file_name)").order("created_at"),
     loadCalendarEvents(supabase),
   ]);
   const calendar = prepareCalendar(calendarEvents, vietnamToday());
 
   return (
     <div className="space-y-8">
+      <InstallHint />
       {inbox.data && inbox.data.length > 0 && (
         <section>
           <h2 className="section-title">Tài liệu mới tải lên</h2>
@@ -53,7 +49,11 @@ export default async function Home() {
               const status = INBOX_STATUS[item.status];
               const Icon = status?.icon;
               return (
-                <Link key={item.id} href={`/inbox/${item.id}/review`} className="card card-interactive flex items-center justify-between gap-2">
+                <Link
+                  key={item.id}
+                  href={`/inbox/${item.id}/review`}
+                  className="card card-interactive flex items-center justify-between gap-2"
+                >
                   <span>{item.inbox_files.map((f) => f.file_name).join(", ")}</span>
                   <span className="muted flex items-center gap-1.5 whitespace-nowrap">
                     {Icon && <Icon className="h-3.5 w-3.5" strokeWidth={1.75} />}

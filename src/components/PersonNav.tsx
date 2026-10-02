@@ -58,7 +58,7 @@ export function PersonTabBar({ people }: { people: NavPerson[] }) {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-20 flex border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] sm:hidden"
+      className="hide-with-keyboard fixed inset-x-0 bottom-0 z-20 flex border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] sm:hidden"
       aria-label="Điều hướng chính"
     >
       <Link

@@ -41,6 +41,10 @@ npm run build      # production build
 
 Code is formatted with Prettier at a 120-character line width (`npx prettier --print-width 120 --write <files>`).
 
+## Testing on a phone
+
+Installing to the home screen, push notifications and the real on-screen keyboard need HTTPS on an actual device, so test those on the deployed site (or a Vercel preview). On iPhone: open it in Safari → Share → Thêm vào Màn hình chính, then open it from the new icon. After a deploy, the installed app picks up the new version on its next launch (the service worker is fetched with `updateViaCache: "none"`).
+
 ## Database changes
 
 Migrations in `supabase/migrations/` are the source of truth, and only add or change things; data is never dropped by a migration without asking first.

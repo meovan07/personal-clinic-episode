@@ -106,7 +106,7 @@ export function QuickAddButton() {
       {files.length === 0 ? (
         <div
           ref={menuRef}
-          className="fixed bottom-20 right-4 z-30 flex flex-col items-end gap-2 sm:bottom-5 sm:right-5"
+          className="hide-with-keyboard fixed bottom-20 right-4 z-30 flex flex-col items-end gap-2 sm:bottom-5 sm:right-5"
         >
           {error && (
             <div className="max-w-[80vw] rounded-lg border border-stamp/30 bg-stamp-tint px-3 py-2 text-sm text-stamp shadow-lg sm:max-w-xs">

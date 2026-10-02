@@ -175,3 +175,28 @@ a {
     animation: none;
   }
 }
+
+/* On-screen keyboard (touch screens). AppShell sets data-keyboard while a text field has focus: the bottom
+   tab bar and the "+" button are fixed to the bottom, and on iOS they would float over the field being typed in. */
+html[data-keyboard] .hide-with-keyboard {
+  display: none;
+}
+
+/* iOS Safari collapses an empty date field and centers its text; keep it the height and alignment of the
+   other fields. */
+input[type="date"].input {
+  min-height: 2.625rem;
+  -webkit-appearance: none;
+  appearance: none;
+}
+input[type="date"].input::-webkit-date-and-time-value {
+  text-align: left;
+}
+
+/* Bottom padding that clears the iPhone home indicator, except while the keyboard covers that area. */
+.safe-bottom {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+html[data-keyboard] .safe-bottom {
+  padding-bottom: 0.75rem;
+}

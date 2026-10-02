@@ -10,15 +10,12 @@
 | 4 – Quick add | One "+" upload; AI matches the document to a person, bệnh án and visit | ✅ |
 | 5 – Sổ tiêm chủng | Vaccination history per person, read from vaccination cards like lab results | ✅ |
 | 6 – Redesign & AI upkeep | Visual redesign; Markdown health summary; to-dos refined with context; "Thêm lần khám" leads with the photo | ✅ |
-| 7 – Extras | Search ✅ · printable doctor summary ✅ · calendar ✅ · **reminders that reach you** ⏳ | 3 of 4 |
+| 7 – Extras | Search ✅ · printable doctor summary ✅ · calendar ✅ · installable app (PWA) ✅ · **reminders that reach you** ⏳ | 4 of 5 |
 | 8 – Chat assistant | 8a ask ✅ · 8b change with approval ✅ · 8c documents in the chat ✅ · 8d "+" menu and polish ✅ | ✅ |
 
 ## Next
 
-1. **Reminders** (last item of Phase 7): a heads-up the day before a follow-up visit, a due vaccine dose or a to-do deadline. A daily Vercel Cron job (about 07:00 Vietnam time) finds what's due and sends it. The channel is still to choose:
-   - **Web Push** (free, app-like notifications; on iPhone the site must be added to the Home Screen),
-   - **Email** (e.g. Resend's free tier; one morning digest),
-   - **Telegram bot** (free, reliable; both members add the bot).
+1. **Reminders by Web Push** (last item of Phase 7): a morning notification for to-dos and vaccine doses due today or tomorrow. The service worker already handles push and notification taps. Still to do: a `push_subscriptions` table and a narrowly scoped `reminder_feed()` function for the daily cron (drafted, waiting for review before it touches the database), VAPID keys, a "turn on notifications" control, and the daily job. On iPhone, notifications only work in the installed app (iOS 16.4+).
 2. **Smaller items**
    - Turn on Supabase's leaked-password protection (Auth settings; flagged by the security advisor).
    - Benchmark the models for the health summary and to-do polishing (`src/lib/ai/summarize.ts`, `polish.ts`, still `gpt-5.5`), as was done for extraction and chat.
@@ -34,6 +31,7 @@
 
 | Date | Change |
 |---|---|
+| 02/10/2026 | Installable app (PWA): manifest, home-screen icons, service worker with an offline page, iPhone install hint. iOS keyboard fixes: bottom bar and "+" hide while typing, chat and search follow the visible area, number pad for day counts, empty date fields keep their height, chat box grows with the text. |
 | 02/10/2026 | Daily keep-alive: Vercel Cron calls `/api/keep-alive` so the free Supabase project isn't paused after a week without use. |
 | 02/10/2026 | **8d:** "+" opens a menu (Hỏi trợ lý AI / Tải ảnh, PDF); the separate assistant button is gone; Esc closes the chat; short entrance animations (off with reduced motion). |
 | 02/10/2026 | **8c:** photos/PDFs can be sent in the chat; the assistant reads them and files them after approval. Inbox logic moved to `src/lib/services/inbox.ts`. Inline confirm replaces `window.confirm()` in the chat lists. |

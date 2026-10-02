@@ -305,7 +305,7 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
             <input name="name" required placeholder="Tên thuốc" className="input sm:col-span-2" />
             <input name="dose" placeholder="Liều (20mg)" className="input" />
             <input name="schedule" placeholder="Cách dùng (2 lần/ngày)" className="input" />
-            <input name="duration_days" type="number" min={1} placeholder="Số ngày" className="input" />
+            <input name="duration_days" type="number" inputMode="numeric" min={1} placeholder="Số ngày" className="input" />
             <div className="sm:col-span-5">
               <SubmitButton className="btn">
                 <Plus className="h-4 w-4" strokeWidth={1.75} />
