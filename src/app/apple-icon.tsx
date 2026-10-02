@@ -14,12 +14,12 @@ export default function AppleIcon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#1f4d3d",
+          background: "#2f5d8f",
         }}
       >
         <div style={{ position: "relative", width: 90, height: 90, display: "flex" }}>
-          <div style={{ position: "absolute", top: 0, left: 33, width: 24, height: 90, background: "#fdfbf4", borderRadius: 12 }} />
-          <div style={{ position: "absolute", top: 33, left: 0, width: 90, height: 24, background: "#fdfbf4", borderRadius: 12 }} />
+          <div style={{ position: "absolute", top: 0, left: 33, width: 24, height: 90, background: "#ffffff", borderRadius: 12 }} />
+          <div style={{ position: "absolute", top: 33, left: 0, width: 90, height: 24, background: "#ffffff", borderRadius: 12 }} />
         </div>
       </div>
     ),

@@ -307,7 +307,7 @@ export function SearchDialog() {
                                 <div className="shrink-0 text-right text-sm text-ink-soft">
                                   <div>{h.person_name}</div>
                                   {h.happened_on && (
-                                    <div className="font-mono text-xs">{formatDate(h.happened_on)}</div>
+                                    <div className="text-xs tabular-nums">{formatDate(h.happened_on)}</div>
                                   )}
                                 </div>
                               </Link>

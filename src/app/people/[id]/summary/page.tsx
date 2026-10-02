@@ -202,7 +202,7 @@ export default async function DoctorSummaryPage({ params }: PageProps<"/people/[
                     <td className="py-1 pr-2">
                       {[m.dose, m.schedule, m.duration_days && `${m.duration_days} ngày`].filter(Boolean).join(" · ")}
                     </td>
-                    <td className="whitespace-nowrap py-1 font-mono text-xs">{formatDate(m.start)}</td>
+                    <td className="whitespace-nowrap py-1 text-xs tabular-nums">{formatDate(m.start)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -240,7 +240,7 @@ export default async function DoctorSummaryPage({ params }: PageProps<"/people/[
                         <td className={`py-1 pr-2 ${abnormal ? "font-bold text-stamp" : ""}`}>
                           {fmt(last)}
                           {abnormal && <span className="ml-1 text-xs">{FLAG_MARK[last.flag!]}</span>}
-                          <div className="font-mono text-xs font-normal text-ink-soft">{formatDate(last.date)}</div>
+                          <div className="text-xs tabular-nums font-normal text-ink-soft">{formatDate(last.date)}</div>
                         </td>
                         <td className="py-1 pr-2 text-ink-soft">
                           <span className="line-clamp-2" title={last.ref_range_text ?? undefined}>
@@ -251,7 +251,7 @@ export default async function DoctorSummaryPage({ params }: PageProps<"/people/[
                           {previous ? (
                             <>
                               {fmt(previous)}
-                              <div className="font-mono text-xs">{formatDate(previous.date)}</div>
+                              <div className="text-xs tabular-nums">{formatDate(previous.date)}</div>
                             </>
                           ) : (
                             "—"
@@ -303,7 +303,7 @@ export default async function DoctorSummaryPage({ params }: PageProps<"/people/[
           <ul className="space-y-0.5">
             {recentVisits.map((v) => (
               <li key={v.id}>
-                <span className="font-mono text-xs">{formatDate(v.visit_date)}</span>{" "}
+                <span className="text-xs tabular-nums">{formatDate(v.visit_date)}</span>{" "}
                 {[v.facility, v.department].filter(Boolean).join(" – ") || "Không rõ nơi khám"}
                 {(v.cases?.title || v.reason) && <span className="text-ink-soft"> · {v.cases?.title ?? v.reason}</span>}
               </li>

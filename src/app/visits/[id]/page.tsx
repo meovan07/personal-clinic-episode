@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Check, FileText, Folder, ImageIcon, Pencil, Plus, Syringe, X } from "lucide-react";
+import { Check, Folder, Pencil, Plus, Syringe, X } from "lucide-react";
 import { addMedication, deleteDocument, deleteMedication, deleteVisit } from "@/app/actions";
 import { ActionItems } from "@/components/ActionItems";
 import { AiReadButton } from "@/components/AiReadButton";
 import { ConfirmForm } from "@/components/ConfirmForm";
 import { DocumentUploader } from "@/components/DocumentUploader";
 import { PageHeader } from "@/components/PageHeader";
+import { PhotoGallery, type GalleryItem } from "@/components/PhotoGallery";
 import { PendingButton } from "@/components/PendingButton";
 import { SubmitButton } from "@/components/SubmitButton";
 import { createClient } from "@/lib/supabase/server";
@@ -66,6 +67,22 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
     data?.forEach((s) => s.path && s.signedUrl && signed.set(s.path, s.signedUrl));
   }
 
+  // Every page of every document, in order, for the swipeable viewer.
+  const gallery: GalleryItem[] = (docs.data ?? []).flatMap((d) =>
+    d.document_files.flatMap((f) => {
+      const url = signed.get(f.storage_path);
+      if (!url) return [];
+      const kind: GalleryItem["kind"] = PREVIEWABLE.test(f.mime_type ?? "")
+        ? "image"
+        : f.mime_type === "application/pdf"
+          ? "pdf"
+          : "other";
+      const title = d.title ?? DOC_TYPE[d.doc_type] ?? "Tài liệu";
+      const caption = d.document_files.length > 1 ? `${title} · trang ${f.page_no}` : title;
+      return [{ url, name: f.file_name, kind, caption }];
+    }),
+  );
+
   const details = [
     visit.department && ["Khoa", visit.department],
     visit.doctor && ["Bác sĩ", visit.doctor],
@@ -120,6 +137,13 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
         </div>
       )}
 
+      {gallery.length > 0 && (
+        <section>
+          <h2 className="section-title">Ảnh tài liệu</h2>
+          <PhotoGallery items={gallery} />
+        </section>
+      )}
+
       <section>
         <h2 className="section-title">Tài liệu</h2>
         <div className="space-y-3">
@@ -129,7 +153,9 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
                 <div>
                   <div className="font-medium">{d.title ?? DOC_TYPE[d.doc_type]}</div>
                   <div className="muted">
-                    {DOC_TYPE[d.doc_type]} · {d.document_files.length} trang
+                    {/* The type is only worth repeating when the document has its own title. */}
+                    {d.title && d.title !== DOC_TYPE[d.doc_type] ? `${DOC_TYPE[d.doc_type]} · ` : ""}
+                    {d.document_files.length} trang
                   </div>
                 </div>
                 <ConfirmForm action={deleteDocument.bind(null, d.id, id)} message="Xóa tài liệu này và file gốc?">
@@ -138,34 +164,7 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
                   </button>
                 </ConfirmForm>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {d.document_files.map((f) => {
-                  const url = signed.get(f.storage_path);
-                  if (!url) return null;
-                  return PREVIEWABLE.test(f.mime_type ?? "") ? (
-                    <a key={f.id} href={url} target="_blank" rel="noreferrer">
-                      {/* eslint-disable-next-line @next/next/no-img-element -- signed URLs, not optimizable */}
-                      <img src={url} alt={f.file_name} className="h-32 w-24 rounded-md border border-line object-cover" />
-                    </a>
-                  ) : (
-                    <a
-                      key={f.id}
-                      href={url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex h-32 w-24 flex-col items-center justify-center gap-1 rounded-md border border-line bg-paper-dim p-2 text-center text-xs hover:border-line-strong"
-                    >
-                      {f.mime_type === "application/pdf" ? (
-                        <FileText className="h-6 w-6 text-ink-faint" strokeWidth={1.5} />
-                      ) : (
-                        <ImageIcon className="h-6 w-6 text-ink-faint" strokeWidth={1.5} />
-                      )}
-                      <span className="line-clamp-3 break-all">{f.file_name}</span>
-                    </a>
-                  );
-                })}
-              </div>
-              <div className="mt-3 border-t border-line pt-3">
+              <div>
                 {d.extraction_status === "confirmed" ? (
                   <div className="space-y-2">
                     {d.summary && <p className="whitespace-pre-line text-sm">{d.summary}</p>}

@@ -1,9 +1,8 @@
 import type { Metadata, Viewport } from "next";
-import { Be_Vietnam_Pro, IBM_Plex_Mono } from "next/font/google";
+import { Be_Vietnam_Pro, IBM_Plex_Mono, Newsreader } from "next/font/google";
 import Link from "next/link";
-import { LogOut, Stethoscope } from "lucide-react";
+import { Settings, Stethoscope } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { signOut } from "@/app/actions";
 import { AppShell } from "@/components/AppShell";
 import { AssistantChat } from "@/components/AssistantChat";
 import { PersonNav, PersonTabBar } from "@/components/PersonNav";
@@ -19,6 +18,12 @@ const sans = Be_Vietnam_Pro({
   variable: "--font-be-vietnam",
   subsets: ["latin", "vietnamese"],
   weight: ["400", "500", "600", "700"],
+});
+// Page and section titles (editorial serif with Vietnamese support; see docs/design.md).
+const serif = Newsreader({
+  variable: "--font-newsreader",
+  subsets: ["latin", "vietnamese"],
+  weight: ["400", "500"],
 });
 const mono = IBM_Plex_Mono({
   variable: "--font-plex-mono",
@@ -45,7 +50,10 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   viewportFit: "cover",
-  themeColor: "#fdfbf4",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0e141b" },
+  ],
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
@@ -66,14 +74,14 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   }
 
   return (
-    <html lang="vi" className={`${sans.variable} ${mono.variable} h-full antialiased`}>
+    <html lang="vi" className={`${sans.variable} ${serif.variable} ${mono.variable} h-full antialiased`}>
       <body className="min-h-full font-sans">
         <AppShell />
         <div className="print:hidden">
           <TopLoader />
         </div>
         {user && (
-          <header className="sticky top-0 z-10 border-b print:hidden border-line bg-surface/95 pt-[env(safe-area-inset-top)] backdrop-blur">
+          <header className="sticky top-0 z-10 border-b print:hidden border-line bg-paper/90 pt-[env(safe-area-inset-top)] backdrop-blur">
             <div className="mx-auto flex max-w-4xl items-center justify-between gap-4 px-4 py-3">
               <Link href="/" className="flex shrink-0 items-center gap-2 font-semibold text-pine hover:text-pine-dark">
                 <Stethoscope className="h-5 w-5" strokeWidth={2} />
@@ -82,15 +90,14 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
               {isMember && <PersonNav people={people} />}
               <div className="flex shrink-0 items-center gap-4">
                 {isMember && <SearchDialog />}
-                <form action={signOut}>
-                  <button
-                    className="flex items-center gap-1.5 text-sm text-ink-soft hover:text-ink"
-                    aria-label="Đăng xuất"
-                  >
-                    <LogOut className="h-4 w-4" strokeWidth={1.75} />
-                    <span className="hidden sm:inline">Đăng xuất</span>
-                  </button>
-                </form>
+                <Link
+                  href="/settings"
+                  className="flex items-center gap-1.5 text-sm text-ink-soft hover:text-ink"
+                  aria-label="Cài đặt"
+                >
+                  <Settings className="h-4 w-4" strokeWidth={1.75} />
+                  <span className="hidden sm:inline">Cài đặt</span>
+                </Link>
               </div>
             </div>
           </header>

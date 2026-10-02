@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { Folder, Paperclip } from "lucide-react";
-import { formatDate } from "@/lib/format";
+import { ChevronRight, Folder, Paperclip } from "lucide-react";
+import { tidyName } from "@/lib/format";
 
 export type VisitRow = {
   id: string;
@@ -12,22 +12,39 @@ export type VisitRow = {
   documents?: { count: number }[];
 };
 
+// Visits as one list: a date block on the left (day and month large, year small), where and why on the right.
 export function VisitList({ visits, showPerson = false }: { visits: VisitRow[]; showPerson?: boolean }) {
   if (visits.length === 0) return <p className="muted">Chưa có lần khám nào.</p>;
   return (
-    <ol className="relative space-y-3 border-l-2 border-line pl-5">
+    <ul className="card divide-y divide-line py-1">
       {visits.map((v) => {
         const docCount = v.documents?.[0]?.count ?? 0;
+        const [y, m, d] = v.visit_date?.split("-") ?? [];
         return (
-          <li key={v.id} className="relative">
-            <span className="absolute -left-[27px] top-4 h-3 w-3 rounded-full border-2 border-paper bg-pine" />
-            <Link href={`/visits/${v.id}`} className="card card-interactive block">
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <span className="font-semibold">
-                  {v.visit_date ? <span className="data">{formatDate(v.visit_date)}</span> : "Chưa rõ ngày"}
-                </span>
-                <span className="muted flex items-center gap-1">
-                  {showPerson && v.people?.full_name}
+          <li key={v.id}>
+            <Link href={`/visits/${v.id}`} className="flex items-center gap-3 py-3 hover:text-pen">
+              <span className="w-12 shrink-0 text-center leading-tight tabular-nums">
+                {v.visit_date ? (
+                  <>
+                    <span className="block font-serif text-xl">{d}</span>
+                    <span className="block text-xs text-ink-soft">
+                      th{Number(m)} · {y}
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-xs text-ink-soft">Chưa rõ ngày</span>
+                )}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="line-clamp-2 font-medium">{tidyName(v.facility) || "Chưa ghi nơi khám"}</span>
+                <span className="muted flex flex-wrap items-center gap-x-2">
+                  {showPerson && v.people?.full_name && <span>{v.people.full_name}</span>}
+                  {v.cases?.title && (
+                    <span className="inline-flex items-center gap-1">
+                      <Folder className="h-3.5 w-3.5" strokeWidth={1.75} />
+                      {v.cases.title}
+                    </span>
+                  )}
                   {docCount > 0 && (
                     <span className="inline-flex items-center gap-0.5">
                       <Paperclip className="h-3.5 w-3.5" strokeWidth={1.75} />
@@ -35,19 +52,13 @@ export function VisitList({ visits, showPerson = false }: { visits: VisitRow[]; 
                     </span>
                   )}
                 </span>
-              </div>
-              <div className="text-ink">{v.facility ?? "Chưa ghi nơi khám"}</div>
-              {v.cases?.title && (
-                <div className="mt-1 inline-flex items-center gap-1 text-sm text-pen">
-                  <Folder className="h-3.5 w-3.5" strokeWidth={1.75} />
-                  {v.cases.title}
-                </div>
-              )}
-              {v.reason && <div className="muted mt-1 line-clamp-2">{v.reason}</div>}
+                {v.reason && <span className="muted line-clamp-1">{v.reason}</span>}
+              </span>
+              <ChevronRight className="h-4 w-4 shrink-0 text-ink-faint" strokeWidth={1.75} />
             </Link>
           </li>
         );
       })}
-    </ol>
+    </ul>
   );
 }

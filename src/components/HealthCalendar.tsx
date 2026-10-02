@@ -25,9 +25,9 @@ const KIND: Record<CalendarEventKind, { label: string; icon: LucideIcon }> = {
 };
 
 const DAY_COLOR: Record<CalendarStatus, string> = {
-  past: "bg-flag-normal text-white hover:bg-pine",
-  upcoming: "bg-pen text-white hover:bg-pen/85",
-  overdue: "bg-stamp text-white hover:bg-stamp-dark",
+  past: "bg-flag-normal text-paper hover:opacity-85",
+  upcoming: "bg-pen text-paper hover:opacity-85",
+  overdue: "bg-stamp text-on-stamp hover:bg-stamp-dark",
 };
 
 const STATUS_BADGE: Record<CalendarStatus, { label: string; tone: "pine" | "pen" | "danger" }> = {
@@ -57,7 +57,7 @@ function EventList({ events, showDate }: { events: DatedEvent[]; showDate: boole
               </span>
               <span className="flex shrink-0 flex-col items-end gap-1">
                 <Badge tone={STATUS_BADGE[e.status].tone}>{STATUS_BADGE[e.status].label}</Badge>
-                {showDate && <span className="font-mono text-xs text-ink-soft">{formatDate(e.date)}</span>}
+                {showDate && <span className="text-xs tabular-nums text-ink-soft">{formatDate(e.date)}</span>}
               </span>
             </Link>
           </li>

@@ -23,7 +23,7 @@ export function PageHeader({
       )}
       <div className="mt-1 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">{title}</h1>
+          <h1 className="text-3xl leading-tight">{title}</h1>
           {subtitle && <div className="muted mt-1">{subtitle}</div>}
         </div>
         {actions && <div className="flex flex-wrap gap-2">{actions}</div>}

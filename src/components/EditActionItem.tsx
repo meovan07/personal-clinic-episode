@@ -8,7 +8,20 @@ import { updateActionItem } from "@/app/actions";
 // updateActionItem doesn't just rephrase that note - it hands the AI the real family
 // roster and the person's recent visits/cases so it can resolve things like "chồng" to
 // an actual name or match a vague test against what was really recorded.
-export function EditActionItem({ id, content, dueOn, notes }: { id: string; content: string; dueOn: string | null; notes: string | null }) {
+export function EditActionItem({
+  id,
+  content,
+  dueOn,
+  notes,
+  asMenuItem = false,
+}: {
+  id: string;
+  content: string;
+  dueOn: string | null;
+  notes: string | null;
+  /** Rendered as a "Sửa" row inside a ⋯ menu instead of a pencil icon. */
+  asMenuItem?: boolean;
+}) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const [pending, startTransition] = useTransition();
@@ -26,20 +39,21 @@ export function EditActionItem({ id, content, dueOn, notes }: { id: string; cont
     <>
       <button
         type="button"
-        className="text-ink-faint hover:text-pen"
+        className={asMenuItem ? "menu-item" : "text-ink-faint hover:text-pen"}
         aria-label="Sửa việc cần làm"
         onClick={() => dialogRef.current?.showModal()}
       >
         <Pencil className="h-4 w-4" strokeWidth={1.75} />
+        {asMenuItem && "Sửa"}
       </button>
       <dialog
         ref={dialogRef}
-        className="m-auto w-96 max-w-[90vw] rounded-lg border border-line bg-surface p-5 shadow-lg"
+        className="m-auto w-96 max-w-[90vw] rounded-3xl bg-paper p-5 text-ink shadow-xl"
         onClick={(e) => {
           if (e.target === e.currentTarget) dialogRef.current?.close();
         }}
       >
-        <h2 className="mb-3 font-semibold text-ink">Sửa việc cần làm</h2>
+        <h2 className="mb-3 font-serif text-xl text-ink">Sửa việc cần làm</h2>
         <form
           ref={formRef}
           className="space-y-3"

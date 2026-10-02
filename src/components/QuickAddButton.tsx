@@ -148,7 +148,7 @@ export function QuickAddButton() {
             aria-haspopup="menu"
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen((o) => !o)}
-            className="flex h-14 w-14 items-center justify-center rounded-full bg-pine text-white shadow-lg transition-transform hover:bg-pine-dark active:scale-95 motion-reduce:transition-none"
+            className="flex h-14 w-14 items-center justify-center rounded-full bg-pine text-on-pine shadow-lg transition-transform hover:bg-pine-dark active:scale-95 motion-reduce:transition-none"
           >
             <Plus
               className={`h-7 w-7 transition-transform duration-200 motion-reduce:transition-none ${menuOpen ? "rotate-45" : ""}`}

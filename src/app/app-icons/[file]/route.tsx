@@ -27,7 +27,7 @@ export async function GET(_request: Request, { params }: RouteContext<"/app-icon
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "#1f4d3d",
+        background: "#2f5d8f",
         borderRadius: rounded ? size * 0.22 : 0,
       }}
     >
@@ -39,7 +39,7 @@ export async function GET(_request: Request, { params }: RouteContext<"/app-icon
             left: (cross - bar) / 2,
             width: bar,
             height: cross,
-            background: "#fdfbf4",
+            background: "#ffffff",
             borderRadius: bar / 2,
           }}
         />
@@ -50,7 +50,7 @@ export async function GET(_request: Request, { params }: RouteContext<"/app-icon
             left: 0,
             width: cross,
             height: bar,
-            background: "#fdfbf4",
+            background: "#ffffff",
             borderRadius: bar / 2,
           }}
         />

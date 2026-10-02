@@ -20,7 +20,8 @@ Live at https://personal-clinic-episode.vercel.app (members only).
 | Doc | What's in it |
 |---|---|
 | [docs/roadmap.md](docs/roadmap.md) | Phases, what's done, what's next, change log |
-| [docs/architecture.md](docs/architecture.md) | Code map, data model, security, search, calendar, design system |
+| [docs/design.md](docs/design.md) | Design system (palette, type, light/dark), the UX review and the revamp plan |
+| [docs/architecture.md](docs/architecture.md) | Code map, data model, security, search, calendar, PWA, push reminders |
 | [docs/ai.md](docs/ai.md) | Document extraction pipeline, other AI features, models, benchmarks |
 | [docs/assistant.md](docs/assistant.md) | The chat assistant: tools, approval cards, memory, attachments, safety |
 | [docs/development.md](docs/development.md) | Local setup, environment variables, migrations, tests, deploying |

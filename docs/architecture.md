@@ -97,6 +97,6 @@ iOS Safari doesn't shrink the page when the keyboard opens, so fixed elements mi
 
 ## Design system
 
-The look is a private family record book, not a SaaS dashboard: warm kraft-paper background, flat hairline-bordered panels, deep clinic green for actions, ballpoint blue for links, red stamp ink for destructive and overdue, and one palette for lab and vaccination flags (normal/low/high). All colors are named CSS custom properties in `src/app/globals.css`, with the reasoning in comments. Icons are [lucide-react](https://lucide.dev/); no emoji in the UI.
+See [design.md](design.md) for the current design system and the Phase 9 revamp. Until the revamp is finished, some pages still follow the original look described here: a private family record book, not a SaaS dashboard: warm kraft-paper background, flat hairline-bordered panels, deep clinic green for actions, ballpoint blue for links, red stamp ink for destructive and overdue, and one palette for lab and vaccination flags (normal/low/high). All colors are named CSS custom properties in `src/app/globals.css`, with the reasoning in comments. Icons are [lucide-react](https://lucide.dev/); no emoji in the UI.
 
 Mobile is the primary surface: a bottom tab bar (`PersonNav.tsx`) switches between the two people, and `viewport-fit=cover` with `env(safe-area-inset-*)` keeps bars clear of notches. Destructive actions confirm in the app (a dialog or an inline Huỷ / Xoá), never with the browser's `confirm()`. Entrance animations (`anim-*` in `globals.css`) are short and switched off for reduced motion.

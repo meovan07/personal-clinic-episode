@@ -10,13 +10,12 @@ export type TrendSeries = {
   points: TrendPoint[];
 };
 
-// Status palette is fixed regardless of the app's brand color - it must stay
-// legible and consistent no matter what test it's attached to (matches globals.css --color-flag-*).
+// Status colors come from the theme tokens (globals.css --color-flag-*), so they follow light/dark mode.
 const STATUS_COLOR: Record<string, string> = {
-  normal: "#3f7a5e",
-  high: "#b3261e",
-  low: "#a9710a",
-  abnormal: "#b3261e",
+  normal: "var(--color-flag-normal)",
+  high: "var(--color-flag-high)",
+  low: "var(--color-flag-low)",
+  abnormal: "var(--color-flag-high)",
 };
 const STATUS_LABEL: Record<string, string> = {
   normal: "Bình thường",
@@ -24,7 +23,7 @@ const STATUS_LABEL: Record<string, string> = {
   low: "Thấp",
   abnormal: "Bất thường",
 };
-const LINE_COLOR = "#cdc2a2"; // de-emphasis, matches --color-line-strong: the trend line itself isn't the status, the endpoint dot is
+const LINE_COLOR = "var(--color-line-strong)"; // de-emphasis: the trend line itself isn't the status, the endpoint dot is
 
 const WIDTH = 100;
 const HEIGHT = 28;
@@ -48,7 +47,7 @@ export function ObservationTrend({ series }: { series: TrendSeries }) {
   const first = series.points[0];
   const last = series.points[series.points.length - 1];
   const { line, area, last: lastCoord } = sparkline(series.points.map((p) => p.value));
-  const color = STATUS_COLOR[series.latestFlag ?? ""] ?? "#94998c";
+  const color = STATUS_COLOR[series.latestFlag ?? ""] ?? "var(--color-ink-faint)";
   const statusLabel = STATUS_LABEL[series.latestFlag ?? ""];
 
   return (
@@ -75,9 +74,22 @@ export function ObservationTrend({ series }: { series: TrendSeries }) {
           </div>
         </div>
         <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="h-8 w-24 shrink-0" preserveAspectRatio="none" role="presentation">
-          <path d={area} fill={LINE_COLOR} fillOpacity={0.2} stroke="none" />
-          <path d={line} fill="none" stroke={LINE_COLOR} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-          <circle cx={lastCoord[0]} cy={lastCoord[1]} r={4} fill={color} stroke="#fdfbf4" strokeWidth={2} />
+          <path d={area} style={{ fill: LINE_COLOR }} fillOpacity={0.2} stroke="none" />
+          <path
+            d={line}
+            fill="none"
+            style={{ stroke: LINE_COLOR }}
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <circle
+            cx={lastCoord[0]}
+            cy={lastCoord[1]}
+            r={4}
+            style={{ fill: color, stroke: "var(--color-surface)" }}
+            strokeWidth={2}
+          />
         </svg>
       </div>
     </div>

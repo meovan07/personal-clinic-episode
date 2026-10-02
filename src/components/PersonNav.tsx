@@ -82,7 +82,7 @@ export function PersonTabBar({ people }: { people: NavPerson[] }) {
           >
             <span
               className={`flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-semibold ${
-                active ? "bg-pine text-white" : "bg-paper-dim text-ink-soft"
+                active ? "bg-pine text-on-pine" : "bg-paper-dim text-ink-soft"
               }`}
             >
               {initial(p.full_name)}

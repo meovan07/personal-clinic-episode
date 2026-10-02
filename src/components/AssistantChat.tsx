@@ -181,7 +181,7 @@ function Message({
             <span className="min-w-0 break-words">{attached.join(", ")}</span>
           </div>
         )}
-        <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-pine px-3 py-2 text-white">
+        <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-pine px-3 py-2 text-on-pine">
           {text}
         </div>
       </div>
