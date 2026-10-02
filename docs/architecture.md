@@ -23,6 +23,7 @@ Every database call runs as the signed-in user, never with a service key, so row
 | `src/proxy.ts` | Next.js 16 proxy (formerly middleware): refreshes the Supabase session, sends signed-out visitors to `/login` |
 | `src/app/` | Pages (App Router). `actions.ts` holds the server actions behind every form; they validate, call a service, then `revalidatePath`/`redirect` |
 | `src/app/api/chat/route.ts` | The assistant's streaming endpoint (see [assistant.md](assistant.md)) |
+| `src/app/api/keep-alive/route.ts` | Daily ping from Vercel Cron (`vercel.json`) so the free Supabase project isn't paused; the only route that works signed out besides `/login` |
 | `src/lib/services/records.ts` | Create/update/delete for bệnh án, visits, documents, medications, to-dos, vaccinations. Shared by the forms and the assistant |
 | `src/lib/services/inbox.ts` | Documents without a known visit ("+" and chat uploads): read with AI, save into the records (`applyExtraction`), discard |
 | `src/lib/ai/` | OpenAI calls: `extract.ts` (document reading), `summarize.ts` (health summary), `polish.ts` (to-do wording) |

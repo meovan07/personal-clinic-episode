@@ -38,5 +38,6 @@ export async function proxy(request: NextRequest) {
 export const config = {
   // icon/apple-icon are Next's generated-icon routes (app/icon.tsx, app/apple-icon.tsx) -
   // they have no file extension in the URL, so the image-extension exclusion below misses them.
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon$|apple-icon$|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+  // api/keep-alive is called by Vercel Cron without a login (see that route).
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon$|apple-icon$|api/keep-alive$|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
 };

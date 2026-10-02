@@ -26,6 +26,7 @@ There are two ways to point it at a database:
 | `OPENAI_API_KEY` | server only | Never prefix with `NEXT_PUBLIC_`. Set a monthly budget at platform.openai.com → Limits |
 | `OPENAI_MODEL` | server, optional | Model for document reading (default `gpt-6-luna`) and for the health summary and to-do wording (default `gpt-5.5`). See [ai.md](ai.md#models) |
 | `CHAT_MODEL` | server, optional | Model for the assistant (default `gpt-6-luna`) |
+| `CRON_SECRET` | server, optional | Lets only Vercel Cron call `/api/keep-alive` (see [Deploying](#deploying)) |
 
 `.env.local` is gitignored. On Vercel, set the same variables under Settings → Environment Variables.
 
@@ -55,6 +56,8 @@ Migrations in `supabase/migrations/` are the source of truth, and only add or ch
 ## Deploying
 
 Pushing to `main` deploys to production on Vercel automatically. Apply any new migration before pushing code that needs it.
+
+**Keep-alive.** Supabase pauses free-plan projects after about a week with no activity. `vercel.json` schedules a Vercel Cron job every day at 01:00 UTC (08:00 Vietnam time) that calls `/api/keep-alive`, which makes one request to the database. Set `CRON_SECRET` (any long random string) in Vercel's environment variables so only Vercel can trigger it; without it the route still works but anyone can call it (harmless: it returns no data). If the project does get paused, restore it from the Supabase dashboard.
 
 ### Setting up from scratch
 

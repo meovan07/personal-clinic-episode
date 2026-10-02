@@ -34,6 +34,7 @@
 
 | Date | Change |
 |---|---|
+| 02/10/2026 | Daily keep-alive: Vercel Cron calls `/api/keep-alive` so the free Supabase project isn't paused after a week without use. |
 | 02/10/2026 | **8d:** "+" opens a menu (Hỏi trợ lý AI / Tải ảnh, PDF); the separate assistant button is gone; Esc closes the chat; short entrance animations (off with reduced motion). |
 | 02/10/2026 | **8c:** photos/PDFs can be sent in the chat; the assistant reads them and files them after approval. Inbox logic moved to `src/lib/services/inbox.ts`. Inline confirm replaces `window.confirm()` in the chat lists. |
 | 02/10/2026 | **8b:** the assistant can create, change and delete records behind approval cards; changes are logged in `agent_actions`. Record logic moved to `src/lib/services/records.ts`. |
