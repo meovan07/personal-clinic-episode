@@ -29,7 +29,7 @@ Live at https://personal-clinic-episode.vercel.app (members only).
 ## To-do
 
 - [x] **Clean file names and compress before upload.** Photos are shrunk in the browser (longest side 2000 px, JPEG ~82%, HEIC converted where the browser can read it) and get readable names (`anh-2026-10-02-1.jpg`, `ket-qua-xn-1.pdf`); the duplicate check still uses the original. `src/lib/upload.ts`.
-- [x] **Let each member set their own name.** Cài đặt → Tên hiển thị. Needs migration `20261002085423_member_display_name.sql` (members may update only their own row, only `display_name`).
+- [x] **Let each member set their own name.** Cài đặt → Tên hiển thị. Migration `member_display_name` (applied 02/10/2026) lets a member update only their own row, only `display_name`.
 - [ ] **Consistent names across the data.** Values copied from documents vary in spelling and capitals, so the same thing shows up as several. For example, a hospital appears as "Bệnh viện Đa khoa Gia Đình", "BỆNH VIỆN ĐA KHOA GIA ĐÌNH" and "BV Gia Đình". The same happens with doctors and departments, vaccine names ("Vaxigrip" / "Vaxigrip Tetra"), diseases, medications, and test names outside the catalog ("Testosteron" / "TESTOSTERON"). `tidyName` only fixes capitals on screen. Normalize when saving (canonical lists such as a `facilities` table, plus matching new values to existing ones), and merge the variants already in the data.
 
 More ideas and the full status are in [docs/roadmap.md](docs/roadmap.md).
