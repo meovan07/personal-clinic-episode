@@ -12,11 +12,11 @@
 | 6 – Redesign & AI upkeep | Visual redesign; Markdown health summary; to-dos refined with context; "Thêm lần khám" leads with the photo | ✅ |
 | 7 – Extras | Search ✅ · printable doctor summary ✅ · calendar ✅ · installable app (PWA) ✅ · reminders by Web Push ✅ | ✅ |
 | 8 – Chat assistant | 8a ask ✅ · 8b change with approval ✅ · 8c documents in the chat ✅ · 8d "+" menu and polish ✅ | ✅ |
-| 9 – Revamp for non-medical readers | Foundation (palette, type, light/dark, photo viewer) · home · person page with plain-language results · visit page · bệnh án, vaccinations, review screens, desktop. See [design.md](design.md#revamp-plan) | in progress |
+| 9 – Revamp for non-medical readers | Foundation ✅ · home ✅ · person page with plain-language results ✅ · visit page ⏳ (photo viewer done) · bệnh án, vaccinations, review screens, desktop ⏳. See [design.md](design.md#revamp-plan) | 3 of 5 stages |
 
 ## Next
 
-0. **Phase 9 revamp** (current): the UX review and plan are in [design.md](design.md). Style: curated.design-like, Color Hunt soft-blue palette, Newsreader titles, light and dark mode.
+0. **Phase 9 revamp** (current): stages 1–3 done (foundation, home, person page). Next: **stage 4, visit page** (combined summary at the top, results out-of-range first with explanations via `ResultRow`, add-medication/to-do forms in `Sheet`s, delete behind `MoreMenu`), then **stage 5** (bệnh án page with key values over time, vaccination add form in a sheet, the upload review screens, two-column desktop). Plan and review in [design.md](design.md).
 1. **Reminders by Web Push**: live (migration applied 02/10/2026, job verified on production). Turn on "Nhắc lịch" on each phone from the installed app.
 2. **Known issue:** on iPhone the chat panel sometimes still leaves a gap above the keyboard; left as is for now.
 3. **Smaller items**
@@ -34,6 +34,7 @@
 
 | Date | Change |
 |---|---|
+| 02/10/2026 | **Phase 9, stages 1–3:** Cài đặt page (logout, reminders, install), "⋯" menus and bottom sheets, due chips ("Quá hạn 8 tháng"), tidy hospital names. Home: "Cần chú ý" first, a card per person, 7-day strip with the month on demand, to-dos split from the doctor's advice, 3 latest visits plus an all-visits page. Person page with tabs; results grouped by body part with plain explanations for all 48 catalog tests (`src/lib/test-info.ts`). |
 | 02/10/2026 | **Phase 9, stage 1 (part):** new design foundation (Color Hunt soft-blue palette, curated.design-style borderless cards and pill buttons, Newsreader serif titles, light and dark mode from the device setting, tabular figures instead of the typewriter font); swipeable photo viewer on the visit page (all pages of all documents, double-tap or button to zoom, stays in the app). UX review and revamp plan in [design.md](design.md). |
 | 02/10/2026 | Web Push reminders: "Nhắc lịch" switch per device on the home page (with a test notification), and a daily 08:00 job that sends to-dos and vaccine doses due today or tomorrow as one notification. |
 | 02/10/2026 | Installable app (PWA): manifest, home-screen icons, service worker with an offline page, iPhone install hint. iOS keyboard fixes: bottom bar and "+" hide while typing, chat and search follow the visible area, number pad for day counts, empty date fields keep their height, chat box grows with the text. |

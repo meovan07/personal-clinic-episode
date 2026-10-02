@@ -63,4 +63,15 @@ A page-by-page review at phone size, as someone without medical knowledge.
 5. **The rest:** bệnh án page (what it is, status, key values over time, to-dos, timeline), vaccination book, the upload review screens, and a two-column desktop layout.
 6. **Everywhere:** relative dates ("còn 5 ngày", "quá hạn 7 tháng"), tidy hospital names, and edit or delete behind "⋯".
 
-Progress is tracked in [roadmap.md](roadmap.md).
+### Progress
+
+| Stage | Status |
+|---|---|
+| 1. Foundation | ✅ tokens, type, light/dark, `Sheet`, `MoreMenu`, `DueChip`, Cài đặt page, `PhotoGallery` |
+| 2. Home | ✅ `AttentionList`, person cards, `WeekStrip`, split to-dos, `VisitList` as one list |
+| 3. Person page | ✅ `Tabs`, `ResultRow` + `test-info.ts`, `ReadMore` for the AI summary |
+| 4. Visit page | ⏳ photo viewer done; summary, results with `ResultRow`, forms in sheets, delete in "⋯" still to do |
+| 5. The rest | ⏳ bệnh án page, vaccination form, review screens, desktop two columns |
+| 6. Everywhere | partly: relative dates and tidy names used on home, person and visit lists |
+
+Shared building blocks for the remaining stages are in `src/components/` (`Sheet`, `MoreMenu`, `DueChip`, `ResultRow`, `AttentionList`, `Tabs`, `ReadMore`, `PhotoGallery`) and `src/lib/format.ts` (`relativeDue`, `relativeAgo`, `tidyName`). Change log in [roadmap.md](roadmap.md).
