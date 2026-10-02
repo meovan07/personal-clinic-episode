@@ -28,6 +28,9 @@ create table private.cron_tokens (
   name text primary key,
   token_sha256 text not null
 );
+-- Not reachable through the API (private schema), and locked down anyway: only the functions below,
+-- running as the table owner, read it.
+alter table private.cron_tokens enable row level security;
 
 create function private.valid_cron_token(p_token text)
 returns boolean

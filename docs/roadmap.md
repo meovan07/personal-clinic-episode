@@ -10,12 +10,12 @@
 | 4 – Quick add | One "+" upload; AI matches the document to a person, bệnh án and visit | ✅ |
 | 5 – Sổ tiêm chủng | Vaccination history per person, read from vaccination cards like lab results | ✅ |
 | 6 – Redesign & AI upkeep | Visual redesign; Markdown health summary; to-dos refined with context; "Thêm lần khám" leads with the photo | ✅ |
-| 7 – Extras | Search ✅ · printable doctor summary ✅ · calendar ✅ · installable app (PWA) ✅ · reminders by Web Push (built; waiting for its migration) | 4 of 5 |
+| 7 – Extras | Search ✅ · printable doctor summary ✅ · calendar ✅ · installable app (PWA) ✅ · reminders by Web Push ✅ | ✅ |
 | 8 – Chat assistant | 8a ask ✅ · 8b change with approval ✅ · 8c documents in the chat ✅ · 8d "+" menu and polish ✅ | ✅ |
 
 ## Next
 
-1. **Reminders by Web Push**: built (see change log). To go live: apply `supabase/migrations/20261002071117_push_reminders.sql` and insert the cron token hash (see [development.md](development.md#push-reminders)), then turn on "Nhắc lịch" on each phone.
+1. **Reminders by Web Push**: live (migration applied 02/10/2026, job verified on production). Turn on "Nhắc lịch" on each phone from the installed app.
 2. **Known issue:** on iPhone the chat panel sometimes still leaves a gap above the keyboard; left as is for now.
 3. **Smaller items**
    - Turn on Supabase's leaked-password protection (Auth settings; flagged by the security advisor).
