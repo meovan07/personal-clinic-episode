@@ -4,6 +4,7 @@ import Link from "next/link";
 import { LogOut, Stethoscope } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/actions";
+import { AssistantChat } from "@/components/AssistantChat";
 import { PersonNav, PersonTabBar } from "@/components/PersonNav";
 import { QuickAddButton } from "@/components/QuickAddButton";
 import { SearchDialog } from "@/components/SearchDialog";
@@ -92,6 +93,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           <div className="print:hidden">
             <PersonTabBar people={people} />
             <QuickAddButton />
+            <AssistantChat />
           </div>
         )}
       </body>

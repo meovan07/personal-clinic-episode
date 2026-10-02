@@ -17,7 +17,7 @@ A private website for storing the medical records of two people: cases (bệnh �
   - [x] a summary for doctors: printable page per person (`/people/[id]/summary`) with allergies, active illnesses, recent medications, latest results vs. an earlier date, vaccinations and recent visits
   - [x] calendar: month view on the home and person pages (3 months on wide screens, 1 on phones) of visits and vaccinations done, upcoming to-dos and next doses, and overdue items
   - [ ] reminders that reach you (email / push notifications)
-- [ ] **Phase 8 – Chat agent:** replace the manual forms (add person/visit/case, upload, to-dos) with a conversational agent — tell it what happened at the doctor and it does the data entry. Technical design: [Phase 8 design](#phase-8-design-chat-agent)
+- [ ] **Phase 8 – Chat agent** (8a read-only chat done): replace the manual forms (add person/visit/case, upload, to-dos) with a conversational agent — tell it what happened at the doctor and it does the data entry. Technical design: [Phase 8 design](#phase-8-design-chat-agent)
 
 ## Data model
 
@@ -49,7 +49,35 @@ To add a test to the catalog, insert a row into `test_catalog` (and `unit_conver
 
 ## Phase 8 design: chat agent
 
-Status: **design only, not implemented.** The UX (how the "+" button offers "Tải tài liệu" vs. "Hỏi AI") will be decided later; this section settles what is technically possible and how it will be built.
+Status: **8a (read-only chat) is implemented**; 8b–8d are not. For now the chat opens from a ✨ button stacked above the "+"; the "+" mode menu ("Tải tài liệu" vs. "Hỏi AI") is part of 8d.
+
+Code: `src/app/api/chat/route.ts` (streaming route, login + membership check), `src/lib/agent/tools.ts` (read tools), `src/lib/agent/instructions.ts` (system prompt + who's-who context), `src/components/AssistantChat.tsx` (chat panel).
+
+### Where we left off (01/10/2026)
+
+- **8a is built** on branch `phase-8a-read-only-chat` (not merged, not deployed). The 8 read tools were verified against the real data; the full chat was blocked until the OpenAI account had credit again (it had run out after 28/09, which also stops document reading — `billing_not_active`). Credit is now topped up and the key works.
+- **Chat model:** `gpt-6-luna` is now the default for the chat (`CHAT_MODEL`), per the benchmark below; document extraction keeps `OPENAI_MODEL` until it gets its own benchmark.
+- **Benchmark:** Same agent, same tools, 7 real questions about our records (incl. traps: a test with only one result, a diagnosis question with no data, a write request):
+
+  | Model | Price in/out per 1M tokens | Avg time | Cost for all 7 | Answers |
+  |---|---|---|---|---|
+  | gpt-5.5 (current default) | $5 / $30 | 6 s | $0.13 | correct |
+  | gpt-6.1-sol | $2 / $10 | 11 s | $0.04 | correct, best structured (tables) |
+  | gpt-5.4-mini | $0.75 / $4.50 | 6 s | $0.025 | correct |
+  | gpt-6-luna | $0.10 / $0.50 | 5 s | $0.002 | correct, shortest |
+
+  All four handled the traps (no invented trend, no diagnosis, "can't write yet"). Leaning towards **gpt-6-luna** for chat (≈65× cheaper than gpt-5.5) with gpt-6.1-sol as the fallback if answers turn out too thin; the document-extraction model should be benchmarked separately on real lab sheets before changing it.
+- **Next steps:** benchmark extraction models, merge the 8a branch (chat + memory), then start 8b (refactor `actions.ts` into `src/lib/services/*`, write tools with approval cards).
+
+### Memory (built on the 8a branch)
+
+| Layer | How it works | Storage |
+|---|---|---|
+| **Short-term** (the conversation) | Each conversation is saved per user and survives a reload; past ones can be reopened or deleted from **Lịch sử**. The client sends only the new message; the server loads the history. The answer is saved even if the panel is closed mid-reply. | `chat_threads`, `chat_messages` — private to the member who started them (RLS) |
+| **Compaction** | When a thread has more than 24 messages not yet summarized, everything but the last ~10 is folded into a running summary (cut always at a user message so a question and its answer stay together). Old lookup results are trimmed from what the model sees (`pruneMessages`). Done in-app rather than with OpenAI's server-side compaction, which returns an opaque blob and is OpenAI-only. | `chat_threads.summary`, `summarized_count` |
+| **Long-term** | Silent and automatic: after each answer, a background step (`after()`, never delays the chat) reads the exchange and adds, updates or deletes memories — lasting context the user mentioned (plans, symptoms, doctors, how they like answers), never what the records already hold or secrets. The assistant uses them to personalize answers without talking about it. Each memory records who said it, so one member's preferences don't apply to the other. A list (to check or delete) sits at the bottom of **Lịch sử** → "Xem trợ lý đang nhớ gì". | `agent_memories` — shared by both members |
+
+Code: `src/lib/agent/memory.ts` (threads, compaction, background memory extraction), `src/app/api/chat/route.ts`. Chat model: `CHAT_MODEL` (default `gpt-6-luna`); document extraction still uses `OPENAI_MODEL`.
 
 ### Goal
 
@@ -121,7 +149,7 @@ Today's date in Vietnam time, the two people (ids, names), their open bệnh án
 
 ### Rollout
 
-1. **8a – Ask:** read tools only. Questions over the records with sourced answers (links to visits/results).
+1. ✅ **8a – Ask:** read tools only. Questions over the records with sourced answers (links to visits/results). No chat history yet: a conversation lasts until the page is reloaded.
 2. **8b – Do:** write and destructive tools behind approval cards; `agent_actions` log.
 3. **8c – Show:** send a photo/PDF in the chat → extraction → approval card with the extracted values.
 4. **8d – UX:** the "+" mode menu, conversation history, and polish.
