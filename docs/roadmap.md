@@ -29,7 +29,7 @@
 Also listed in the README:
 1. Clean file names and compress photos before upload (`src/lib/upload.ts`).
 2. Let each member set their own display name on the Cài đặt page (needs an RLS policy to update one's own `members` row).
-3. One name per hospital: store facilities once, match new documents to them, and merge existing variants ("Bệnh viện Đa khoa Gia Đình" / "BỆNH VIỆN ĐA KHOA GIA ĐÌNH" / "BV Gia Đình"). `tidyName` only fixes capitals on screen.
+3. Consistent names across the data: hospitals ("Bệnh viện Đa khoa Gia Đình" / "BỆNH VIỆN ĐA KHOA GIA ĐÌNH" / "BV Gia Đình"), doctors, departments, vaccines, diseases, medications and test names outside the catalog all vary as printed. Normalize when saving (canonical lists, matching new values to existing ones) and merge existing variants; `tidyName` only fixes capitals on screen.
 
 ## Open questions
 
