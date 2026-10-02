@@ -11,7 +11,7 @@ import { HealthSummary } from "@/components/HealthSummary";
 import { MoreMenu } from "@/components/MoreMenu";
 import { PageHeader } from "@/components/PageHeader";
 import { ReadMore } from "@/components/ReadMore";
-import { ResultRow, type ResultRowData } from "@/components/ResultRow";
+import { ResultRow } from "@/components/ResultRow";
 import { Tabs } from "@/components/Tabs";
 import { VaccinationSummary } from "@/components/VaccinationSummary";
 import { VisitList } from "@/components/VisitList";
@@ -20,8 +20,7 @@ import { loadCalendarEvents } from "@/lib/calendar-data";
 import { createClient } from "@/lib/supabase/server";
 import { age, formatDate, relativeAgo } from "@/lib/format";
 import { CASE_STATUS, CASE_STATUS_TONE, SEX } from "@/lib/labels";
-import { nameKey } from "@/lib/normalize";
-import { explainResult } from "@/lib/test-info";
+import { latestResults, OUT_OF_RANGE, type TestResult } from "@/lib/results";
 
 const TABS = [
   { id: "tong-quan", label: "Tổng quan" },
@@ -48,9 +47,8 @@ const CATEGORY_ORDER = [
   "Tiêu hóa",
   "Khác",
 ];
-const OUT_OF_RANGE = new Set(["high", "low", "abnormal"]);
 
-type Result = ResultRowData & { key: string; category: string };
+type Result = TestResult;
 
 export default async function PersonPage({ params, searchParams }: PageProps<"/people/[id]">) {
   const { id } = await params;
@@ -99,34 +97,7 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
         )
         .in("visit_id", [...visitDates.keys()])
     : { data: [] };
-  const byTest = new Map<string, NonNullable<typeof obsRows>>();
-  for (const o of obsRows ?? []) {
-    if (!visitDates.get(o.visit_id)) continue;
-    const key = o.test_code ?? `raw:${nameKey(o.raw_name)}`;
-    byTest.set(key, [...(byTest.get(key) ?? []), o]);
-  }
-  const results: Result[] = [...byTest.entries()].map(([key, rows]) => {
-    const dated = rows
-      .map((o) => ({ o, date: visitDates.get(o.visit_id)! }))
-      .sort((a, b) => a.date.localeCompare(b.date));
-    const latest = dated.at(-1)!;
-    const previous = [...dated].reverse().find((d) => d.date < latest.date);
-    const show = (o: (typeof rows)[number]) => (o.value !== null ? String(o.value) : (o.value_text ?? ""));
-    const points = dated.filter((d) => d.o.value !== null).map((d) => d.o.value as number);
-    return {
-      key,
-      category: latest.o.test_catalog?.category ?? "Khác",
-      name: latest.o.test_catalog?.name_vi ?? latest.o.raw_name,
-      explanation: explainResult(latest.o.test_code, latest.o.flag, latest.o.test_catalog?.name_vi),
-      value: show(latest.o),
-      unit: latest.o.unit ?? latest.o.raw_unit,
-      flag: latest.o.flag,
-      date: latest.date,
-      refRange: latest.o.ref_range_text,
-      previous: previous ? { value: show(previous.o), date: previous.date } : null,
-      points: new Set(dated.map((d) => d.date)).size >= 2 ? points : undefined,
-    };
-  });
+  const results: Result[] = latestResults(obsRows ?? [], visitDates);
   const rank = (r: Result) => (OUT_OF_RANGE.has(r.flag ?? "") ? 0 : 1);
   const outOfRange = results.filter((r) => rank(r) === 0).sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
   const groups = CATEGORY_ORDER.map((category) => ({

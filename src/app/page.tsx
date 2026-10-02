@@ -94,102 +94,108 @@ export default async function Home() {
         </section>
       )}
 
-      <section>
-        <h2 className="section-title">Cần chú ý</h2>
-        <AttentionList events={calendar.events} upcoming={calendar.upcoming} today={today} />
-      </section>
+      {/* Wide screens: what to do on the left, people and history on the right. */}
+      <div className="space-y-10 lg:grid lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start lg:gap-10 lg:space-y-0">
+        <div className="space-y-10">
+          <section>
+            <h2 className="section-title">Cần chú ý</h2>
+            <AttentionList events={calendar.events} upcoming={calendar.upcoming} today={today} />
+          </section>
 
-      <section>
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <h2 className="section-title mb-0">Hai bạn</h2>
-          <Link href="/people/new" className="btn px-3" aria-label="Thêm người">
-            <UserPlus className="h-4 w-4" strokeWidth={1.75} />
-          </Link>
+          {datedTodos.length > 0 && (
+            <section>
+              <h2 className="section-title">Lịch hẹn và việc có hạn</h2>
+              <div className="card">
+                <ActionItems items={datedTodos} showPerson />
+              </div>
+            </section>
+          )}
+
+          {advice.length > 0 && (
+            <section>
+              <h2 className="section-title">Lời dặn của bác sĩ</h2>
+              <div className="card">
+                <ActionItems items={advice} showPerson />
+              </div>
+            </section>
+          )}
         </div>
-        {people.data?.length === 0 && <p className="muted">Bắt đầu bằng cách thêm hồ sơ cho bạn và người yêu.</p>}
-        <div className="grid gap-3 sm:grid-cols-2">
-          {people.data?.map((p) => {
-            const lastVisit = p.visits
-              .map((v) => v.visit_date)
-              .filter((d): d is string => !!d)
-              .sort()
-              .at(-1);
-            const followed = p.cases.filter((c) => c.status !== "da_khoi");
-            const overdue = calendar.events.filter((e) => e.personName === p.full_name && e.status === "overdue");
-            const a = age(p.birth_date);
-            return (
-              <Link key={p.id} href={`/people/${p.id}`} className="card card-interactive block">
-                <div className="flex items-center gap-3">
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-pine-tint font-serif text-lg text-pine">
-                    {initial(p.full_name)}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-lg font-medium">{p.full_name}</div>
-                    <div className="muted">
-                      {a !== null && `${a} tuổi`}
-                      {lastVisit && ` · khám gần nhất ${relativeAgo(lastVisit, today)}`}
-                    </div>
-                  </div>
-                  <ChevronRight className="h-4 w-4 shrink-0 text-ink-faint" strokeWidth={1.75} />
-                </div>
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {followed.map((c) => (
-                    <Badge key={c.title} tone="pen">
-                      {c.title}
-                    </Badge>
-                  ))}
-                  {overdue.length > 0 && <Badge tone="danger">{overdue.length} việc quá hạn</Badge>}
-                  {followed.length === 0 && overdue.length === 0 && (
-                    <Badge tone="pine">Không có gì đang theo dõi</Badge>
-                  )}
-                </div>
+        <div className="space-y-10">
+          <section>
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h2 className="section-title mb-0">Hai bạn</h2>
+              <Link href="/people/new" className="btn px-3" aria-label="Thêm người">
+                <UserPlus className="h-4 w-4" strokeWidth={1.75} />
               </Link>
-            );
-          })}
+            </div>
+            {people.data?.length === 0 && <p className="muted">Bắt đầu bằng cách thêm hồ sơ cho bạn và người yêu.</p>}
+            <div className="grid gap-3 sm:grid-cols-2">
+              {people.data?.map((p) => {
+                const lastVisit = p.visits
+                  .map((v) => v.visit_date)
+                  .filter((d): d is string => !!d)
+                  .sort()
+                  .at(-1);
+                const followed = p.cases.filter((c) => c.status !== "da_khoi");
+                const overdue = calendar.events.filter((e) => e.personName === p.full_name && e.status === "overdue");
+                const a = age(p.birth_date);
+                return (
+                  <Link key={p.id} href={`/people/${p.id}`} className="card card-interactive block">
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-pine-tint font-serif text-lg text-pine">
+                        {initial(p.full_name)}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-lg font-medium">{p.full_name}</div>
+                        <div className="muted">
+                          {a !== null && `${a} tuổi`}
+                          {lastVisit && ` · khám gần nhất ${relativeAgo(lastVisit, today)}`}
+                        </div>
+                      </div>
+                      <ChevronRight className="h-4 w-4 shrink-0 text-ink-faint" strokeWidth={1.75} />
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      {followed.map((c) => (
+                        <Badge key={c.title} tone="pen">
+                          {c.title}
+                        </Badge>
+                      ))}
+                      {overdue.length > 0 && <Badge tone="danger">{overdue.length} việc quá hạn</Badge>}
+                      {followed.length === 0 && overdue.length === 0 && (
+                        <Badge tone="pine">Không có gì đang theo dõi</Badge>
+                      )}
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+
+          <section>
+            <h2 className="section-title">7 ngày tới</h2>
+            <WeekStrip today={today} events={calendar.events} />
+            <details className="group mt-3">
+              <summary className="btn cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+                <span className="group-open:hidden">Xem lịch tháng</span>
+                <span className="hidden group-open:inline">Ẩn lịch tháng</span>
+              </summary>
+              <div className="mt-3">
+                <HealthCalendar data={calendar} />
+              </div>
+            </details>
+          </section>
+
+          <section>
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h2 className="section-title mb-0">Lần khám gần đây</h2>
+              <Link href="/visits" className="text-sm text-pen hover:underline">
+                Xem tất cả
+              </Link>
+            </div>
+            <VisitList visits={visits.data ?? []} showPerson />
+          </section>
         </div>
-      </section>
-
-      <section>
-        <h2 className="section-title">7 ngày tới</h2>
-        <WeekStrip today={today} events={calendar.events} />
-        <details className="group mt-3">
-          <summary className="btn cursor-pointer list-none [&::-webkit-details-marker]:hidden">
-            <span className="group-open:hidden">Xem lịch tháng</span>
-            <span className="hidden group-open:inline">Ẩn lịch tháng</span>
-          </summary>
-          <div className="mt-3">
-            <HealthCalendar data={calendar} />
-          </div>
-        </details>
-      </section>
-
-      {datedTodos.length > 0 && (
-        <section>
-          <h2 className="section-title">Lịch hẹn và việc có hạn</h2>
-          <div className="card">
-            <ActionItems items={datedTodos} showPerson />
-          </div>
-        </section>
-      )}
-
-      {advice.length > 0 && (
-        <section>
-          <h2 className="section-title">Lời dặn của bác sĩ</h2>
-          <div className="card">
-            <ActionItems items={advice} showPerson />
-          </div>
-        </section>
-      )}
-
-      <section>
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <h2 className="section-title mb-0">Lần khám gần đây</h2>
-          <Link href="/visits" className="text-sm text-pen hover:underline">
-            Xem tất cả
-          </Link>
-        </div>
-        <VisitList visits={visits.data ?? []} showPerson />
-      </section>
+      </div>
     </div>
   );
 }

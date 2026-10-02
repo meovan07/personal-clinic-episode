@@ -82,7 +82,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         </div>
         {user && (
           <header className="sticky top-0 z-10 border-b print:hidden border-line bg-paper/90 pt-[env(safe-area-inset-top)] backdrop-blur">
-            <div className="mx-auto flex max-w-4xl items-center justify-between gap-4 px-4 py-3">
+            <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3">
               <Link href="/" className="flex shrink-0 items-center gap-2 font-semibold text-pine hover:text-pine-dark">
                 <Stethoscope className="h-5 w-5" strokeWidth={2} />
                 <span className="hidden sm:inline">Sổ bệnh án</span>
@@ -102,7 +102,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             </div>
           </header>
         )}
-        <main className="mx-auto max-w-4xl px-4 py-6 pb-24 sm:pb-6 print:max-w-none print:p-0">
+        <main className="mx-auto max-w-5xl px-4 py-6 pb-24 sm:pb-6 print:max-w-none print:p-0">
           {user && !isMember ? (
             <div className="card">
               <p className="font-medium">Tài khoản {user.email} chưa được cấp quyền.</p>

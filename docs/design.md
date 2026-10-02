@@ -71,7 +71,7 @@ A page-by-page review at phone size, as someone without medical knowledge.
 | 2. Home | ✅ `AttentionList`, person cards, `WeekStrip`, split to-dos, `VisitList` as one list |
 | 3. Person page | ✅ `Tabs`, `ResultRow` + `test-info.ts`, `ReadMore` for the AI summary |
 | 4. Visit page | ✅ photo strip and viewer, results out-of-range first with explanations (normal ones folded), add-medication in a sheet, deletes behind "⋯", documents moved to the bottom (~9,000 → ~4,250 px) |
-| 5. The rest | ⏳ bệnh án page, vaccination form, review screens, desktop two columns |
+| 5. The rest | ✅ bệnh án page (key results over time, related to-dos, actions in "⋯"), vaccination add form in a sheet, two-column home and wider layout on desktop (`max-w-5xl`). ⏳ The upload review screens (`ReviewForm`, `InboxReviewForm`) only have the new colors so far |
 | 6. Everywhere | partly: relative dates and tidy names used on home, person and visit lists |
 
 Shared building blocks for the remaining stages are in `src/components/` (`Sheet`, `MoreMenu`, `DueChip`, `ResultRow`, `AttentionList`, `Tabs`, `ReadMore`, `PhotoGallery`) and `src/lib/format.ts` (`relativeDue`, `relativeAgo`, `tidyName`). Change log in [roadmap.md](roadmap.md).

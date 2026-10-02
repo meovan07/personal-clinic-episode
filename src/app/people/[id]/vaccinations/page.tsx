@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Plus, X } from "lucide-react";
 import { addVaccination, deleteVaccination } from "@/app/actions";
 import { ConfirmForm } from "@/components/ConfirmForm";
+import { Sheet } from "@/components/Sheet";
 import { PageHeader } from "@/components/PageHeader";
 import { SubmitButton } from "@/components/SubmitButton";
 import { UpcomingDoses } from "@/components/UpcomingDoses";
@@ -98,9 +99,17 @@ export default async function VaccinationsPage({ params }: PageProps<"/people/[i
         </div>
       </section>
 
-      <section>
-        <h2 className="section-title">Thêm mũi tiêm</h2>
-        <form action={addVaccination} className="card grid gap-3 sm:grid-cols-6">
+      <Sheet
+        title="Thêm mũi tiêm"
+        triggerClassName="btn-primary"
+        trigger={
+          <>
+            <Plus className="h-4 w-4" strokeWidth={1.75} />
+            Thêm mũi tiêm
+          </>
+        }
+      >
+        <form action={addVaccination} className="grid gap-3 sm:grid-cols-6">
           <input type="hidden" name="person_id" value={id} />
           <label className="block sm:col-span-3">
             <span className="label">Tên vắc xin *</span>
@@ -135,13 +144,10 @@ export default async function VaccinationsPage({ params }: PageProps<"/people/[i
             <input name="notes" className="input" placeholder="VD: sốt nhẹ sau tiêm" />
           </label>
           <div className="sm:col-span-6">
-            <SubmitButton className="btn">
-              <Plus className="h-4 w-4" strokeWidth={1.75} />
-              Thêm mũi tiêm
-            </SubmitButton>
+            <SubmitButton className="btn-primary w-full">Thêm mũi tiêm</SubmitButton>
           </div>
         </form>
-      </section>
+      </Sheet>
     </div>
   );
 }
