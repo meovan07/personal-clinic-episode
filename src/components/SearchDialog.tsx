@@ -214,14 +214,14 @@ export function SearchDialog() {
       {open &&
         createPortal(
           <div
-            className="fixed inset-x-0 top-[var(--vv-top,0px)] z-40 h-[var(--vv-height,100dvh)] bg-ink/30 sm:inset-0 sm:h-auto sm:px-4 sm:pt-[10vh]"
+            className="fixed inset-0 z-40 bg-surface sm:bg-ink/30 sm:px-4 sm:pt-[10vh]"
             onMouseDown={(e) => e.target === e.currentTarget && setOpen(false)}
           >
             <div
               role="dialog"
               aria-modal="true"
               aria-label="Tìm kiếm"
-              className="mx-auto flex h-full max-w-2xl flex-col bg-surface pt-[env(safe-area-inset-top)] sm:h-auto sm:max-h-[75vh] sm:rounded-xl sm:border sm:border-line sm:pt-0 sm:shadow-xl"
+              className="absolute inset-x-0 top-[var(--vv-top,0px)] mx-auto flex h-[var(--vv-height,100dvh)] max-w-2xl flex-col bg-surface sm:static pt-[env(safe-area-inset-top)] sm:h-auto sm:max-h-[75vh] sm:rounded-xl sm:border sm:border-line sm:pt-0 sm:shadow-xl"
             >
               <div className="flex items-center gap-2 border-b border-line px-4 py-3">
                 <Search className="h-5 w-5 shrink-0 text-ink-faint" strokeWidth={1.75} />

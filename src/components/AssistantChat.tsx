@@ -686,70 +686,78 @@ export function AssistantChat() {
         role="dialog"
         aria-label="Trợ lý AI"
         hidden={!open}
-        className="anim-panel fixed inset-x-0 top-[var(--vv-top,0px)] z-40 flex h-[var(--vv-height,100dvh)] flex-col bg-surface pt-[env(safe-area-inset-top)] sm:inset-auto sm:bottom-5 sm:right-5 sm:h-[min(42rem,calc(100vh-2.5rem))] sm:w-[26rem] sm:rounded-2xl sm:border sm:border-line sm:pt-0 sm:shadow-2xl"
+        className="anim-panel fixed inset-0 z-40 overflow-hidden bg-surface sm:inset-auto sm:bottom-5 sm:right-5 sm:h-[min(42rem,calc(100vh-2.5rem))] sm:w-[26rem] sm:rounded-2xl sm:border sm:border-line sm:shadow-2xl"
       >
-        <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
-          {view === "chat" ? (
-            <div>
-              <div className="flex items-center gap-1.5 font-semibold text-pine">
-                <Sparkles className="h-4 w-4" strokeWidth={2} />
-                Trợ lý AI
+        {/* On phones the panel's background covers the whole screen, while its content follows the area the
+            keyboard leaves visible (--vv-*, see AppShell), so the page never shows through around the keyboard. */}
+        <div className="absolute inset-x-0 top-[var(--vv-top,0px)] flex h-[var(--vv-height,100dvh)] flex-col pt-[env(safe-area-inset-top)] sm:inset-0 sm:h-auto sm:pt-0">
+          <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
+            {view === "chat" ? (
+              <div>
+                <div className="flex items-center gap-1.5 font-semibold text-pine">
+                  <Sparkles className="h-4 w-4" strokeWidth={2} />
+                  Trợ lý AI
+                </div>
+                <p className="text-xs text-ink-soft">Hỏi hoặc nhờ cập nhật hồ sơ. Mọi thay đổi đều chờ bạn đồng ý.</p>
               </div>
-              <p className="text-xs text-ink-soft">Hỏi hoặc nhờ cập nhật hồ sơ. Mọi thay đổi đều chờ bạn đồng ý.</p>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setView(view === "memory" ? "history" : "chat")}
+                className="flex items-center gap-1.5 font-semibold text-pine"
+              >
+                <ArrowLeft className="h-4 w-4" strokeWidth={2} />
+                {view === "history" ? "Lịch sử trò chuyện" : "Trí nhớ của trợ lý"}
+              </button>
+            )}
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setView("history")}
+                className={headerButton}
+                aria-label="Lịch sử"
+                title="Lịch sử"
+              >
+                <History className="h-5 w-5" strokeWidth={1.75} />
+              </button>
+              <button
+                type="button"
+                onClick={newThread}
+                className={headerButton}
+                aria-label="Cuộc trò chuyện mới"
+                title="Cuộc trò chuyện mới"
+              >
+                <MessageSquarePlus className="h-5 w-5" strokeWidth={1.75} />
+              </button>
+              <button type="button" onClick={() => setOpen(false)} className={headerButton} aria-label="Đóng">
+                <X className="h-5 w-5" strokeWidth={1.75} />
+              </button>
             </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setView(view === "memory" ? "history" : "chat")}
-              className="flex items-center gap-1.5 font-semibold text-pine"
-            >
-              <ArrowLeft className="h-4 w-4" strokeWidth={2} />
-              {view === "history" ? "Lịch sử trò chuyện" : "Trí nhớ của trợ lý"}
-            </button>
-          )}
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setView("history")}
-              className={headerButton}
-              aria-label="Lịch sử"
-              title="Lịch sử"
-            >
-              <History className="h-5 w-5" strokeWidth={1.75} />
-            </button>
-            <button
-              type="button"
-              onClick={newThread}
-              className={headerButton}
-              aria-label="Cuộc trò chuyện mới"
-              title="Cuộc trò chuyện mới"
-            >
-              <MessageSquarePlus className="h-5 w-5" strokeWidth={1.75} />
-            </button>
-            <button type="button" onClick={() => setOpen(false)} className={headerButton} aria-label="Đóng">
-              <X className="h-5 w-5" strokeWidth={1.75} />
-            </button>
           </div>
-        </div>
 
-        {/* Kept mounted while viewing history/memory so a streaming answer isn't cut off. */}
-        <div className={view === "chat" ? "flex min-h-0 flex-1 flex-col" : "hidden"}>
-          {session ? (
-            <ChatSession
-              key={session.threadId}
-              threadId={session.threadId}
-              initialMessages={session.messages}
-              onNavigate={onNavigate}
-              focusKey={focusKey}
+          {/* Kept mounted while viewing history/memory so a streaming answer isn't cut off. */}
+          <div className={view === "chat" ? "flex min-h-0 flex-1 flex-col" : "hidden"}>
+            {session ? (
+              <ChatSession
+                key={session.threadId}
+                threadId={session.threadId}
+                initialMessages={session.messages}
+                onNavigate={onNavigate}
+                focusKey={focusKey}
+              />
+            ) : (
+              <p className="muted px-4 py-4">Đang tải…</p>
+            )}
+          </div>
+          {view === "history" && (
+            <HistoryList
+              currentId={session?.threadId ?? ""}
+              onOpen={openThread}
+              onShowMemory={() => setView("memory")}
             />
-          ) : (
-            <p className="muted px-4 py-4">Đang tải…</p>
           )}
+          {view === "memory" && <MemoryList />}
         </div>
-        {view === "history" && (
-          <HistoryList currentId={session?.threadId ?? ""} onOpen={openThread} onShowMemory={() => setView("memory")} />
-        )}
-        {view === "memory" && <MemoryList />}
       </div>
     </>
   );

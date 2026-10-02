@@ -31,16 +31,30 @@ export function AppShell() {
     const root = document.documentElement;
     const vv = window.visualViewport;
     if (!vv) return;
-    const update = () => {
+    const measure = () => {
       root.style.setProperty("--vv-top", `${vv.offsetTop}px`);
       root.style.setProperty("--vv-height", `${vv.height}px`);
     };
-    update();
+    // iOS can report the size mid-way through the keyboard animation and not always send a final event,
+    // so measure again once it has had time to settle.
+    let timers: ReturnType<typeof setTimeout>[] = [];
+    const update = () => {
+      measure();
+      timers.forEach(clearTimeout);
+      timers = [100, 300, 600].map((ms) => setTimeout(measure, ms));
+    };
+    measure();
     vv.addEventListener("resize", update);
     vv.addEventListener("scroll", update);
+    // Focus changes start or end the keyboard; re-measure even if iOS doesn't fire resize.
+    document.addEventListener("focusin", update);
+    document.addEventListener("focusout", update);
     return () => {
+      timers.forEach(clearTimeout);
       vv.removeEventListener("resize", update);
       vv.removeEventListener("scroll", update);
+      document.removeEventListener("focusin", update);
+      document.removeEventListener("focusout", update);
     };
   }, []);
 
