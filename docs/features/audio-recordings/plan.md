@@ -95,9 +95,9 @@ Feature flag `NEXT_PUBLIC_AUDIO_UPLOADS` (default off) hides audio in the upload
 
 | Slice | Tasks | Files | Est. lines | Shippable alone? (flag/how) | Depended on by | MR | Status |
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
-| 1/6 | T1, T2 | 5 | 330 | yes, schema + pure helpers, nothing calls them | 2-6 | [#3](https://github.com/meovan07/personal-clinic-episode/pull/3) | open |
-| 2a/6 | T3 (+ `recording_date` migration, planParts guard) | 7 | 207 | yes, nothing calls it yet | 2b-6 | | pending |
-| 2b/6 | T4 | 6 | 300 | yes, behind flag off | 3-6 | | pending |
+| 1/6 | T1, T2 | 5 | 330 | yes, schema + pure helpers, nothing calls them | 2-6 | [#3](https://github.com/meovan07/personal-clinic-episode/pull/3) | merged |
+| 2a/6 | T3 (+ `recording_date` migration, planParts guard) | 7 | 207 | yes, nothing calls it yet | 2b-6 | [#5](https://github.com/meovan07/personal-clinic-episode/pull/5) | open |
+| 2b/6 | T4 | 6 | 300 | yes, behind flag off | 3-6 | [#6](https://github.com/meovan07/personal-clinic-episode/pull/6) | open |
 | 3/6 | T5, T6 | 5 | 290 | yes, behind flag off | 4-6 | | pending |
 | 4/6 | T7, T10 | 5 | 260 | yes, behind flag off | 5, 6 | | pending |
 | 5/6 | T8 | 7 | 250 | yes, behind flag off | 6 | | pending |
