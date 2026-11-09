@@ -14,7 +14,7 @@ From: intent.md (Hung). Status: approved. Approved: 2026-11-09.
 - R3. The stored copy is re-encoded in the browser to mono, at most 48 kbps, and plays back in iPhone Safari and desktop Chrome.
   - Given a 30-min 128 kbps stereo m4a (~29 MB), when uploaded, then the stored file is ≤ 11 MB and its duration is within 1 s of the original.
   - Duplicate detection hashes the original (as for photos): uploading the same m4a again → "File đã được tải lên trước đó: kham-tim.m4a".
-- R4. For transcription the audio is split into parts of at most 10 minutes and 24 MB each, cut at the quietest 0.5 s within ±10 s of each 10-minute mark.
+- R4. For transcription the audio is split into parts of about 10 minutes (at most 610 s, since a cut can move up to 10 s) and at most 24 MB each, cut at the quietest 0.5 s within ±10 s of each 10-minute mark.
   - Given a 9:59 recording, then 1 part. Given 10:00, then 1 part. Given 10:01, then 2 parts. Given 2:00:00, then 12 parts.
   - The ±10 s window is measured from the fixed marks (600 s, 1200 s, …), not from the previous cut. A part that would exceed 24 MB is cut shorter at an extra quiet point instead of lowering quality.
   - Each part keeps its start offset, so segment times in the joined transcript are relative to the whole recording (a segment 0:05 into part 3 that starts at 20:02 shows as 20:07).
