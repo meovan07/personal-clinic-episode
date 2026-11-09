@@ -187,13 +187,32 @@ export type UploadedFile = {
   sha256: string;
 };
 
+// Parts of a recording (compressed ≤ 10-minute pieces sent to transcription), saved as transcript_parts rows.
+const RecordingParts = z
+  .array(
+    z.object({
+      part_no: z.number().int().min(1),
+      start_sec: z.number().min(0),
+      end_sec: z.number().min(0),
+      storage_path: z.string().min(1).max(500),
+    }),
+  )
+  .max(12);
+const RecordedOn = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+
+export type RecordingPart = z.infer<typeof RecordingParts>[number];
+
 export async function createDocument(input: {
   visitId: string;
   title: string | null;
   docType: string;
   files: UploadedFile[];
+  parts?: RecordingPart[];
+  recordedOn?: string;
 }): Promise<string> {
   await requireMember();
+  const parts = RecordingParts.parse(input.parts ?? []);
+  const recordedOn = input.recordedOn === undefined ? null : RecordedOn.parse(input.recordedOn);
   const supabase = await createClient();
   const {
     data: { user },
@@ -201,13 +220,22 @@ export async function createDocument(input: {
   const doc = check(
     await supabase
       .from("documents")
-      .insert({ visit_id: input.visitId, title: input.title, doc_type: input.docType, uploaded_by: user?.id })
+      .insert({
+        visit_id: input.visitId,
+        title: input.title,
+        doc_type: input.docType,
+        uploaded_by: user?.id,
+        recorded_on: recordedOn,
+      })
       .select("id")
       .single(),
   );
-  const { error } = await supabase
+  let { error } = await supabase
     .from("document_files")
     .insert(input.files.map((f, i) => ({ ...f, document_id: doc.id, page_no: i + 1 })));
+  if (!error && parts.length > 0) {
+    ({ error } = await supabase.from("transcript_parts").insert(parts.map((p) => ({ ...p, document_id: doc.id }))));
+  }
   if (error) {
     await supabase.from("documents").delete().eq("id", doc.id);
     throw new Error(error.message);
@@ -488,16 +516,27 @@ export async function generatePersonSummary(personId: string): Promise<{ error: 
 
 // ---------- Inbox ("+" quick add): upload first, AI figures out who/what it belongs to ----------
 
-export async function createInboxItem(files: UploadedFile[]): Promise<{ id: string }> {
+// `opts` is only used for recordings (the doc type is decided later, at confirm; see docs/features/audio-recordings).
+export async function createInboxItem(
+  files: UploadedFile[],
+  opts: { parts?: RecordingPart[]; recordedOn?: string } = {},
+): Promise<{ id: string }> {
   await requireMember();
+  const parts = RecordingParts.parse(opts.parts ?? []);
+  const recordedOn = opts.recordedOn === undefined ? null : RecordedOn.parse(opts.recordedOn);
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const item = check(await supabase.from("inbox_items").insert({ uploaded_by: user?.id }).select("id").single());
-  const { error } = await supabase
+  const item = check(
+    await supabase.from("inbox_items").insert({ uploaded_by: user?.id, recorded_on: recordedOn }).select("id").single(),
+  );
+  let { error } = await supabase
     .from("inbox_files")
     .insert(files.map((f, i) => ({ ...f, inbox_item_id: item.id, page_no: i + 1 })));
+  if (!error && parts.length > 0) {
+    ({ error } = await supabase.from("transcript_parts").insert(parts.map((p) => ({ ...p, inbox_item_id: item.id }))));
+  }
   if (error) {
     await supabase.from("inbox_items").delete().eq("id", item.id);
     throw new Error(error.message);

@@ -6,7 +6,16 @@ import { createDocument, type UploadedFile } from "@/app/actions";
 import { createClient } from "@/lib/supabase/client";
 import { DOC_TYPE } from "@/lib/labels";
 import { formatBytes } from "@/lib/format";
-import { hashAndCheckDuplicates, rollbackUpload, uploadToStorage } from "@/lib/upload";
+import { splitAudioFiles } from "@/lib/audio-plan";
+import {
+  AUDIO_UPLOADS,
+  UPLOAD_ACCEPT,
+  hashAndCheckDuplicates,
+  recordingFiles,
+  rollbackUpload,
+  uploadRecording,
+  uploadToStorage,
+} from "@/lib/upload";
 
 export function DocumentUploader({ visitId }: { visitId: string }) {
   const router = useRouter();
@@ -25,12 +34,34 @@ export function DocumentUploader({ visitId }: { visitId: string }) {
       setBusy("Đang kiểm tra…");
       const hashes = await hashAndCheckDuplicates(files);
 
-      uploaded = await uploadToStorage(supabase, files, hashes, visitId, (i, total) =>
-        setBusy(`Đang tải ${i + 1}/${total}…`),
-      );
+      // Flag off: `photos` is `files`, so this is the original flow. Flag on: each recording is its own document.
+      const split = AUDIO_UPLOADS ? splitAudioFiles(files) : null;
+      const photos = split ? split.other : files;
+      const photoHashes = split ? photos.map((f) => hashes[files.indexOf(f)]) : hashes;
+      for (const [audio] of split?.audioGroups ?? []) {
+        const rec = await uploadRecording(supabase, audio, hashes[files.indexOf(audio)], visitId, setBusy);
+        uploaded = recordingFiles(rec);
+        setBusy("Đang lưu…");
+        await createDocument({
+          visitId,
+          title: title.trim() || null,
+          docType: "consultation_recording",
+          files: [rec.file],
+          parts: rec.parts,
+          recordedOn: rec.recorded_on,
+        });
+        uploaded = [];
+        setFiles((fs) => fs.filter((f) => f !== audio));
+      }
 
-      setBusy("Đang lưu…");
-      await createDocument({ visitId, title: title.trim() || null, docType, files: uploaded });
+      if (photos.length > 0) {
+        uploaded = await uploadToStorage(supabase, photos, photoHashes, visitId, (i, total) =>
+          setBusy(`Đang tải ${i + 1}/${total}…`),
+        );
+
+        setBusy("Đang lưu…");
+        await createDocument({ visitId, title: title.trim() || null, docType, files: uploaded });
+      }
       setFiles([]);
       setTitle("");
       if (inputRef.current) inputRef.current.value = "";
@@ -51,7 +82,7 @@ export function DocumentUploader({ visitId }: { visitId: string }) {
           ref={inputRef}
           type="file"
           multiple
-          accept="image/*,application/pdf"
+          accept={UPLOAD_ACCEPT}
           className="block w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-pine-tint file:px-3 file:py-2 file:text-pine"
           onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
         />

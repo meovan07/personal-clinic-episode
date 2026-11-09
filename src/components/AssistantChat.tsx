@@ -31,7 +31,16 @@ import type { DocumentAttachment } from "@/lib/agent/attachments";
 import { lockPageScroll } from "@/lib/scroll-lock";
 import { createClient } from "@/lib/supabase/client";
 import { formatBytes, formatDate } from "@/lib/format";
-import { hashAndCheckDuplicates, rollbackUpload, uploadToStorage } from "@/lib/upload";
+import { splitAudioFiles } from "@/lib/audio-plan";
+import {
+  AUDIO_UPLOADS,
+  UPLOAD_ACCEPT,
+  hashAndCheckDuplicates,
+  recordingFiles,
+  rollbackUpload,
+  uploadRecording,
+  uploadToStorage,
+} from "@/lib/upload";
 
 // What each tool is doing, shown as a small status line while the agent works.
 const TOOL_LABEL: Record<string, string> = {
@@ -278,16 +287,32 @@ function ChatSession({
     try {
       setUploading("Đang kiểm tra…");
       const hashes = await hashAndCheckDuplicates(files);
-      uploaded = await uploadToStorage(supabase, files, hashes, "inbox", (i, total) =>
-        setUploading(`Đang tải ${i + 1}/${total}…`),
-      );
-      const { id } = await createInboxItem(uploaded);
-      const attachment: DocumentAttachment = { inbox_id: id, files: files.map((f) => f.name) };
+      // Flag off: `photos` is `files`, so this is the original flow. Each recording is its own inbox item
+      // (and its own attachment).
+      const split = AUDIO_UPLOADS ? splitAudioFiles(files) : null;
+      const photos = split ? split.other : files;
+      const photoHashes = split ? photos.map((f) => hashes[files.indexOf(f)]) : hashes;
+      const attachments: DocumentAttachment[] = [];
+      for (const [audio] of split?.audioGroups ?? []) {
+        const rec = await uploadRecording(supabase, audio, hashes[files.indexOf(audio)], "inbox", setUploading);
+        uploaded = recordingFiles(rec);
+        const { id } = await createInboxItem([rec.file], { parts: rec.parts, recordedOn: rec.recorded_on });
+        uploaded = [];
+        attachments.push({ inbox_id: id, files: [audio.name] });
+      }
+      if (photos.length > 0) {
+        uploaded = await uploadToStorage(supabase, photos, photoHashes, "inbox", (i, total) =>
+          setUploading(`Đang tải ${i + 1}/${total}…`),
+        );
+        const { id } = await createInboxItem(uploaded);
+        uploaded = [];
+        attachments.push({ inbox_id: id, files: photos.map((f) => f.name) });
+      }
       sendMessage({
         role: "user",
         parts: [
           { type: "text", text: trimmed || "Đọc và lưu giúp mình tài liệu này." },
-          { type: "data-document", data: attachment },
+          ...attachments.map((data) => ({ type: "data-document" as const, data })),
         ],
       });
       setFiles([]);
@@ -384,7 +409,7 @@ function ChatSession({
           ref={fileRef}
           type="file"
           multiple
-          accept="image/*,application/pdf"
+          accept={UPLOAD_ACCEPT}
           className="hidden"
           onChange={(e) => {
             const picked = Array.from(e.target.files ?? []);
