@@ -1,10 +1,20 @@
 "use client";
 
-import { useActionState } from "react";
+import { Suspense, useActionState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Stethoscope } from "lucide-react";
 import { signIn } from "@/app/actions";
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
+  const next = useSearchParams().get("next") ?? "";
   const [error, action, pending] = useActionState(signIn, null);
   return (
     <div className="mx-auto mt-16 max-w-sm">
@@ -13,6 +23,7 @@ export default function LoginPage() {
         <h1 className="text-2xl font-bold text-ink">Sổ bệnh án</h1>
       </div>
       <form action={action} className="card space-y-4">
+        <input type="hidden" name="next" value={next} />
         <label className="block">
           <span className="label">Email</span>
           <input name="email" type="email" required autoComplete="email" className="input" />

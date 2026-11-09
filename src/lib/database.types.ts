@@ -1012,6 +1012,22 @@ export type Database = {
         Args: { p_endpoint: string; p_token: string }
         Returns: undefined
       }
+      public_case: {
+        Args: { p_id: string }
+        Returns: Json
+      }
+      public_file: {
+        Args: { p_id: string }
+        Returns: Json
+      }
+      public_person: {
+        Args: { p_id: string }
+        Returns: Json
+      }
+      public_visit: {
+        Args: { p_id: string }
+        Returns: Json
+      }
       reminder_feed: {
         Args: { p_token: string }
         Returns: Json

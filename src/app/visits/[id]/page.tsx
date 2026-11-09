@@ -13,7 +13,9 @@ import { ResultRow, type ResultRowData } from "@/components/ResultRow";
 import { Sheet } from "@/components/Sheet";
 import { PendingButton } from "@/components/PendingButton";
 import { SubmitButton } from "@/components/SubmitButton";
+import { getPublicVisit } from "@/lib/public-data";
 import { createClient } from "@/lib/supabase/server";
+import { getViewer } from "@/lib/viewer";
 import { formatDate, tidyName } from "@/lib/format";
 import { explainResult } from "@/lib/test-info";
 import { DOC_TYPE } from "@/lib/labels";
@@ -26,15 +28,37 @@ const PREVIEWABLE = /^image\/(jpeg|png|gif|webp|avif)$/;
 
 export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
   const { id } = await params;
+  const { isMember } = await getViewer();
   const supabase = await createClient();
-  const { data: visit } = await supabase
+  const pub = isMember ? null : await getPublicVisit(supabase, id);
+  if (!isMember && !pub) notFound();
+  const { data: memberVisit } = pub
+    ? { data: null }
+    : await supabase
     .from("visits")
     .select("*, people(full_name), cases(id, title)")
     .eq("id", id)
     .maybeSingle();
+  const visit = pub ? { ...pub, people: pub.people ?? { full_name: "" } } : memberVisit;
   if (!visit) notFound();
 
-  const [docs, meds, actions, observations, vaccinations] = await Promise.all([
+  const [docs, meds, actions, observations, vaccinations] = pub
+    ? [
+        {
+          data: pub.documents.map((d) => ({
+            ...d,
+            doc_type: d.doc_type ?? "other",
+            extraction_status: "",
+            extraction_error: null,
+            document_files: d.document_files.map((f) => ({ ...f, file_name: f.file_name ?? "", storage_path: "" })),
+          })),
+        },
+        { data: pub.medications },
+        { data: pub.action_items },
+        { data: pub.observations },
+        { data: pub.vaccinations },
+      ]
+    : await Promise.all([
     supabase
       .from("documents")
       .select(
@@ -63,7 +87,7 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
       .order("given_on", { nullsFirst: true }),
   ]);
 
-  const paths = (docs.data ?? []).flatMap((d) => d.document_files.map((f) => f.storage_path));
+  const paths = pub ? [] : (docs.data ?? []).flatMap((d) => d.document_files.map((f) => f.storage_path));
   const signed = new Map<string, string>();
   if (paths.length > 0) {
     const { data } = await supabase.storage.from("documents").createSignedUrls(paths, 60 * 60);
@@ -86,7 +110,7 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
   // Every page of every document, in order, for the swipeable viewer.
   const gallery: GalleryItem[] = (docs.data ?? []).flatMap((d) =>
     d.document_files.flatMap((f) => {
-      const url = signed.get(f.storage_path);
+      const url = pub ? `/api/public-file/${f.id}` : signed.get(f.storage_path);
       if (!url) return [];
       const kind: GalleryItem["kind"] = PREVIEWABLE.test(f.mime_type ?? "")
         ? "image"
@@ -106,7 +130,7 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
   return (
     <div className="space-y-8">
       <PageHeader
-        back={{ href: `/people/${visit.person_id}`, label: visit.people.full_name }}
+        back={{ href: `/people/${visit.person_id}${isMember ? "" : "?tab=lan-kham"}`, label: visit.people.full_name }}
         title={`Khám ngày ${formatDate(visit.visit_date) || "(chưa rõ)"}`}
         subtitle={
           <>
@@ -126,6 +150,7 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
           </>
         }
         actions={
+          isMember && (
           <>
             <Link href={`/visits/${id}/edit`} className="btn">
               <Pencil className="h-4 w-4" strokeWidth={1.75} />
@@ -143,6 +168,7 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
               </ConfirmForm>
             </MoreMenu>
           </>
+          )
         }
       />
 
@@ -206,6 +232,7 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
         <section>
           <div className="mb-3 flex items-center justify-between">
             <h2 className="section-title mb-0">Tiêm chủng</h2>
+            {isMember && (
             <Link
               href={`/people/${visit.person_id}/vaccinations`}
               className="inline-flex items-center gap-1 text-sm text-pen hover:underline"
@@ -213,6 +240,7 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
               <Syringe className="h-3.5 w-3.5" strokeWidth={1.75} />
               Xem sổ tiêm chủng
             </Link>
+            )}
           </div>
           <div className="card">
             <ul className="divide-y divide-line">
@@ -254,6 +282,7 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
                       {[m.schedule, m.duration_days && `${m.duration_days} ngày`, m.notes].filter(Boolean).join(" · ")}
                     </div>
                   </div>
+                  {isMember && (
                   <MoreMenu>
                     <form action={deleteMedication.bind(null, m.id, id)}>
                       <PendingButton className="menu-item text-stamp">
@@ -262,10 +291,12 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
                       </PendingButton>
                     </form>
                   </MoreMenu>
+                  )}
                 </li>
               ))}
             </ul>
           )}
+          {isMember && (
           <Sheet
             title="Thêm thuốc"
             trigger={
@@ -296,13 +327,27 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
               <SubmitButton className="btn-primary w-full">Thêm</SubmitButton>
             </form>
           </Sheet>
+          )}
         </div>
       </section>
 
       <section>
         <h2 className="section-title">Bác sĩ dặn và việc cần làm</h2>
         <div className="card">
-          <ActionItems items={actions.data ?? []} personId={visit.person_id} visitId={id} />
+          {isMember ? (
+            <ActionItems items={actions.data ?? []} personId={visit.person_id} visitId={id} />
+          ) : actions.data?.length ? (
+            <ul className="divide-y divide-line">
+              {actions.data.map((a) => (
+                <li key={a.id} className="flex items-start justify-between gap-3 py-2.5 first:pt-0 last:pb-0">
+                  <span className={a.done ? "text-ink-faint line-through" : ""}>{a.content}</span>
+                  {a.due_on && <span className="muted shrink-0">Hạn {formatDate(a.due_on)}</span>}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="muted">Không có việc cần làm.</p>
+          )}
         </div>
       </section>
 
@@ -320,6 +365,7 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
                     {d.document_files.length} trang
                   </div>
                 </div>
+                {isMember && (
                 <MoreMenu>
                   <ConfirmForm action={deleteDocument.bind(null, d.id, id)} message="Xóa tài liệu này và file gốc?">
                     <button type="button" className="menu-item text-stamp">
@@ -328,9 +374,12 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
                     </button>
                   </ConfirmForm>
                 </MoreMenu>
+                )}
               </div>
               <div>
-                {d.extraction_status === "confirmed" ? (
+                {!isMember ? (
+                  d.summary && <p className="whitespace-pre-line text-sm">{d.summary}</p>
+                ) : d.extraction_status === "confirmed" ? (
                   <div className="space-y-2">
                     {d.summary && <p className="whitespace-pre-line text-sm">{d.summary}</p>}
                     <Link
@@ -359,7 +408,7 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
               </div>
             </div>
           ))}
-          <DocumentUploader visitId={id} />
+          {isMember && <DocumentUploader visitId={id} />}
         </div>
       </section>
     </div>
