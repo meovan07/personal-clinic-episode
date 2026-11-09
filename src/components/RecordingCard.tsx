@@ -32,9 +32,10 @@ export function RecordingCard({
         {menu}
       </div>
       {url && <AudioPlayer url={url} />}
+      {/* The recording summary uses "###" headings; HealthSummary styles "##", so promote them. */}
       {summary && (
         <div className="card">
-          <HealthSummary content={summary} />
+          <HealthSummary content={summary.replace(/^#{3,}\s/gm, "## ")} />
         </div>
       )}
       <Transcript segments={segments} />

@@ -1,6 +1,6 @@
 # Sổ bệnh án
 
-A private website for the medical records of two people (a couple in Vietnam): bệnh án (illnesses), lần khám (visits), documents (photos and PDFs), lab results, medications, to-dos and vaccinations. The interface is in Vietnamese and built for phones first.
+A private website for the medical records of two people (a couple in Vietnam): bệnh án (illnesses), lần khám (visits), documents (photos, PDFs and consultation recordings), lab results, medications, to-dos and vaccinations. The interface is in Vietnamese and built for phones first.
 
 Live at https://personal-clinic-episode.vercel.app (members only).
 
@@ -10,6 +10,7 @@ Live at https://personal-clinic-episode.vercel.app (members only).
 
 - **Keeps the records:** people → bệnh án → lần khám → documents, results, medications; plus to-dos and a vaccination book per person.
 - **Reads documents with AI:** upload a lab sheet, prescription or vaccination card; the AI pulls out every value as printed, units and ranges are normalized in code, and nothing is saved until you confirm.
+- **Records consultations:** upload a recording of the doctor's visit; it's transcribed with speaker labels and read into the same summary, to-dos and medications, ready to confirm.
 - **"+" button:** upload first and let the AI work out whose document it is, which bệnh án it continues and which visit it belongs to; or open the assistant.
 - **Insights:** charts per test over time, an AI health summary per person, a printable summary for doctors, a calendar of visits, doses and to-dos.
 - **Search** over everything, ignoring diacritics, with everyday terms ("mỡ máu", "men gan") and typo tolerance.

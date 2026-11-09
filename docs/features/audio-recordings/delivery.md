@@ -172,3 +172,15 @@ Not verified: confirming a recording and the visit-page view (slice 6); 12 parts
 
 Traceability (e2e): R11 card with date, player and summary; R14 after confirm 0 part rows and 0 part files, recording kept; R12 `search_records('da dau')` and `('ghi am')` return the recording.
 Not verified: discard and delete cleanup in the browser (code only); public viewer card.
+
+## Slice 6b/6 (T11), 2026-11-09
+
+| Check | Command | Result |
+| :-- | :-- | :-- |
+| test | `npm test` | 87 passed, 0 failed |
+| typecheck / lint | `npx tsc --noEmit`, `npx eslint src` | pass |
+| browser, flag unset | local Supabase | the pickers accept audio, the new texts show, deleting a visit removes its recording and parts (0 files left) |
+
+Release notes: Ghi âm buổi khám. Tải bản ghi âm buổi khám (m4a, mp3…) như tải ảnh: app chép lời, phân biệt bác sĩ và bệnh nhân, tóm tắt theo mục, và chuyển lời dặn thành việc cần làm. Bạn kiểm tra rồi bấm Xác nhận mới lưu.
+Deploy: the migrations are already applied (see above). To switch it off, set `NEXT_PUBLIC_AUDIO_UPLOADS=0` in Vercel and redeploy. Rollback: revert the slice PRs; the down SQL is in `supabase/rollbacks/`.
+Not verified: iPhone (Safari 26 WebCodecs encode, PWA); a recording of nearly 2 h (12 parts, 3 at a time).

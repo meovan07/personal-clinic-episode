@@ -2,7 +2,7 @@
 
 From: `docs/features/audio-recordings/intent.md` and `spec.md` (R1-R15).
 
-Status: approved
+Status: done (all slices in review)
 Approved: 2026-11-09
 Branch: feature/audio-recordings-s<n> per slice, cut from `main` (slice 1: `feature/audio-recordings-s1`)
 
@@ -102,7 +102,7 @@ Feature flag `NEXT_PUBLIC_AUDIO_UPLOADS` (default off) hides audio in the upload
 | 4a/6 | T7 part 1: consultation helpers, `assignSpeakers`, consultation extraction | 3 | ~280 | yes, nothing calls it yet | 4b-6 | | pending |
 | 4b/6 | T7 part 2 (routing in `readInboxItem` / `readDocumentWithAI` / `saveInboxItem`), T10 | 4 | ~195 | yes, behind flag off | 5, 6 | | pending |
 | 5/6 | T8 | 7 | 250 | yes, behind flag off | 6 | | pending |
-| 6a/6 | T9 (+ `RecordingReadButton`, no-speech message) | 7 | ~372 | yes, behind flag off | 6b | | pending |
+| 6a/6 | T9 (+ `RecordingReadButton`, no-speech message) | 7 | ~372 | yes, behind flag off | 6b | [#11](https://github.com/meovan07/personal-clinic-episode/pull/11) | open |
 | 6b/6 | T11 | ~8 | ~150 | yes, turns the flag on | none | | pending |
 
 ## Tasks
@@ -181,7 +181,7 @@ Every task is test-first: a failing test before the code. Tick the box when the 
   - Lines (est.): 60
   - Size: S
   - Depends on: T1, T5
-- [ ] T11 Turn the feature on and update the docs (all R; CLAUDE.md docs rule)
+- [x] T11 Turn the feature on and update the docs (all R; CLAUDE.md docs rule)
   - Acceptance: the flag defaults on; `docs/ai.md` (recordings, transcription model), `docs/architecture.md` (code map, data model), `docs/assistant.md` (`read_transcript`), `docs/roadmap.md` change log and README updated; the full Proof passes with the user's m4a.
   - Tests: the Proof section (E2E with the real m4a, duplicate, over 2 h, part retry) plus `npm test`, `npx tsc --noEmit`, `npm run lint`.
   - Files: `src/lib/upload.ts` (flag default), `docs/ai.md`, `docs/architecture.md`, `docs/assistant.md`, `docs/roadmap.md`, `README.md`

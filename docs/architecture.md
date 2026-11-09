@@ -31,13 +31,15 @@ Every database call runs as the caller (the signed-in user, or anon for visitors
 | `src/app/api/keep-alive/route.ts` | Daily ping from Vercel Cron (`vercel.json`) so the free Supabase project isn't paused; works signed out like the public routes and `/login` |
 | `src/lib/services/records.ts` | Create/update/delete for bệnh án, visits, documents, medications, to-dos, vaccinations. Shared by the forms and the assistant |
 | `src/lib/services/inbox.ts` | Documents without a known visit ("+" and chat uploads): read with AI, save into the records (`applyExtraction`), discard |
-| `src/lib/ai/` | OpenAI calls: `extract.ts` (document reading), `summarize.ts` (health summary), `polish.ts` (to-do wording) |
+| `src/lib/ai/` | OpenAI calls: `extract.ts` (document reading, speaker roles and consultation reading), `transcribe.ts` (recording parts), `summarize.ts` (health summary), `polish.ts` (to-do wording) |
 | `src/lib/agent/` | The assistant: tools, approval cards, memory, prompt |
 | `src/lib/normalize.ts` | Test-name matching, unit conversion, reference-range parsing, high/low flags (pure code, tested) |
 | `src/lib/vaccinations.ts` | Dose series and "next dose due" logic (tested) |
 | `src/lib/calendar.ts`, `calendar-data.ts` | Calendar events and month grids (pure functions tested; data loading separate) |
 | `src/lib/search.ts` | Types and links for search results |
-| `src/lib/upload.ts` | Browser upload pipeline: SHA-256 hash, duplicate check, upload, rollback on failure |
+| `src/lib/upload.ts` | Browser upload pipeline: SHA-256 hash, duplicate check, upload, rollback on failure; recordings go through `uploadRecording` |
+| `src/lib/audio.ts`, `audio-plan.ts` | Recordings in the browser: compress, find quiet cut points, encode parts (mediabunny); the planning is pure and tested |
+| `src/lib/transcript.ts`, `consultation.ts`, `use-transcription.ts` | Joining parts, speaker roles, labels, scheduling (tested); consultation post-processing (tested); the hook that runs transcription in the browser |
 | `src/lib/supabase/` | Supabase clients for the server (cookies) and the browser |
 | `src/lib/database.types.ts` | Generated database types (new tables are added by hand when needed) |
 | `src/components/` | UI components. Notable: `QuickAddButton` ("+" menu), `AssistantChat` + `ApprovalCard`, `SearchDialog`, `HealthCalendar`, `ReviewForm`/`InboxReviewForm` |
@@ -51,7 +53,7 @@ Also:
 - `vaccinations` — per person, from confirmed vaccination cards or added by hand. `typically_single_dose` holds the AI's general knowledge of that vaccine's usual schedule.
 - `action_items` — to-dos; `notes` holds context added when editing, which the AI folds into `content`.
 - `ai_summaries` — generated health summaries, with the snapshot they were built from.
-- `transcript_parts` — one row per ~10-minute part of an uploaded consultation recording while it is transcribed (temporary; feature in progress, `docs/features/audio-recordings/`). `documents.transcript` / `inbox_items.transcript` hold the joined transcript. `recorded_on` on both holds the recording's date from the file, a hint for matching.
+- `transcript_parts` — one row per ~10-minute part of an uploaded consultation recording while it is transcribed (temporary, deleted after confirm or discard; see [ai.md](ai.md#consultation-recordings)). `documents.transcript` / `inbox_items.transcript` hold the joined transcript. `recorded_on` on both holds the recording's date from the file, a hint for matching.
 - `inbox_items` / `inbox_files` — uploads waiting for review ("+" button and chat attachments), with the AI's reading and its person/bệnh án/visit guesses.
 - `test_catalog` (codes, Vietnamese names, aliases, everyday search terms, standard unit) and `unit_conversions`.
 - Assistant: `chat_threads`, `chat_messages`, `agent_memories`, `agent_actions` (see [assistant.md](assistant.md#data)).

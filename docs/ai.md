@@ -24,6 +24,28 @@ How it works:
 
 To add a test to the catalog, insert a row into `test_catalog` (and `unit_conversions` if labs print it in another unit). `npm test` runs the normalization tests.
 
+## Consultation recordings
+
+Doctor consultations recorded on a phone (m4a, mp3, wav, webm, ogg, aac, up to 2 hours) go in wherever photos do: the visit page, "Thêm lần khám", "+" and the chat. Turned off with `NEXT_PUBLIC_AUDIO_UPLOADS=0`. Design and decisions: `docs/features/audio-recordings/`.
+
+1. **In the browser** (`src/lib/audio.ts`, mediabunny): the recording is re-encoded to mono 48 kHz AAC at 48 kbps (Opus/WebM where AAC can't be encoded) and cut into parts of about 10 minutes at the quietest half second near each mark (`src/lib/audio-plan.ts`, tested). The compressed recording and its parts are uploaded; the duplicate check uses the original's hash, and the file's date is kept as `recorded_on`.
+2. **Transcription** (`src/lib/ai/transcribe.ts`): one server request per part, at most 3 at a time, Vietnamese, with speaker labels (`gpt-4o-transcribe-diarize`, `diarized_json`). A failed part keeps the others; "Thử lại" redoes only the failed ones. The transcription endpoint has no `store` option.
+3. **Speaker roles** (`assignSpeakers` in `extract.ts`): one structured call turns each part's speaker letters into Bác sĩ, Bệnh nhân, Người nhà or Khác without rewriting the text; unknown speakers show as "Người nói".
+4. **Reading** (`extractConsultation` / `extractAndMatchConsultation`): the role-labelled transcript goes through the usual extraction schema with a five-section Markdown summary (Lý do khám, Bác sĩ nói gì, Chẩn đoán, Dặn dò, Thuốc). A spoken value becomes a result only with a test name and a number; "2 tuần sau" comes back as a number of days and the follow-up date is computed in code (`src/lib/consultation.ts`, tested). In "+" the person is suggested only when the AI is confident. A recording with no speech stops with "Không nghe được lời nói nào trong bản ghi."
+5. **Review and after:** the review screen shows the date, an audio player and the folded transcript next to the editable fields; nothing is saved until **Xác nhận**. Then the temporary parts are deleted; the recording, its summary and transcript stay on the visit, search covers the transcript, and the assistant reads it with `read_transcript`. Public pages show a recording's summary and audio like a photo, never the transcript.
+
+### Transcription models (09/11/2026)
+
+Tried on two of the owner's recordings (1:54 and 5:12; both had clear speech only at the start):
+
+| Model | Result |
+| :-- | :-- |
+| **`gpt-4o-transcribe-diarize`** (default) | Vietnamese, Bác sĩ / Bệnh nhân told apart, sensible to-dos from the spoken part; wording varies between runs |
+| `gpt-4o-transcribe` | the spoken part, then drifted into Indonesian, Korean and made-up lines |
+| `whisper-1` | only a repeated "đăng ký kênh" hallucination |
+
+`TRANSCRIBE_MODEL` switches the model (plain models get `json`; only `gpt-*` models get `chunking_strategy`).
+
 ## Other AI features
 
 - **Tóm tắt sức khỏe** (person page, `src/lib/ai/summarize.ts`): a "what changed" summary from the person's visits, results, medications, vaccinations and the previous summary. Rendered as Markdown (`HealthSummary.tsx`), highlighting sparingly: only an abnormal value, a drug name or a date, never whole sentences.
@@ -36,6 +58,8 @@ To add a test to the catalog, insert a row into `test_catalog` (and `unit_conver
 | Document extraction | `OPENAI_MODEL` | `gpt-6-luna` | Benchmarked below |
 | Health summary, to-do wording | `OPENAI_MODEL` | `gpt-5.5` | Not benchmarked yet. Setting `OPENAI_MODEL` changes these too |
 | Chat assistant, its compaction and memory | `CHAT_MODEL` | `gpt-6-luna` | Benchmarked below |
+| Recording transcription | `TRANSCRIBE_MODEL` | `gpt-4o-transcribe-diarize` | Compared above |
+| Recording speaker roles and reading | `OPENAI_MODEL` | `gpt-6-luna` | Same model as document extraction |
 
 Prices per 1M tokens (input / output): gpt-5.5 $5 / $30 · gpt-6.1-sol $2 / $10 · gpt-5.4-mini $0.75 / $4.50 · gpt-6-luna $0.10 / $0.50.
 

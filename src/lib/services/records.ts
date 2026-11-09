@@ -103,9 +103,21 @@ export async function updateVisit(supabase: Supabase, id: string, patch: TablesU
   return check(await supabase.from("visits").update(named).eq("id", id).select("id").single());
 }
 
+/** Storage paths of transcription part files for every document under a visit or person. */
+export async function partFilePathsUnder(supabase: Supabase, owner: { column: "visit_id" | "person_id"; id: string }) {
+  const query = supabase.from("transcript_parts").select("storage_path, documents!inner(visit_id, visits!inner(person_id))");
+  const rows = check(
+    await query.eq(owner.column === "visit_id" ? "documents.visit_id" : "documents.visits.person_id", owner.id),
+  );
+  return partPathsToDelete(rows);
+}
+
 export async function deleteVisit(supabase: Supabase, id: string) {
+  // Part rows cascade with the documents; their files don't, so note the paths first and remove them last.
+  const partPaths = await partFilePathsUnder(supabase, { column: "visit_id", id });
   await removeFilesUnder(supabase, (q) => q.eq("documents.visit_id", id));
   check(await supabase.from("visits").delete().eq("id", id));
+  await removePartFiles(supabase, partPaths);
 }
 
 // ---------- Documents ----------
