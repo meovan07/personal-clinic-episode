@@ -14,16 +14,21 @@ Supabase client with the user's session ──► Postgres with row-level securi
 OpenAI (server-side only, store: false) ◄── document reading, summaries, chat
 ```
 
-Every database call runs as the signed-in user, never with a service key, so row-level security decides what anyone (including the assistant) can see or change.
+Every database call runs as the caller (the signed-in user, or anon for visitors), so row-level security decides what anyone (including the assistant) can see or change. The one exception is `/api/public-file/[id]`, which downloads a single storage path with `SUPABASE_SECRET_KEY` (see Security).
 
 ## Code map
 
 | Path | What |
 |---|---|
-| `src/proxy.ts` | Next.js 16 proxy (formerly middleware): refreshes the Supabase session, sends signed-out visitors to `/login` |
+| `src/proxy.ts` | Next.js 16 proxy (formerly middleware): refreshes the Supabase session; public routes (`isPublicPath`) go through signed out, everything else sends visitors to `/login?next=…` |
+| `src/lib/public-routes.ts` | `isPublicPath`: which paths a signed-out visitor may open (`/people/<id>`, `/visits/<id>`, `/cases/<id>`, `/api/public-file/<id>`) |
+| `src/lib/public-data.ts` | Typed wrappers around the read-only RPCs `public_person`, `public_visit`, `public_case`, mapped to the shapes the pages use |
+| `src/lib/viewer.ts` | `getViewer()` → `{ user, isMember }`, cached per request; pages use it to pick the member or visitor view |
+| `src/lib/supabase/secret.ts` | Server-only storage client with `SUPABASE_SECRET_KEY`; the only file that reads it |
+| `src/app/api/public-file/[id]/route.ts` | Streams one visit document image to visitors after `public_file` (asked as the caller) returned its path |
 | `src/app/` | Pages (App Router). `actions.ts` holds the server actions behind every form; they validate, call a service, then `revalidatePath`/`redirect` |
 | `src/app/api/chat/route.ts` | The assistant's streaming endpoint (see [assistant.md](assistant.md)) |
-| `src/app/api/keep-alive/route.ts` | Daily ping from Vercel Cron (`vercel.json`) so the free Supabase project isn't paused; the only route that works signed out besides `/login` |
+| `src/app/api/keep-alive/route.ts` | Daily ping from Vercel Cron (`vercel.json`) so the free Supabase project isn't paused; works signed out like the public routes and `/login` |
 | `src/lib/services/records.ts` | Create/update/delete for bệnh án, visits, documents, medications, to-dos, vaccinations. Shared by the forms and the assistant |
 | `src/lib/services/inbox.ts` | Documents without a known visit ("+" and chat uploads): read with AI, save into the records (`applyExtraction`), discard |
 | `src/lib/ai/` | OpenAI calls: `extract.ts` (document reading), `summarize.ts` (health summary), `polish.ts` (to-do wording) |
@@ -55,7 +60,9 @@ Rows created from a document carry its `document_id`, so re-confirming a documen
 
 ## Security
 
-- **Members only.** Every table has row-level security. Policies call `private.is_member()`, a `SECURITY DEFINER` function in a schema that isn't exposed through the API, which checks the `members` table. Public sign-up is turned off.
+- **Tables and storage are members only.** Every table has row-level security. Policies call `private.is_member()`, a `SECURITY DEFINER` function in a schema that isn't exposed through the API, which checks the `members` table. Public sign-up is turned off.
+- **Read-only public pages.** Signed-out visitors can read a person's Tổng quan and Lần khám, a visit (with its document images) and a case, only through read-only `SECURITY DEFINER` functions `public_person`, `public_visit`, `public_case`, `public_file` (migration `20261109000000_public_read.sql`), routed by `isPublicPath` in `src/lib/public-routes.ts`. Pages pick member or visitor view with `getViewer()`, and every server action calls `requireMember()` first. The pages are indexable on purpose (decision in `docs/features/public-read-access`).
+- **One secret-key exception.** `/api/public-file/[id]` asks `public_file` as the caller, then downloads that single path with `SUPABASE_SECRET_KEY`, which only `src/lib/supabase/secret.ts` reads.
 - **Private files.** Originals live in the private `documents` storage bucket and are shown through signed URLs that expire after 1 hour.
 - **Secrets stay on the server.** Only the Supabase URL and publishable key are public; `OPENAI_API_KEY` is server-only. OpenAI requests use `store: false`.
 - **Assistant.** Runs as the user (same RLS), has no raw-SQL tool, and every change goes through an approval card and is logged. Details in [assistant.md](assistant.md#safety).

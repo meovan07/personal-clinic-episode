@@ -108,7 +108,7 @@ Risky paths: a migration and auth (proxy, login) → slices 1 and 3 need a human
   - Lines (est.): 50
   - Size: S
   - Depends on: T3
-- [ ] T6 Open the public routes in the proxy (R1)
+- [x] T6 Open the public routes in the proxy (R1)
   - Acceptance: matrix in spec R1 passes; locked routes redirect to `/login?next=…`.
   - Tests first: `public-routes.test.ts`, one test per row of the R1 lists, plus `?tab=unknown` → public, trailing slash, `/people/P/summary` → locked, `/api/public-file/<id>` → public, `/api/chat` → locked.
   - Files: `public-routes.ts`, test, `proxy.ts`
@@ -116,7 +116,7 @@ Risky paths: a migration and auth (proxy, login) → slices 1 and 3 need a human
   - Size: S
   - Depends on: T4, T5
   - Rollback: revert this commit (everything locked again immediately).
-- [ ] T7 Return to `next` after sign-in (R9)
+- [x] T7 Return to `next` after sign-in (R9)
   - Acceptance: sign in from `/login?next=/visits/V` → lands on `/visits/V`; `next=//evil.com` or `https://evil.com` → `/`.
   - Tests first: `safe-next.test.ts` with `/visits/V`, `/people/P?tab=lan-kham`, `//evil.com`, `https://evil.com`, `/\evil.com`, empty.
   - Files: `safe-next.ts`, test, `login/page.tsx`, `actions.ts` (signIn)
@@ -124,7 +124,7 @@ Risky paths: a migration and auth (proxy, login) → slices 1 and 3 need a human
   - Size: S
   - Depends on: none
   - Rollback: revert.
-- [ ] T8 Guard writes and update docs (R2)
+- [x] T8 Guard writes and update docs (R2)
   - Acceptance: every exported action in `actions.ts` either starts with `requireMember()` or does nothing before an RLS-checked write (listed in the MR); anon `/api/chat` → 401 (today it checks `getUser`, confirm the status); docs describe the public routes, the secret key's single use, and the changelog entry.
   - Files: `actions.ts`, `api/chat/route.ts` (only if not 401), 3 docs
   - Lines (est.): 60
