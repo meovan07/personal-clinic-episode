@@ -17,7 +17,14 @@ import { vietnamToday } from "@/lib/calendar";
 import { normalizeObservation } from "@/lib/normalize";
 import { canonicalKey } from "@/lib/names";
 import { nameNormalizer } from "@/lib/services/names";
-import { check, createVisit, type Supabase } from "@/lib/services/records";
+import {
+  check,
+  cleanupDocumentParts,
+  createVisit,
+  partFilePaths,
+  removePartFiles,
+  type Supabase,
+} from "@/lib/services/records";
 import { applySpeakerRoles, joinParts, type Segment, type TranscriptPart } from "@/lib/transcript";
 import { isSameDose, pendingDoses } from "@/lib/vaccinations";
 
@@ -45,6 +52,7 @@ export async function readRecording(
   const parts = (rows as unknown as TranscriptPart[]).map((p) => ({ ...p, start_sec: Number(p.start_sec), end_sec: Number(p.end_sec) }));
   const joined = joinParts(parts);
   if (parts.length === 0 || !joined.complete) throw new Error("Chưa chép lời xong bản ghi.");
+  if (!joined.segments.some((s) => s.text.trim())) throw new Error("Không nghe được lời nói nào trong bản ghi.");
 
   const byPart = new Map<number, { speaker: string; text: string }[]>();
   for (const seg of joined.segments) {
@@ -254,7 +262,7 @@ export async function saveInboxItem(
     throw new Error(error.message);
   }
 
-  // The part rows would cascade away with the inbox item; hand them to the document (T9 cleans them up).
+  // The part rows would cascade away with the inbox item; hand them to the document (cleaned up after the extraction).
   if (isRecording) {
     const { error: moveError } = await supabase
       .from("transcript_parts")
@@ -269,6 +277,8 @@ export async function saveInboxItem(
   await applyExtraction(supabase, { visitId, documentId: doc.id, reviewed });
   // The inbox row (and its now-superseded inbox_files rows) can go; the files themselves live on under document_files.
   check(await supabase.from("inbox_items").delete().eq("id", inboxId));
+  // The confirm is done: the temporary part rows and files are no longer needed (best effort, never undoes it).
+  if (isRecording) await cleanupDocumentParts(supabase, doc.id);
 
   return { visitId, documentId: doc.id };
 }
@@ -398,7 +408,10 @@ export async function discardInboxItem(supabase: Supabase, id: string) {
     const { error } = await supabase.storage.from("documents").remove(rows.map((r) => r.storage_path));
     if (error) throw new Error(error.message);
   }
+  // Part rows cascade with the item; their files don't, so note the paths first and remove them last.
+  const partPaths = await partFilePaths(supabase, { column: "inbox_item_id", id });
   check(await supabase.from("inbox_items").delete().eq("id", id));
+  await removePartFiles(supabase, partPaths);
 }
 
 /** An inbox item with its AI reading, or null if it isn't visible. `extraction` is null until it has been read. */

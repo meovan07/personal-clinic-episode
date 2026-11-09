@@ -12,13 +12,16 @@ export type GalleryItem = {
   kind: "image" | "pdf" | "other";
   /** e.g. "Kết quả xét nghiệm · trang 2". */
   caption: string;
+  /** Audio files (recordings) have their own player and never belong in the gallery. */
+  mime?: string | null;
 };
 
 // All pages of a visit's documents as one strip; tapping opens a full-screen viewer to swipe through every page
 // (scroll-snap, so swiping feels native), double-tap or the zoom button to enlarge, arrows/Esc on a keyboard.
 // It stays inside the app: no new browser tab, which in the installed app would jump out to Safari.
-export function PhotoGallery({ items }: { items: GalleryItem[] }) {
+export function PhotoGallery({ items: all }: { items: GalleryItem[] }) {
   const [open, setOpen] = useState<number | null>(null);
+  const items = all.filter((i) => !i.mime?.startsWith("audio/"));
   if (items.length === 0) return null;
   return (
     <>

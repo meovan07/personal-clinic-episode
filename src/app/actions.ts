@@ -436,6 +436,7 @@ export async function confirmExtraction(documentId: string, input: unknown) {
   const supabase = await createClient();
   const doc = check(await supabase.from("documents").select("visit_id").eq("id", documentId).single());
   await inbox.applyExtraction(supabase, { visitId: doc.visit_id, documentId, reviewed });
+  await records.cleanupDocumentParts(supabase, documentId);
   revalidatePath("/", "layout");
   redirect(`/visits/${doc.visit_id}`);
 }

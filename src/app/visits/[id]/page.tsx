@@ -4,6 +4,8 @@ import { Check, Folder, Pencil, Plus, Syringe, Trash2 } from "lucide-react";
 import { addMedication, deleteDocument, deleteMedication, deleteVisit } from "@/app/actions";
 import { ActionItems } from "@/components/ActionItems";
 import { AiReadButton } from "@/components/AiReadButton";
+import { RecordingCard } from "@/components/RecordingCard";
+import { RecordingReadButton } from "@/components/RecordingReadButton";
 import { ConfirmForm } from "@/components/ConfirmForm";
 import { DocumentUploader } from "@/components/DocumentUploader";
 import { MoreMenu } from "@/components/MoreMenu";
@@ -19,6 +21,7 @@ import { getViewer } from "@/lib/viewer";
 import { formatDate, tidyName } from "@/lib/format";
 import { explainResult } from "@/lib/test-info";
 import { DOC_TYPE } from "@/lib/labels";
+import type { Segment } from "@/lib/transcript";
 
 // AI extraction runs inside a server action on this page and can take a minute.
 export const maxDuration = 300;
@@ -50,6 +53,8 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
             doc_type: d.doc_type ?? "other",
             extraction_status: "",
             extraction_error: null,
+            transcript: null,
+            recorded_on: null,
             document_files: d.document_files.map((f) => ({ ...f, file_name: f.file_name ?? "", storage_path: "" })),
           })),
         },
@@ -62,7 +67,7 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
     supabase
       .from("documents")
       .select(
-        "id, title, doc_type, created_at, summary, extraction_status, extraction_error, document_files(id, page_no, storage_path, file_name, mime_type)",
+        "id, title, doc_type, created_at, summary, extraction_status, extraction_error, transcript, recorded_on, document_files(id, page_no, storage_path, file_name, mime_type)",
       )
       .eq("visit_id", id)
       .order("created_at")
@@ -108,8 +113,10 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
   const normal = results.filter((r) => !r.flag || r.flag === "normal");
 
   // Every page of every document, in order, for the swipeable viewer.
+  // Recordings have their own card (and player), so they stay out of the gallery.
   const gallery: GalleryItem[] = (docs.data ?? []).flatMap((d) =>
     d.document_files.flatMap((f) => {
+      if (d.doc_type === "consultation_recording" || f.mime_type?.startsWith("audio/")) return [];
       const url = pub ? `/api/public-file/${f.id}` : signed.get(f.storage_path);
       if (!url) return [];
       const kind: GalleryItem["kind"] = PREVIEWABLE.test(f.mime_type ?? "")
@@ -119,7 +126,7 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
           : "other";
       const title = d.title ?? DOC_TYPE[d.doc_type] ?? "Tài liệu";
       const caption = d.document_files.length > 1 ? `${title} · trang ${f.page_no}` : title;
-      return [{ url, name: f.file_name, kind, caption }];
+      return [{ url, name: f.file_name, kind, caption, mime: f.mime_type }];
     }),
   );
 
@@ -354,60 +361,117 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
       <section>
         <h2 className="section-title">Tài liệu</h2>
         <div className="space-y-3">
-          {docs.data?.map((d) => (
-            <div key={d.id} className="card">
-              <div className="mb-3 flex items-start justify-between gap-2">
-                <div>
-                  <div className="font-medium">{d.title ?? DOC_TYPE[d.doc_type]}</div>
-                  <div className="muted">
-                    {/* The type is only worth repeating when the document has its own title. */}
-                    {d.title && d.title !== DOC_TYPE[d.doc_type] ? `${DOC_TYPE[d.doc_type]} · ` : ""}
-                    {d.document_files.length} trang
-                  </div>
-                </div>
-                {isMember && (
-                <MoreMenu>
-                  <ConfirmForm action={deleteDocument.bind(null, d.id, id)} message="Xóa tài liệu này và file gốc?">
-                    <button type="button" className="menu-item text-stamp">
-                      <Trash2 className="h-4 w-4" strokeWidth={1.75} />
-                      Xóa tài liệu
-                    </button>
-                  </ConfirmForm>
-                </MoreMenu>
+          {docs.data?.map((d) => {
+            const isRecording = d.doc_type === "consultation_recording";
+            const menu = isMember && (
+              <MoreMenu>
+                <ConfirmForm
+                  action={deleteDocument.bind(null, d.id, id)}
+                  message="Xóa tài liệu này và file gốc?"
+                >
+                  <button type="button" className="menu-item text-stamp">
+                    <Trash2 className="h-4 w-4" strokeWidth={1.75} />
+                    Xóa tài liệu
+                  </button>
+                </ConfirmForm>
+              </MoreMenu>
+            );
+            const status = !isMember ? (
+              !isRecording &&
+              d.summary && (
+                <p className="whitespace-pre-line text-sm">{d.summary}</p>
+              )
+            ) : d.extraction_status === "confirmed" ? (
+              <div className="space-y-2">
+                {!isRecording && d.summary && (
+                  <p className="whitespace-pre-line text-sm">{d.summary}</p>
                 )}
+                <Link
+                  href={`/documents/${d.id}/review`}
+                  className="inline-flex items-center gap-1 text-sm text-pen hover:underline"
+                >
+                  <Check className="h-3.5 w-3.5" strokeWidth={2} />
+                  Đã xác nhận · Sửa kết quả
+                </Link>
               </div>
-              <div>
-                {!isMember ? (
-                  d.summary && <p className="whitespace-pre-line text-sm">{d.summary}</p>
-                ) : d.extraction_status === "confirmed" ? (
-                  <div className="space-y-2">
-                    {d.summary && <p className="whitespace-pre-line text-sm">{d.summary}</p>}
-                    <Link
-                      href={`/documents/${d.id}/review`}
-                      className="inline-flex items-center gap-1 text-sm text-pen hover:underline"
-                    >
-                      <Check className="h-3.5 w-3.5" strokeWidth={2} />
-                      Đã xác nhận · Sửa kết quả
-                    </Link>
-                  </div>
-                ) : d.extraction_status === "needs_review" ? (
-                  <Link href={`/documents/${d.id}/review`} className="btn-primary">
-                    AI đã đọc xong: kiểm tra & xác nhận
-                  </Link>
+            ) : d.extraction_status === "needs_review" ? (
+              <Link href={`/documents/${d.id}/review`} className="btn-primary">
+                AI đã đọc xong: kiểm tra & xác nhận
+              </Link>
+            ) : (
+              <>
+                {d.extraction_status === "failed" && (
+                  <p className="mb-2 text-sm text-stamp">
+                    Lần đọc trước bị lỗi: {d.extraction_error}
+                  </p>
+                )}
+                {isRecording ? (
+                  <RecordingReadButton
+                    documentId={d.id}
+                    label={
+                      d.extraction_status === "pending"
+                        ? "Đọc lại bằng AI"
+                        : undefined
+                    }
+                  />
                 ) : (
-                  <>
-                    {d.extraction_status === "failed" && (
-                      <p className="mb-2 text-sm text-stamp">Lần đọc trước bị lỗi: {d.extraction_error}</p>
-                    )}
-                    <AiReadButton
-                      documentId={d.id}
-                      label={d.extraction_status === "pending" ? "Đọc lại bằng AI" : undefined}
-                    />
-                  </>
+                  <AiReadButton
+                    documentId={d.id}
+                    label={
+                      d.extraction_status === "pending"
+                        ? "Đọc lại bằng AI"
+                        : undefined
+                    }
+                  />
                 )}
+              </>
+            );
+
+            if (isRecording) {
+              const f = d.document_files[0];
+              const url = f
+                ? pub
+                  ? `/api/public-file/${f.id}`
+                  : (signed.get(f.storage_path) ?? null)
+                : null;
+              return (
+                <div key={d.id} className="card">
+                  <RecordingCard
+                    title={d.title ?? DOC_TYPE[d.doc_type]}
+                    recordedOn={
+                      d.recorded_on ? formatDate(d.recorded_on) : null
+                    }
+                    url={url}
+                    summary={d.summary}
+                    segments={(d.transcript as Segment[] | null) ?? []}
+                    menu={menu}
+                  >
+                    {status}
+                  </RecordingCard>
+                </div>
+              );
+            }
+            return (
+              <div key={d.id} className="card">
+                <div className="mb-3 flex items-start justify-between gap-2">
+                  <div>
+                    <div className="font-medium">
+                      {d.title ?? DOC_TYPE[d.doc_type]}
+                    </div>
+                    <div className="muted">
+                      {/* The type is only worth repeating when the document has its own title. */}
+                      {d.title && d.title !== DOC_TYPE[d.doc_type]
+                        ? `${DOC_TYPE[d.doc_type]} · `
+                        : ""}
+                      {d.document_files.length} trang
+                    </div>
+                  </div>
+                  {menu}
+                </div>
+                <div>{status}</div>
               </div>
-            </div>
-          ))}
+            );
+          })}
           {isMember && <DocumentUploader visitId={id} />}
         </div>
       </section>

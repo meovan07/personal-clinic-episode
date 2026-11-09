@@ -2,6 +2,7 @@ import type { TablesInsert, TablesUpdate } from "@/lib/database.types";
 import { polishActionItem, refineActionItem } from "@/lib/ai/polish";
 import { nameNormalizer } from "@/lib/services/names";
 import type { createClient } from "@/lib/supabase/server";
+import { partPathsToDelete } from "@/lib/transcript";
 
 // Create/update/delete for the records, shared by the server actions (forms) and the chat assistant's tools.
 // Every function takes the caller's Supabase client, so row-level security applies exactly as in the UI.
@@ -27,6 +28,37 @@ export async function removeFilesUnder(
   if (rows.length > 0) {
     const { error } = await supabase.storage.from("documents").remove(rows.map((r) => r.storage_path));
     if (error) throw new Error(error.message);
+  }
+}
+
+type PartOwner = { column: "document_id" | "inbox_item_id"; id: string };
+
+/** Storage paths of an owner's temporary transcription part files. */
+export async function partFilePaths(supabase: Supabase, owner: PartOwner): Promise<string[]> {
+  const rows = check(await supabase.from("transcript_parts").select("storage_path").eq(owner.column, owner.id));
+  return partPathsToDelete(rows);
+}
+
+/** Removes part files from storage. Best effort: a failure is logged, never thrown (the caller's DB work stands). */
+export async function removePartFiles(supabase: Supabase, paths: string[]) {
+  if (paths.length === 0) return;
+  try {
+    const { error } = await supabase.storage.from("documents").remove(paths);
+    if (error) console.error("removePartFiles", error.message);
+  } catch (e) {
+    console.error("removePartFiles", e);
+  }
+}
+
+/** After a confirm: drops the document's transcript_parts rows and their storage files. Never throws. */
+export async function cleanupDocumentParts(supabase: Supabase, documentId: string) {
+  try {
+    const paths = await partFilePaths(supabase, { column: "document_id", id: documentId });
+    if (paths.length === 0) return;
+    check(await supabase.from("transcript_parts").delete().eq("document_id", documentId));
+    await removePartFiles(supabase, paths);
+  } catch (e) {
+    console.error("cleanupDocumentParts", e);
   }
 }
 
@@ -79,8 +111,11 @@ export async function deleteVisit(supabase: Supabase, id: string) {
 // ---------- Documents ----------
 
 export async function deleteDocument(supabase: Supabase, id: string) {
+  // Part rows cascade with the document; their files don't, so note the paths first and remove them last.
+  const partPaths = await partFilePaths(supabase, { column: "document_id", id });
   await removeFilesUnder(supabase, (q) => q.eq("document_id", id));
   check(await supabase.from("documents").delete().eq("id", id));
+  await removePartFiles(supabase, partPaths);
 }
 
 // ---------- Medications ----------
