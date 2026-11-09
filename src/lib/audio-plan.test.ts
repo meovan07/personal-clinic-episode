@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  AUDIO_ACCEPT,
   AUDIO_FORMAT_ERROR,
   AUDIO_TOO_LONG_ERROR,
   checkAudioFile,
@@ -132,4 +133,11 @@ test("R1 mixed pick gives audio items and one photo group", () => {
   const r = splitAudioFiles(files);
   assert.deepEqual(r.audioGroups, [[files[0]]]);
   assert.deepEqual(r.other, [files[1], files[2]]);
+});
+
+test("picker accept lists Apple MPEG-4 audio explicitly", () => {
+  const accept = AUDIO_ACCEPT.split(",");
+  for (const t of ["audio/*", "audio/mp4", "audio/x-m4a", ".m4a", ".mp3", ".wav", ".webm", ".ogg", ".aac"]) {
+    assert.ok(accept.includes(t), t);
+  }
 });

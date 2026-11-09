@@ -18,6 +18,12 @@ const AUDIO_MIME = new Set([
 ]);
 const AUDIO_EXT = new Set(["m4a", "mp3", "wav", "webm", "ogg", "aac"]);
 
+/**
+ * File-picker `accept` for recordings. `audio/*` alone greys out Apple MPEG-4 audio (.m4a, e.g. Voice Memos) in some
+ * macOS pickers, so the m4a MIME types and every supported extension are listed too.
+ */
+export const AUDIO_ACCEPT = ["audio/*", "audio/mp4", "audio/x-m4a", ...[...AUDIO_EXT].map((e) => `.${e}`)].join(",");
+
 /** True when the file looks like a supported recording (by MIME type or extension). */
 export function isSupportedAudio(file: FileLike): boolean {
   const type = (file.type ?? "").trim().toLowerCase();
