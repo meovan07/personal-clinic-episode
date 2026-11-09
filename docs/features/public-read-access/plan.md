@@ -153,3 +153,7 @@ Manual (private window, then signed in):
 - Run the intent's Done-when list: 4 public URLs return 200 with images; `/`, `?tab=chi-so`, `/settings`, `/visits/new` redirect to `/login?next=…`.
 - Signed in as a member: all 4 tabs, edit buttons, search and chat as before.
 - Sign in from a `next` link → back on that page.
+
+## Additions
+
+- Members see a "Chia sẻ" button (`ShareLink`) in the header of the person (Tổng quan / Lần khám tabs), visit and bệnh án pages. It opens the native share sheet, or copies the public link and shows "Đã sao chép liên kết"; the installed app has no address bar.

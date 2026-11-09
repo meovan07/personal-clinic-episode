@@ -10,6 +10,7 @@ import { ConfirmForm } from "@/components/ConfirmForm";
 import { DocumentUploader } from "@/components/DocumentUploader";
 import { MoreMenu } from "@/components/MoreMenu";
 import { PageHeader } from "@/components/PageHeader";
+import { ShareLink } from "@/components/ShareLink";
 import { PhotoGallery, type GalleryItem } from "@/components/PhotoGallery";
 import { ResultRow, type ResultRowData } from "@/components/ResultRow";
 import { Sheet } from "@/components/Sheet";
@@ -159,6 +160,7 @@ export default async function VisitPage({ params }: PageProps<"/visits/[id]">) {
         actions={
           isMember && (
           <>
+            <ShareLink path={`/visits/${id}`} title={visit.people.full_name} />
             <Link href={`/visits/${id}/edit`} className="btn">
               <Pencil className="h-4 w-4" strokeWidth={1.75} />
               Sửa

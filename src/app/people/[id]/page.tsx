@@ -10,6 +10,7 @@ import { ConfirmForm } from "@/components/ConfirmForm";
 import { HealthSummary } from "@/components/HealthSummary";
 import { MoreMenu } from "@/components/MoreMenu";
 import { PageHeader } from "@/components/PageHeader";
+import { ShareLink } from "@/components/ShareLink";
 import { ReadMore } from "@/components/ReadMore";
 import { ResultRow } from "@/components/ResultRow";
 import { Tabs } from "@/components/Tabs";
@@ -149,6 +150,7 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
         actions={
           isMember && (
           <>
+            <ShareLink path={tab === "lan-kham" ? `/people/${id}?tab=lan-kham` : `/people/${id}`} title={person.full_name} />
             <Link href={`/people/${id}/summary`} className="btn">
               <FileText className="h-4 w-4" strokeWidth={1.75} />
               Tóm tắt cho bác sĩ
