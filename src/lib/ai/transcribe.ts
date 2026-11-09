@@ -16,7 +16,8 @@ export async function transcribePartAudio(
     model,
     language: "vi",
     response_format: model.includes("diarize") ? "diarized_json" : "json",
-    chunking_strategy: "auto",
+    // Only the gpt-4o transcription models accept chunking_strategy (whisper-1 returns 400).
+    ...(model.startsWith("gpt-") ? { chunking_strategy: "auto" as const } : {}),
   })) as { text?: string; segments?: { start: number; end: number; speaker: string; text: string }[] };
   const segments = res.segments ?? [];
   if (segments.length) {

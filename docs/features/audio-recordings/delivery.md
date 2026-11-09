@@ -154,6 +154,6 @@ Review: round 4, confidence 85/100; Majors fixed (numeric part times, slice size
 
 Traceability (e2e, browser): R5 progress "Đang chép lời 0/1"; R6 a failed part shows "Chép lời lỗi 1/1 phần", and "Thử lại" re-sent only that part, then the AI read ran (~12 s); R8 the review shows the five summary sections; R10 recording date, player, transcript toggle, nothing saved before Xác nhận; R15 the audio loads through a signed URL with a token.
 
-Model comparison on the owner's recording: diarize kept 0:00–0:36 (one speaker); `gpt-4o-transcribe` drifted into Korean and Thai. Default stays diarize; quality is open until a clearer recording is tried.
+Model comparison: on the owner's first recording (1:54), diarize kept 0:00–0:36 and the plain model drifted into Korean and Thai. On the second recording (5:12, dermatology), diarize gave a correct Bác sĩ / Bệnh nhân transcript and 4 sensible to-dos for 0:00–1:11; a clip of 1:10–4:10 alone gave 0 segments (no speech there). `gpt-4o-transcribe` and `whisper-1` both hallucinated. Default stays diarize.
 
 Not verified: confirming a recording and the visit-page view (slice 6); 12 parts running 3 at a time (needs a recording of nearly 2 hours); iPhone.

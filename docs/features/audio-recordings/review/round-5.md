@@ -16,7 +16,17 @@ Reviewer: Opus, inline (priority medium). Diff: slice 4b..working tree, 10 files
 2. `src/lib/ai/transcribe.ts` - **Major** (fixed) - `TRANSCRIBE_MODEL=gpt-4o-transcribe` failed with 400 because only the diarize model accepts `diarized_json`. The response format now depends on the model.
 3. `src/lib/labels.ts` - **Major** (fixed) - "Loại tài liệu" had no recording option, so a recording defaulted to "Kết quả xét nghiệm".
 4. `src/components/Transcript.tsx` - **Minor** (fixed) - a single segment without times showed "(0 phút)"; the label now drops the minutes.
-5. Transcription quality - **open, needs the owner** - on the owner's recording, the diarize model kept 0:00–0:36 of 1:54 (one speaker, some misheard words), and the plain model drifted into Korean and Thai. The audio is loud throughout, so the recording itself looks hard to transcribe. Needs a second, clearer recording before deciding anything.
+5. Transcription quality - **resolved, recording-dependent**. Second recording from the owner (5:12, dermatology visit):
+
+   | Model | Result |
+   | :-- | :-- |
+   | `gpt-4o-transcribe-diarize` (default) | Vietnamese, Bác sĩ / Bệnh nhân correct, 4 sensible to-dos (how to apply the cream), up to 1:11 |
+   | `gpt-4o-transcribe` | the same part, then Indonesian, Korean and made-up lines |
+   | `whisper-1` | only a repeated "đăng ký kênh" hallucination |
+
+   A clip of 1:10–4:10 on its own gave **0 segments** with the diarize model, so that stretch has no recognisable speech (background sound). The model isn't dropping speech. Default stays `gpt-4o-transcribe-diarize`.
+6. `src/lib/ai/transcribe.ts` - **Minor** (fixed) - `whisper-1` returned 400 "chunking_strategy is not supported"; `chunking_strategy` is now sent only to `gpt-*` models.
+7. Recording with no speech - **Minor** (open, T11) - the AI read runs on an empty transcript, and the review shows every section as "Không nhắc đến." plus an uncertainty note. Nothing is made up, but a clear "Không nghe được lời nói nào trong bản ghi" would be better.
 
 ## Confidence: 84/100
 Correctness 25/30 - flow verified end to end, quality open; Tests 21/25; Security 19/20; Plan compliance 12/15 - two files added during the run; Readability 7/10.
