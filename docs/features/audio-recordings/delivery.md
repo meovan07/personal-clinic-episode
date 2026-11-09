@@ -1,6 +1,6 @@
 # Delivery: Upload a consultation recording and get a transcript and summary
 
-Plan: plan.md. Merge request: slice 1/6 (link below). Status: in review.
+Plan: plan.md. Merge request: slice 1/6 [#3](https://github.com/meovan07/personal-clinic-episode/pull/3) (#2 closed: it was cut from the public-read branch by mistake). Status: in review.
 
 ## Test evidence
 
@@ -63,3 +63,21 @@ Nothing changes for users yet. This slice prepares the database for consultation
 - Order: merge, then apply the migration (or the other way round; nothing reads the new columns yet).
 - Smoke checks after the migration: search for a known word (e.g. a test name) returns the same results as before; `select count(*) from public.transcript_parts` works for a member.
 - Rollback: code: revert the merge commit. Migration: run `supabase/rollbacks/20261109010000_audio_recordings.down.sql` in the SQL editor (export transcripts first if any exist; recordings become `other`).
+
+## Merge decision (slice 1/6)
+
+| # | Condition | Value | Result |
+| :-- | :-- | :-- | :-- |
+| 1 | `auto_merge.enabled` | false (default) | fail |
+| 2 | confidence ≥ 90 | 91 | pass |
+| 3 | no Critical/Major open | none | pass |
+| 4 | ≤ 150 lines, ≤ 5 files | 1212 lines, 14 files | fail |
+| 5 | no `risky_paths` | `supabase/migrations/` changed | fail |
+| 6 | CI green | Vercel preview pending at push | not evaluated |
+| 7 | priority not critical | medium | pass |
+| 8 | autonomy on, no STOP | yes | pass |
+| 9 | rollback ready | down SQL + checklist filled | pass |
+
+Result: left open for a human merge.
+
+Review budget: 5 code files (14 with docs), ~549 weighted code lines out of 400. It's over because the full `search_records` body (~130 lines) is copied into both the migration and the rollback; the actual change is 2 lines. Auto-merge limit: 14 out of 5 files, 1212 out of 150 lines → human merge.

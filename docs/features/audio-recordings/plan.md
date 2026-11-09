@@ -4,7 +4,7 @@ From: `docs/features/audio-recordings/intent.md` and `spec.md` (R1-R15).
 
 Status: approved
 Approved: 2026-11-09
-Branch: feature/audio-recordings
+Branch: feature/audio-recordings-s<n> per slice, cut from `main` (slice 1: `feature/audio-recordings-s1`)
 
 ## Context
 
@@ -95,7 +95,7 @@ Feature flag `NEXT_PUBLIC_AUDIO_UPLOADS` (default off) hides audio in the upload
 
 | Slice | Tasks | Files | Est. lines | Shippable alone? (flag/how) | Depended on by | MR | Status |
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
-| 1/6 | T1, T2 | 5 | 330 | yes, schema + pure helpers, nothing calls them | 2-6 | | pending |
+| 1/6 | T1, T2 | 5 | 330 | yes, schema + pure helpers, nothing calls them | 2-6 | [#3](https://github.com/meovan07/personal-clinic-episode/pull/3) | open |
 | 2/6 | T3, T4 | 8 | 340 | yes, behind flag off | 3-6 | | pending |
 | 3/6 | T5, T6 | 5 | 290 | yes, behind flag off | 4-6 | | pending |
 | 4/6 | T7, T10 | 5 | 260 | yes, behind flag off | 5, 6 | | pending |
