@@ -29,6 +29,7 @@ There are two ways to point it at a database:
 | `CRON_SECRET` | server | Lets only Vercel Cron call `/api/keep-alive` and `/api/reminders`; its SHA-256 is also stored in `private.cron_tokens` (see [Push reminders](#push-reminders)) |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | public / server only | Web Push keys, made once with `npx web-push generate-vapid-keys` |
 | `VAPID_SUBJECT` | server, optional | Contact for push services; defaults to the site URL |
+| `SUPABASE_SECRET_KEY` | server only | Supabase → Project Settings → API keys → secret key. Used only by `src/lib/supabase/secret.ts` to stream a visit file to signed-out visitors after `public_file` allowed it (`/api/public-file/[id]`). Never prefix with `NEXT_PUBLIC_` |
 
 `.env.local` is gitignored. On Vercel, set the same variables under Settings → Environment Variables.
 

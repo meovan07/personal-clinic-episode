@@ -16,8 +16,10 @@ import { Tabs } from "@/components/Tabs";
 import { VaccinationSummary } from "@/components/VaccinationSummary";
 import { VisitList } from "@/components/VisitList";
 import { prepareCalendar, vietnamToday } from "@/lib/calendar";
-import { loadCalendarEvents } from "@/lib/calendar-data";
+import { buildCalendarEvents, loadCalendarEvents } from "@/lib/calendar-data";
+import { getPublicPerson } from "@/lib/public-data";
 import { createClient } from "@/lib/supabase/server";
+import { getViewer } from "@/lib/viewer";
 import { age, formatDate, relativeAgo } from "@/lib/format";
 import { CASE_STATUS, CASE_STATUS_TONE, SEX } from "@/lib/labels";
 import { latestResults, OUT_OF_RANGE, type TestResult } from "@/lib/results";
@@ -53,12 +55,30 @@ type Result = TestResult;
 export default async function PersonPage({ params, searchParams }: PageProps<"/people/[id]">) {
   const { id } = await params;
   const tabParam = (await searchParams).tab;
-  const tab: TabId = TABS.some((t) => t.id === tabParam) ? (tabParam as TabId) : "tong-quan";
+  const { isMember } = await getViewer();
+  // Anonymous readers only get Tổng quan and Lần khám.
+  const tabs = isMember ? TABS : TABS.filter((t) => t.id === "tong-quan" || t.id === "lan-kham");
+  const tab: TabId = tabs.some((t) => t.id === tabParam) ? (tabParam as TabId) : "tong-quan";
   const supabase = await createClient();
-  const { data: person } = await supabase.from("people").select("*").eq("id", id).maybeSingle();
+  const pub = isMember ? null : await getPublicPerson(supabase, id);
+  if (!isMember && !pub) notFound();
+  const { data: person } = pub ? { data: pub } : await supabase.from("people").select("*").eq("id", id).maybeSingle();
   if (!person) notFound();
 
-  const [cases, visits, actions, summaries, vaccinations, calendarEvents] = await Promise.all([
+  const [cases, visits, actions, summaries, vaccinations, calendarEvents] = pub
+    ? [
+        { data: pub.cases },
+        { data: pub.visits },
+        { data: [] },
+        { data: pub.latest_summary ? [pub.latest_summary] : [] },
+        { data: pub.vaccinations },
+        buildCalendarEvents({
+          visits: pub.visits.map((v) => ({ ...v, person_id: id, people: { full_name: pub.full_name } })),
+          vaccinations: pub.vaccinations.map((v) => ({ ...v, people: { full_name: pub.full_name } })),
+          todos: pub.todos.map((t) => ({ ...t, people: { full_name: pub.full_name } })),
+        }),
+      ]
+    : await Promise.all([
     supabase.from("cases").select("*, visits(count)").eq("person_id", id).order("started_on", { ascending: false }),
     supabase
       .from("visits")
@@ -86,10 +106,13 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
   const today = vietnamToday();
   const calendar = prepareCalendar(calendarEvents, today);
   const [latestSummary, ...olderSummaries] = summaries.data ?? [];
+  const olderSummaryCount = pub ? pub.older_summary_count : olderSummaries.length;
 
   // Every result of this person, one row per test with its latest value, the previous one and the trend.
   const visitDates = new Map((visits.data ?? []).map((v) => [v.id, v.visit_date]));
-  const { data: obsRows } = visitDates.size
+  const { data: obsRows } = pub
+    ? { data: pub.observations }
+    : visitDates.size
     ? await supabase
         .from("observations")
         .select(
@@ -120,10 +143,11 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
   return (
     <div className="space-y-6">
       <PageHeader
-        back={{ href: "/", label: "Trang chủ" }}
+        back={isMember ? { href: "/", label: "Trang chủ" } : undefined}
         title={person.full_name}
         subtitle={facts.join(" · ")}
         actions={
+          isMember && (
           <>
             <Link href={`/people/${id}/summary`} className="btn">
               <FileText className="h-4 w-4" strokeWidth={1.75} />
@@ -153,6 +177,7 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
               </ConfirmForm>
             </MoreMenu>
           </>
+          )
         }
       />
 
@@ -169,7 +194,7 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
         {person.chronic_conditions && <Badge tone="pen">Tiền sử: {person.chronic_conditions}</Badge>}
       </div>
 
-      <Tabs active={tab} tabs={TABS.map((t) => ({ ...t, href: tabHref(t.id) }))} />
+      <Tabs active={tab} tabs={tabs.map((t) => ({ ...t, href: tabHref(t.id) }))} />
 
       {tab === "tong-quan" && (
         <div className="space-y-10">
@@ -182,15 +207,20 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
             <section>
               <div className="mb-3 flex items-center justify-between gap-3">
                 <h2 className="section-title mb-0">Chỉ số ngoài ngưỡng</h2>
-                <Link href={tabHref("chi-so")} scroll={false} className="text-sm text-pen hover:underline">
-                  Tất cả chỉ số
-                </Link>
+                {isMember && (
+                  <Link href={tabHref("chi-so")} scroll={false} className="text-sm text-pen hover:underline">
+                    Tất cả chỉ số
+                  </Link>
+                )}
               </div>
               <div className="card divide-y divide-line py-1">
                 {outOfRange.slice(0, 5).map((r) => (
                   <ResultRow key={r.key} r={r} />
                 ))}
-                {outOfRange.length > 5 && (
+                {outOfRange.length > 5 && !isMember && (
+                  <p className="py-3 text-sm text-ink-soft">Còn {outOfRange.length - 5} chỉ số ngoài ngưỡng khác</p>
+                )}
+                {outOfRange.length > 5 && isMember && (
                   <Link
                     href={tabHref("chi-so")}
                     scroll={false}
@@ -239,17 +269,20 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
             )}
           </section>
 
+          {isMember && (
           <section>
             <h2 className="section-title">Việc cần làm</h2>
             <div className="card">
               <ActionItems items={actions.data ?? []} personId={id} />
             </div>
           </section>
+          )}
 
+          {(isMember || latestSummary) && (
           <section>
             <div className="mb-3 flex items-center justify-between gap-3">
               <h2 className="section-title mb-0">Tóm tắt sức khỏe</h2>
-              <AiSummaryButton personId={id} label={latestSummary ? "Tóm tắt lại" : "Tóm tắt bằng AI"} />
+              {isMember && <AiSummaryButton personId={id} label={latestSummary ? "Tóm tắt lại" : "Tóm tắt bằng AI"} />}
             </div>
             {latestSummary ? (
               <div className="card space-y-2">
@@ -258,7 +291,7 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
                 </ReadMore>
                 <p className="muted text-xs">
                   AI viết {relativeAgo(latestSummary.generated_at, today)} · chỉ để tham khảo
-                  {olderSummaries.length > 0 && ` · ${olderSummaries.length} bản trước`}
+                  {olderSummaryCount > 0 && ` · ${olderSummaryCount} bản trước`}
                 </p>
               </div>
             ) : (
@@ -267,6 +300,7 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
               </p>
             )}
           </section>
+          )}
         </div>
       )}
 
@@ -294,10 +328,12 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
 
       {tab === "lan-kham" && (
         <div className="space-y-3">
-          <Link href={`/visits/new?person=${id}`} className="btn">
-            <Plus className="h-4 w-4" strokeWidth={1.75} />
-            Thêm lần khám
-          </Link>
+          {isMember && (
+            <Link href={`/visits/new?person=${id}`} className="btn">
+              <Plus className="h-4 w-4" strokeWidth={1.75} />
+              Thêm lần khám
+            </Link>
+          )}
           <VisitList visits={visits.data ?? []} />
         </div>
       )}

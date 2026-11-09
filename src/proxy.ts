@@ -1,7 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isPublicPath } from "@/lib/public-routes";
 
-// Refreshes the Supabase session cookie and sends signed-out visitors to /login.
+// Refreshes the Supabase session cookie and sends signed-out visitors to /login (except the public read-only routes).
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
 
@@ -26,9 +27,12 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user && !request.nextUrl.pathname.startsWith("/login")) {
+  const { pathname, search, searchParams } = request.nextUrl;
+  if (!user && !pathname.startsWith("/login") && !isPublicPath(pathname, searchParams)) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
+    url.search = "";
+    url.searchParams.set("next", pathname + search);
     return NextResponse.redirect(url);
   }
 
