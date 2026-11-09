@@ -62,7 +62,7 @@ Risky paths: a migration and auth (proxy, login) → slices 1 and 3 need a human
 - `src/lib/public-data.ts` (new): typed wrappers around the 3 RPCs mapping to the shapes the pages already use (T3).
 - `src/app/people/[id]/page.tsx`, `src/app/visits/[id]/page.tsx`, `src/app/cases/[id]/page.tsx`: anon branch + hide controls (T4).
 - `src/app/layout.tsx`: header for anon (logo + "Đăng nhập"), no nav, search, settings or chat (T5, R8, R9).
-- `src/components/AppShell.tsx`: skip SW push prompt/install hint/chat for anon if it renders them (T5).
+- `src/components/LoginLink.tsx` (new): client "Đăng nhập" link carrying the current path+query as `next` (T5; AppShell needs no change, added 2026-11-09 with the user's OK).
 - `src/lib/public-routes.ts` (new) + `src/lib/public-routes.test.ts` (new): `isPublicPath(pathname, search)` (T6).
 - `src/proxy.ts`: allow-list + `next` on redirect; matcher unchanged except `api/public-file` handled by `isPublicPath` (T6).
 - `src/app/login/page.tsx`, `src/app/actions.ts` (`signIn`): honor a safe `next` (T7).
@@ -88,23 +88,23 @@ Risky paths: a migration and auth (proxy, login) → slices 1 and 3 need a human
   - Size: S
   - Depends on: T1
   - Rollback: revert; unset `SUPABASE_SECRET_KEY` in Vercel.
-- [ ] T3 Add `getViewer()` and public data wrappers (R3)
+- [x] T3 Add `getViewer()` and public data wrappers (R3)
   - Acceptance: members get `isMember: true`; no session → `false`; wrappers return the same shapes the pages use.
   - Tests first: pure mappers in `public-data.ts` (RPC JSON → page shape), with an empty-visit boundary (no documents, no observations).
   - Files: `viewer.ts`, `public-data.ts`, test
   - Lines (est.): 110
   - Size: S
   - Depends on: T1
-- [ ] T4 Render read-only person, visit and case pages for anon (R4, R5, R6)
+- [x] T4 Render read-only person, visit and case pages for anon (R4, R5, R6)
   - Acceptance: with `isMember=false`: person shows only 2 tabs, Tổng quan without to-dos, the summary button or "Xem tất cả"; no summary → section hidden; visit page shows images via `/api/public-file/<id>` and no uploader, AI-read, edit, delete, add-medication or to-do controls; case page has no edit or delete. Members: pages unchanged.
   - Tests: no component test harness in the repo, so checked by the manual steps below; tab resolution logic is unit tested as `publicTab(tab)` in `public-routes.ts` (T6).
   - Files: 3 pages
   - Lines (est.): 150
   - Size: M
   - Depends on: T3
-- [ ] T5 Anon header and shell (R8, R9)
+- [x] T5 Anon header and shell (R8, R9)
   - Acceptance: anon sees logo + "Đăng nhập" (`/login?next=<path+query>`), no PersonNav/tab bar/search/settings/chat/install hint; `/` key does nothing.
-  - Files: `layout.tsx`, `AppShell.tsx`
+  - Files: `layout.tsx`, `LoginLink.tsx`
   - Lines (est.): 50
   - Size: S
   - Depends on: T3
