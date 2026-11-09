@@ -348,6 +348,7 @@ export type Database = {
           extraction_error: string | null
           extraction_status: string
           id: string
+          recorded_on: string | null
           raw_ai_json: Json | null
           reviewed_json: Json | null
           summary: string | null
@@ -363,6 +364,7 @@ export type Database = {
           extraction_error?: string | null
           extraction_status?: string
           id?: string
+          recorded_on?: string | null
           raw_ai_json?: Json | null
           reviewed_json?: Json | null
           summary?: string | null
@@ -378,6 +380,7 @@ export type Database = {
           extraction_error?: string | null
           extraction_status?: string
           id?: string
+          recorded_on?: string | null
           raw_ai_json?: Json | null
           reviewed_json?: Json | null
           summary?: string | null
@@ -446,6 +449,7 @@ export type Database = {
           error: string | null
           extraction: Json | null
           id: string
+          recorded_on: string | null
           status: string
           suggested_case_id: string | null
           suggested_is_new_case: boolean
@@ -460,6 +464,7 @@ export type Database = {
           error?: string | null
           extraction?: Json | null
           id?: string
+          recorded_on?: string | null
           status?: string
           suggested_case_id?: string | null
           suggested_is_new_case?: boolean
@@ -474,6 +479,7 @@ export type Database = {
           error?: string | null
           extraction?: Json | null
           id?: string
+          recorded_on?: string | null
           status?: string
           suggested_case_id?: string | null
           suggested_is_new_case?: boolean

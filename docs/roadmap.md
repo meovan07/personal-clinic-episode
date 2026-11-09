@@ -42,6 +42,7 @@ Also listed in the README:
 
 | Date | Change |
 |---|---|
+| 09/11/2026 | Audio recordings, slice 2a/6 (nothing visible yet): in-browser compression and splitting of recordings with mediabunny (`src/lib/audio.ts`, mono 48 kHz ≤ 48 kbps, ~10-minute parts cut at quiet moments); migration `recording_date` adds `recorded_on` to `inbox_items` and `documents`. |
 | 09/11/2026 | Audio recordings, slice 1/6 (nothing visible yet): migration `audio_recordings` adds the `consultation_recording` type, `transcript` columns and `transcript_parts`, and search covers transcripts; tested part-planning helpers (`src/lib/audio-plan.ts`). Plan: `docs/features/audio-recordings/`. |
 | 02/10/2026 | Consistent names: new hospitals, departments, doctors, vaccines, diseases and medications reuse the existing spelling (`src/lib/names.ts`); visit grouping compares hospitals the same way; test names differing only by a unit are grouped. Existing hospital variants merged (8 visits). |
 | 02/10/2026 | Uploads: photos shrunk to 2000 px JPEG and given readable names before upload. Cài đặt: change your own display name (migration `member_display_name`). |
