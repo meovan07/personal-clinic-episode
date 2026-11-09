@@ -364,7 +364,7 @@ export async function readDocumentWithAI(documentId: string): Promise<ReadResult
   const doc = check(
     await supabase
       .from("documents")
-      .select("id, visit_id, document_files(storage_path, file_name, mime_type, page_no)")
+      .select("id, visit_id, doc_type, document_files(storage_path, file_name, mime_type, page_no)")
       .eq("id", documentId)
       .order("page_no", { referencedTable: "document_files" })
       .single(),
@@ -377,18 +377,24 @@ export async function readDocumentWithAI(documentId: string): Promise<ReadResult
   );
 
   try {
-    const files: ExtractFile[] = [];
-    for (const f of doc.document_files) {
-      const { data, error } = await supabase.storage.from("documents").download(f.storage_path);
-      if (error) throw new Error(`Không tải được file ${f.file_name}: ${error.message}`);
-      files.push({
-        name: f.file_name,
-        mime: f.mime_type ?? data.type,
-        bytes: Buffer.from(await data.arrayBuffer()),
-      });
+    let read;
+    if (doc.doc_type === "consultation_recording") {
+      read = await inbox.extractRecordingDocument(supabase, documentId);
+    } else {
+      const files: ExtractFile[] = [];
+      for (const f of doc.document_files) {
+        const { data, error } = await supabase.storage.from("documents").download(f.storage_path);
+        if (error) throw new Error(`Không tải được file ${f.file_name}: ${error.message}`);
+        files.push({
+          name: f.file_name,
+          mime: f.mime_type ?? data.type,
+          bytes: Buffer.from(await data.arrayBuffer()),
+        });
+      }
+      const catalog = check(await supabase.from("test_catalog").select("code, name_vi").order("code"));
+      read = await extractDocument(files, catalog);
     }
-    const catalog = check(await supabase.from("test_catalog").select("code, name_vi").order("code"));
-    const { result, skipped } = await extractDocument(files, catalog);
+    const { result, skipped } = read;
     if (skipped.length > 0) result.uncertain.push(`Bỏ qua file không đọc được: ${skipped.join(", ")}`);
 
     check(

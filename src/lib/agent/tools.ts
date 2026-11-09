@@ -6,6 +6,7 @@ import { loadCalendarEvents } from "@/lib/calendar-data";
 import { nameKey } from "@/lib/normalize";
 import { hitHref } from "@/lib/search";
 import { loadInboxItem, readInboxItem } from "@/lib/services/inbox";
+import { capTranscript, formatTime, type Segment } from "@/lib/transcript";
 import { pendingDoses } from "@/lib/vaccinations";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
@@ -140,12 +141,15 @@ export function createReadTools(supabase: Supabase) {
 
     get_visit: tool({
       description:
-        "Everything about one visit: details, documents, lab results, medications and to-dos (with their ids).",
+        "Everything about one visit: details, documents (has_transcript marks recordings with a transcript), lab results, medications and to-dos (with their ids).",
       inputSchema: z.object({ visit_id: uuid }),
       execute: async ({ visit_id }) => {
         const [visit, documents, observations, medications, todos] = await Promise.all([
           supabase.from("visits").select("*, people(full_name), cases(id, title)").eq("id", visit_id).maybeSingle(),
-          supabase.from("documents").select("id, title, doc_type, summary, extraction_status").eq("visit_id", visit_id),
+          supabase
+            .from("documents")
+            .select("id, title, doc_type, summary, extraction_status, transcript_head:transcript->0")
+            .eq("visit_id", visit_id),
           supabase
             .from("observations")
             .select(
@@ -171,7 +175,7 @@ export function createReadTools(supabase: Supabase) {
           notes: v.notes,
           case: v.cases ? { title: v.cases.title, url: `/cases/${v.cases.id}` } : null,
           url: `/visits/${v.id}`,
-          documents: documents.data ?? [],
+          documents: (documents.data ?? []).map(({ transcript_head, ...d }) => ({ ...d, has_transcript: transcript_head != null })),
           results: (observations.data ?? []).map((o) => ({
             test: o.test_catalog?.name_vi ?? o.raw_name,
             value: o.value ?? o.value_text,
@@ -350,6 +354,32 @@ export function createReadTools(supabase: Supabase) {
             next_due_on: v.next_due_on,
           })),
           unclear: x.uncertain,
+        };
+      },
+    }),
+
+    read_transcript: tool({
+      description:
+        "The transcript of a consultation recording (doc_type consultation_recording, has_transcript in get_visit): " +
+        "one line per turn, [m:ss] speaker (Bác sĩ, Bệnh nhân, Người nhà…): text.",
+      inputSchema: z.object({ document_id: uuid }),
+      execute: async ({ document_id }) => {
+        const { data, error } = await supabase
+          .from("documents")
+          .select("id, doc_type, recorded_on, transcript")
+          .eq("id", document_id)
+          .maybeSingle();
+        if (error) fail("Could not read the transcript", error);
+        const segments = (data?.transcript ?? null) as Segment[] | null;
+        if (!data || !Array.isArray(segments) || segments.length === 0) {
+          return { message: "This document has no transcript (or was not found)." };
+        }
+        const text = segments.map((s) => `[${formatTime(s.start)}] ${s.speaker}: ${s.text}`).join("\n");
+        return {
+          document_id: data.id,
+          doc_type: data.doc_type,
+          recorded_on: data.recorded_on,
+          transcript: capTranscript(text),
         };
       },
     }),
