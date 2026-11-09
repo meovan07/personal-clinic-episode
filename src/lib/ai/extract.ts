@@ -2,6 +2,13 @@ import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 import { z } from "zod";
 import type { ResponseInputContent } from "openai/resources/responses/responses";
+import {
+  cleanSpokenObservations,
+  followUpFrom,
+  normalizeConsultationSummary,
+  parseSpeakerRoles,
+} from "@/lib/consultation";
+import { formatTime, SPEAKER_ROLES, type Segment } from "@/lib/transcript";
 
 // Only used on the server: OPENAI_API_KEY must never reach the browser.
 
@@ -13,6 +20,7 @@ export const DOC_TYPES = [
   "visit_note",
   "vaccination_record",
   "invoice",
+  "consultation_recording",
   "other",
 ] as const;
 
@@ -187,15 +195,11 @@ Rules:
 - matched_case_id must be one of the listed case ids belonging to the matched person, and only when the diagnosis/illness in this document clearly continues that case (same condition/body area/ongoing treatment). Otherwise null.
 - is_new_case is true only when the document is about a specific diagnosed condition or ongoing treatment worth tracking as its own bệnh án (not a routine annual checkup, a one-off vaccination, or a normal-result general screening), and no existing case already covers it. In that case also fill new_case_title with a short Vietnamese title in the same style as existing ones (e.g. "Viêm dạ dày", "Gãy tay trái").`;
 
-export async function extractAndMatchDocument(
-  files: ExtractFile[],
-  catalog: { code: string; name_vi: string }[],
+function buildRoster(
   people: { id: string; full_name: string; birth_date: string | null; sex: string | null }[],
   casesByPerson: Record<string, { id: string; title: string; status: string; started_on: string | null }[]>,
-): Promise<{ result: InboxExtractionResult; skipped: string[] }> {
-  const { content, skipped } = buildContent(files);
-  const catalogText = catalog.map((c) => `${c.code}: ${c.name_vi}`).join("\n");
-  const rosterText = people
+): string {
+  return people
     .map((p) => {
       const cases = casesByPerson[p.id] ?? [];
       const caseLines = cases.length
@@ -206,6 +210,17 @@ export async function extractAndMatchDocument(
       return `- [id=${p.id}] ${p.full_name}${p.birth_date ? ` (sinh ${p.birth_date})` : ""}${p.sex ? `, ${p.sex}` : ""}\n${caseLines}`;
     })
     .join("\n");
+}
+
+export async function extractAndMatchDocument(
+  files: ExtractFile[],
+  catalog: { code: string; name_vi: string }[],
+  people: { id: string; full_name: string; birth_date: string | null; sex: string | null }[],
+  casesByPerson: Record<string, { id: string; title: string; status: string; started_on: string | null }[]>,
+): Promise<{ result: InboxExtractionResult; skipped: string[] }> {
+  const { content, skipped } = buildContent(files);
+  const catalogText = catalog.map((c) => `${c.code}: ${c.name_vi}`).join("\n");
+  const rosterText = buildRoster(people, casesByPerson);
 
   const client = new OpenAI();
   const response = await client.responses.parse({
@@ -226,4 +241,137 @@ export async function extractAndMatchDocument(
     throw new Error("AI không trả về kết quả hợp lệ. Thử lại sau.");
   }
   return { result: response.output_parsed, skipped };
+}
+
+
+// ---------- Consultation recordings: speaker roles + extraction from a transcript ----------
+
+const SpeakerRoles = z.object({
+  parts: z.array(
+    z.object({
+      part_no: z.number().int(),
+      speakers: z.array(z.object({ letter: z.string(), role: z.enum([...SPEAKER_ROLES, "unknown"]) })),
+    }),
+  ),
+});
+
+const SPEAKER_INSTRUCTIONS = `Đây là các phần của một buổi khám bệnh bằng tiếng Việt, đã được chép lời; người nói được gán chữ cái (A, B, C...). Chữ cái chỉ có nghĩa trong từng phần.
+Với mỗi phần, quyết định mỗi chữ cái là: "Bác sĩ", "Bệnh nhân", "Người nhà" hoặc "Khác" (ví dụ y tá, lễ tân). Nếu không chắc, trả "unknown".
+Bác sĩ thường hỏi triệu chứng, chẩn đoán, kê đơn, dặn dò; bệnh nhân kể triệu chứng và trả lời. Không viết lại hay sửa lời thoại.`;
+
+const SAMPLE_UTTERANCES = 6;
+const SAMPLE_CHARS = 300;
+
+export async function assignSpeakers(
+  parts: { part_no: number; segments: { speaker: string; text: string }[] }[],
+  { client = new OpenAI() }: { client?: OpenAI } = {},
+): Promise<Record<number, Record<string, string>>> {
+  const text = parts
+    .map((part) => {
+      const byLetter = new Map<string, string[]>();
+      for (const seg of part.segments) {
+        const list = byLetter.get(seg.speaker) ?? [];
+        if (list.length < SAMPLE_UTTERANCES) list.push(seg.text.slice(0, SAMPLE_CHARS));
+        byLetter.set(seg.speaker, list);
+      }
+      const speakers = [...byLetter.entries()]
+        .map(([letter, lines]) => `Người nói ${letter}:\n${lines.map((l) => `- ${l}`).join("\n")}`)
+        .join("\n");
+      return `Phần ${part.part_no}\n${speakers}`;
+    })
+    .join("\n\n");
+  const response = await client.responses.parse({
+    model: EXTRACTION_MODEL,
+    reasoning: { effort: "low" },
+    store: false, // don't keep medical conversations on OpenAI's side
+    instructions: SPEAKER_INSTRUCTIONS,
+    input: [{ role: "user", content: [{ type: "input_text", text }] }],
+    text: { format: zodTextFormat(SpeakerRoles, "speaker_roles") },
+  });
+  if (!response.output_parsed) throw new Error("AI không trả về kết quả hợp lệ. Thử lại sau.");
+  return parseSpeakerRoles(response.output_parsed.parts);
+}
+
+/** Lines `[m:ss] Speaker: text`. */
+export function transcriptText(segments: Segment[]): string {
+  return segments.map((s) => `[${formatTime(s.start)}] ${s.speaker}: ${s.text}`).join("\n");
+}
+
+const followUpDays = z
+  .number()
+  .int()
+  .nullable()
+  .describe("Relative re-examination delay in days ('2 tuần sau' = 14), when the doctor gave one instead of a date");
+
+export const ConsultationExtraction = Extraction.extend({ follow_up_in_days: followUpDays });
+export const InboxConsultationExtraction = InboxExtraction.extend({ follow_up_in_days: followUpDays });
+
+const CONSULTATION_INSTRUCTIONS = (recordedOn: string) => `You read the transcript of a Vietnamese doctor consultation, recorded on ${recordedOn}. Each line is "[time] Role: text" with roles Bác sĩ, Bệnh nhân, Người nhà, Khác or Người nói (unknown). Extract it into structured data.
+
+Rules:
+- document_type is "consultation_recording".
+- summary is Markdown in Vietnamese with exactly these five sections, in order: "### Lý do khám", "### Bác sĩ nói gì", "### Chẩn đoán", "### Dặn dò", "### Thuốc". Write "Không nhắc đến." under a section when nothing was said about it.
+- observations only for a test or measurement the speakers named WITH a number (e.g. "đường huyết 7,2"); copy the value as spoken, unit null if not said. Never infer values.
+- medications: name, with dose, schedule and duration as spoken.
+- Follow-up: a relative delay ("tái khám 2 tuần sau") goes in follow_up_in_days (14) and follow_up_date stays null; an absolute date goes in follow_up_date (YYYY-MM-DD).
+- document_date is ${recordedOn} unless a different date is spoken.
+- facility and doctor only if said in the conversation.
+- For test_code, only use a code from the catalog below; otherwise null. doctor_advice is only what the doctor told this patient to do. Put anything unclear in "uncertain". Do not add medical advice that was not said.
+- Write everything in Vietnamese.`;
+
+function postProcessConsultation<T extends z.infer<typeof ConsultationExtraction>>(
+  parsed: T,
+  recordedOn: string,
+): Omit<T, "follow_up_in_days"> {
+  const { follow_up_in_days, ...rest } = parsed;
+  const result = {
+    ...rest,
+    document_type: "consultation_recording" as const,
+    summary: normalizeConsultationSummary(parsed.summary),
+    observations: cleanSpokenObservations(parsed.observations),
+  };
+  if (follow_up_in_days != null && !result.follow_up_date) {
+    result.follow_up_date = followUpFrom(result.document_date ?? recordedOn, follow_up_in_days);
+  }
+  return result;
+}
+
+export async function extractConsultation(
+  transcript: string,
+  catalog: { code: string; name_vi: string }[],
+  { recordedOn, model = EXTRACTION_MODEL }: { recordedOn: string; model?: string },
+): Promise<{ result: ExtractionResult; skipped: string[]; usage: OpenAI.Responses.ResponseUsage | undefined }> {
+  const catalogText = catalog.map((c) => `${c.code}: ${c.name_vi}`).join("\n");
+  const client = new OpenAI();
+  const response = await client.responses.parse({
+    model,
+    reasoning: { effort: "low" },
+    store: false,
+    instructions: `${CONSULTATION_INSTRUCTIONS(recordedOn)}\n\nTest catalog:\n${catalogText}`,
+    input: [{ role: "user", content: [{ type: "input_text", text: transcript }] }],
+    text: { format: zodTextFormat(ConsultationExtraction, "consultation") },
+  });
+  if (!response.output_parsed) throw new Error("AI không trả về kết quả hợp lệ. Thử lại sau.");
+  return { result: postProcessConsultation(response.output_parsed, recordedOn), skipped: [], usage: response.usage };
+}
+
+export async function extractAndMatchConsultation(
+  transcript: string,
+  catalog: { code: string; name_vi: string }[],
+  people: { id: string; full_name: string; birth_date: string | null; sex: string | null }[],
+  casesByPerson: Record<string, { id: string; title: string; status: string; started_on: string | null }[]>,
+  { recordedOn }: { recordedOn: string },
+): Promise<{ result: InboxExtractionResult; skipped: string[] }> {
+  const catalogText = catalog.map((c) => `${c.code}: ${c.name_vi}`).join("\n");
+  const client = new OpenAI();
+  const response = await client.responses.parse({
+    model: EXTRACTION_MODEL,
+    reasoning: { effort: "low" },
+    store: false,
+    instructions: `${CONSULTATION_INSTRUCTIONS(recordedOn)}\n${MATCH_INSTRUCTIONS}\n- patient_name is the name spoken in the conversation, if any; many consultations never say it, so use the roster context and set person_match_confidence "low" when unsure.\n\nTest catalog:\n${catalogText}\n\nGia đình và bệnh án hiện có:\n${buildRoster(people, casesByPerson)}`,
+    input: [{ role: "user", content: [{ type: "input_text", text: transcript }] }],
+    text: { format: zodTextFormat(InboxConsultationExtraction, "consultation_matched") },
+  });
+  if (!response.output_parsed) throw new Error("AI không trả về kết quả hợp lệ. Thử lại sau.");
+  return { result: postProcessConsultation(response.output_parsed, recordedOn), skipped: [] };
 }
