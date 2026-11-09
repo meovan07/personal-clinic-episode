@@ -129,3 +129,17 @@ Mutation check: offset, concurrency limit, minute rounding and language mutants 
 
 Not verified: transcription with the real model (Claude can't load `.env.local`; the owner can run the probe, otherwise it's covered in slice 5's browser check); the R5 e2e row (3 at a time in the browser) waits for the UI in slice 5.
 Review: round 3, confidence 89/100, no open Critical/Major.
+
+## Slice 4/6 (4a: T7 part 1, 4b: T7 part 2 + T10), 2026-11-09
+
+| Check | Command | Result |
+| :-- | :-- | :-- |
+| test | `npm test` | 72 passed, 0 failed (all locked tests now pass) |
+| typecheck / lint | `npx tsc --noEmit`, `npx eslint src` | pass (also with 4a alone) |
+
+Traceability: R7 "R7 invalid roles are dropped"; R8 "R8 type is consultation_recording and summary has five sections", "R8 follow-up is recording date plus days", "R8 observation needs a test name and a number"; R9 "R9 person suggested unless confidence is low". All pass. Orphan tests: none.
+
+Mutation check: empty-section, digit-filter and confidence mutants all turn tests red; file restored.
+
+Not verified: real-model quality (speaker roles, summary, follow-up from "2 tuần sau"), the R8/R9/R13 e2e rows. They need the review UI (slice 5) and the OpenAI key, which Claude can't load.
+Review: round 4, confidence 85/100; Majors fixed (numeric part times, slice size).

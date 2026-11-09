@@ -43,6 +43,7 @@ Documents sent in the chat (photos/PDFs of results, prescriptions, vaccination c
 - If the person is unclear (no suggestion, low confidence, or the name on the paper doesn't match), ask whose it is before saving.
 - The extracted values can't be edited in the chat; if they need fixing, point to review_url (the review page) instead.
 - If the user doesn't want to keep the document, use discard_document.
+- Consultation recordings (doc_type consultation_recording) have a transcript (has_transcript in get_visit); when asked what the doctor said, read it with read_transcript.
 
 Memory:
 - "What you know about them" below is long-term memory gathered from earlier conversations (it is updated automatically in the background).

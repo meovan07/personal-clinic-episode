@@ -1,21 +1,81 @@
 import {
+  assignSpeakers,
   Extraction,
+  extractAndMatchConsultation,
   extractAndMatchDocument,
+  extractConsultation,
   InboxExtraction,
+  transcriptText,
   withExtractionDefaults,
   type ExtractFile,
   type ExtractionResult,
+  type InboxExtractionResult,
 } from "@/lib/ai/extract";
+import { suggestedPerson } from "@/lib/consultation";
 import { today } from "@/lib/format";
+import { vietnamToday } from "@/lib/calendar";
 import { normalizeObservation } from "@/lib/normalize";
 import { canonicalKey } from "@/lib/names";
 import { nameNormalizer } from "@/lib/services/names";
 import { check, createVisit, type Supabase } from "@/lib/services/records";
+import { applySpeakerRoles, joinParts, type Segment, type TranscriptPart } from "@/lib/transcript";
 import { isSameDose, pendingDoses } from "@/lib/vaccinations";
 
 // Documents that arrive without a known visit ("+" quick add, or a photo sent in the chat): the AI reads
 // them and guesses who/which bệnh án/which visit they belong to, then the user confirms. Also the shared
 // step that turns a reviewed extraction into rows. Shared by the server actions and the chat tools.
+
+type RecordingOwner = { table: "inbox_items" | "documents"; id: string };
+
+// Audio route: the parts were already transcribed (by the transcription action), so this only needs the finished
+// parts. Assigns speaker roles, saves the role-labelled transcript on the owner and returns it for extraction.
+export async function readRecording(
+  supabase: Supabase,
+  owner: RecordingOwner,
+): Promise<{ transcript: Segment[]; text: string; recordedOn: string }> {
+  const ownerColumn = owner.table === "inbox_items" ? "inbox_item_id" : "document_id";
+  const rows = check(
+    await supabase
+      .from("transcript_parts")
+      .select("part_no, start_sec, end_sec, status, storage_path, segments, error")
+      .eq(ownerColumn, owner.id)
+      .order("part_no"),
+  );
+  // numeric columns can arrive as strings; joinParts adds them to segment times.
+  const parts = (rows as unknown as TranscriptPart[]).map((p) => ({ ...p, start_sec: Number(p.start_sec), end_sec: Number(p.end_sec) }));
+  const joined = joinParts(parts);
+  if (parts.length === 0 || !joined.complete) throw new Error("Chưa chép lời xong bản ghi.");
+
+  const byPart = new Map<number, { speaker: string; text: string }[]>();
+  for (const seg of joined.segments) {
+    const list = byPart.get(seg.part_no) ?? [];
+    list.push({ speaker: seg.speaker, text: seg.text });
+    byPart.set(seg.part_no, list);
+  }
+  const roles = await assignSpeakers([...byPart.entries()].map(([part_no, segments]) => ({ part_no, segments })));
+  const transcript = applySpeakerRoles(joined.segments, roles);
+
+  const row = check(await supabase.from(owner.table).select("recorded_on").eq("id", owner.id).single());
+  check(await supabase.from(owner.table).update({ transcript }).eq("id", owner.id));
+  return { transcript, text: transcriptText(transcript), recordedOn: row.recorded_on ?? vietnamToday() };
+}
+
+/** Reads a document's recording and extracts it (visit-document flow). */
+export async function extractRecordingDocument(supabase: Supabase, documentId: string) {
+  const { text, recordedOn } = await readRecording(supabase, { table: "documents", id: documentId });
+  const catalog = check(await supabase.from("test_catalog").select("code, name_vi").order("code"));
+  return extractConsultation(text, catalog, { recordedOn });
+}
+
+export async function hasRecordingParts(supabase: Supabase, owner: RecordingOwner): Promise<boolean> {
+  const column = owner.table === "inbox_items" ? "inbox_item_id" : "document_id";
+  const { count, error } = await supabase
+    .from("transcript_parts")
+    .select("id", { count: "exact", head: true })
+    .eq(column, owner.id);
+  if (error) throw new Error(error.message);
+  return (count ?? 0) > 0;
+}
 
 // Reads the file(s) with AI, and guesses the person / bệnh án / lần khám they belong to.
 export async function readInboxItem(supabase: Supabase, id: string): Promise<{ error: string | null }> {
@@ -30,17 +90,6 @@ export async function readInboxItem(supabase: Supabase, id: string): Promise<{ e
   check(await supabase.from("inbox_items").update({ status: "processing", error: null }).eq("id", id));
 
   try {
-    const files: ExtractFile[] = [];
-    for (const f of item.inbox_files) {
-      const { data, error } = await supabase.storage.from("documents").download(f.storage_path);
-      if (error) throw new Error(`Không tải được file ${f.file_name}: ${error.message}`);
-      files.push({
-        name: f.file_name,
-        mime: f.mime_type ?? data.type,
-        bytes: Buffer.from(await data.arrayBuffer()),
-      });
-    }
-
     const [catalog, people, cases] = await Promise.all([
       supabase.from("test_catalog").select("code, name_vi").order("code").then(check),
       supabase.from("people").select("id, full_name, birth_date, sex").order("created_at").then(check),
@@ -49,8 +98,28 @@ export async function readInboxItem(supabase: Supabase, id: string): Promise<{ e
     const casesByPerson: Record<string, typeof cases> = {};
     for (const c of cases) (casesByPerson[c.person_id] ??= []).push(c);
 
-    const { result, skipped } = await extractAndMatchDocument(files, catalog, people, casesByPerson);
-    if (skipped.length > 0) result.uncertain.push(`Bỏ qua file không đọc được: ${skipped.join(", ")}`);
+    let result: InboxExtractionResult;
+    let suggestedPersonId: string | null;
+    if (await hasRecordingParts(supabase, { table: "inbox_items", id })) {
+      const { text, recordedOn } = await readRecording(supabase, { table: "inbox_items", id });
+      ({ result } = await extractAndMatchConsultation(text, catalog, people, casesByPerson, { recordedOn }));
+      suggestedPersonId = suggestedPerson(result);
+    } else {
+      const files: ExtractFile[] = [];
+      for (const f of item.inbox_files) {
+        const { data, error } = await supabase.storage.from("documents").download(f.storage_path);
+        if (error) throw new Error(`Không tải được file ${f.file_name}: ${error.message}`);
+        files.push({
+          name: f.file_name,
+          mime: f.mime_type ?? data.type,
+          bytes: Buffer.from(await data.arrayBuffer()),
+        });
+      }
+      const read = await extractAndMatchDocument(files, catalog, people, casesByPerson);
+      result = read.result;
+      if (read.skipped.length > 0) result.uncertain.push(`Bỏ qua file không đọc được: ${read.skipped.join(", ")}`);
+      suggestedPersonId = result.matched_person_id;
+    }
 
     // Deterministic visit grouping: same person + same date, and if both sides have a facility, it must match too.
     // This is what makes multiple pieces of evidence about the same visit land on one lần khám instead of two.
@@ -80,7 +149,7 @@ export async function readInboxItem(supabase: Supabase, id: string): Promise<{ e
           extraction: result,
           status: "needs_review",
           error: null,
-          suggested_person_id: result.matched_person_id,
+          suggested_person_id: suggestedPersonId,
           suggested_case_id: result.matched_case_id,
           suggested_is_new_case: result.is_new_case,
           suggested_new_case_title: result.new_case_title,
@@ -122,7 +191,7 @@ export async function saveInboxItem(
   const item = check(
     await supabase
       .from("inbox_items")
-      .select("id, inbox_files(page_no, storage_path, file_name, mime_type, size_bytes, sha256)")
+      .select("id, transcript, recorded_on, inbox_files(page_no, storage_path, file_name, mime_type, size_bytes, sha256)")
       .eq("id", inboxId)
       .order("page_no", { referencedTable: "inbox_files" })
       .single(),
@@ -155,10 +224,17 @@ export async function saveInboxItem(
     ).id;
   }
 
+  const isRecording = await hasRecordingParts(supabase, { table: "inbox_items", id: inboxId });
   const doc = check(
     await supabase
       .from("documents")
-      .insert({ visit_id: visitId, doc_type: reviewed.document_type, uploaded_by: user?.id })
+      .insert({
+        visit_id: visitId,
+        doc_type: isRecording ? "consultation_recording" : reviewed.document_type,
+        uploaded_by: user?.id,
+        transcript: item.transcript,
+        recorded_on: item.recorded_on,
+      })
       .select("id")
       .single(),
   );
@@ -176,6 +252,18 @@ export async function saveInboxItem(
   if (error) {
     await supabase.from("documents").delete().eq("id", doc.id);
     throw new Error(error.message);
+  }
+
+  // The part rows would cascade away with the inbox item; hand them to the document (T9 cleans them up).
+  if (isRecording) {
+    const { error: moveError } = await supabase
+      .from("transcript_parts")
+      .update({ document_id: doc.id, inbox_item_id: null })
+      .eq("inbox_item_id", inboxId);
+    if (moveError) {
+      await supabase.from("documents").delete().eq("id", doc.id);
+      throw new Error(moveError.message);
+    }
   }
 
   await applyExtraction(supabase, { visitId, documentId: doc.id, reviewed });
