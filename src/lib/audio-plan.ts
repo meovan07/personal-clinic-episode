@@ -49,6 +49,7 @@ export function planParts(
   durationSec: number,
   opts: { bitrateKbps?: number; quietAt?: (markSec: number) => number } = {},
 ): PlannedPart[] {
+  if (!Number.isFinite(durationSec) || durationSec <= 0) throw new Error(AUDIO_FORMAT_ERROR);
   if (durationSec > MAX_DURATION_SEC) throw new Error(AUDIO_TOO_LONG_ERROR);
   const cuts = [0];
   for (let mark = PART_SEC; mark < durationSec; mark += PART_SEC) {

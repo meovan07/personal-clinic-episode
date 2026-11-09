@@ -96,7 +96,8 @@ Feature flag `NEXT_PUBLIC_AUDIO_UPLOADS` (default off) hides audio in the upload
 | Slice | Tasks | Files | Est. lines | Shippable alone? (flag/how) | Depended on by | MR | Status |
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
 | 1/6 | T1, T2 | 5 | 330 | yes, schema + pure helpers, nothing calls them | 2-6 | [#3](https://github.com/meovan07/personal-clinic-episode/pull/3) | open |
-| 2/6 | T3, T4 | 8 | 340 | yes, behind flag off | 3-6 | | pending |
+| 2a/6 | T3 (+ `recording_date` migration, planParts guard) | 7 | 207 | yes, nothing calls it yet | 2b-6 | | pending |
+| 2b/6 | T4 | 6 | 300 | yes, behind flag off | 3-6 | | pending |
 | 3/6 | T5, T6 | 5 | 290 | yes, behind flag off | 4-6 | | pending |
 | 4/6 | T7, T10 | 5 | 260 | yes, behind flag off | 5, 6 | | pending |
 | 5/6 | T8 | 7 | 250 | yes, behind flag off | 6 | | pending |
@@ -121,21 +122,21 @@ Every task is test-first: a failing test before the code. Tick the box when the 
   - Lines (est.): 70 + 80 tests
   - Size: S
   - Depends on: none
-- [ ] T3 Add the browser audio processing with mediabunny (R2, R3, R4)
+- [x] T3 Add the browser audio processing with mediabunny (R2, R3, R4)
   - Acceptance: `readDuration`, `compressForStorage` (mono ≤ 48 kbps, AAC/m4a, else Opus/webm), `findQuietPoint(file, around)`, `encodePart(file, start, end)` (≤ 24 MB); a 30-min 128 kbps stereo m4a compresses to ≤ 11 MB with duration within 1 s; no WebCodecs audio → the "Trình duyệt này chưa hỗ trợ" error. Checked on a real iPhone (installed app) before T4 starts.
   - Tests: no unit test (WebCodecs isn't in Node); a dev-only page check in the browser preview with a sample file, and the iPhone check, both reported.
-  - Files: `src/lib/audio.ts`, `package.json`, `package-lock.json`
+  - Files: `src/lib/audio.ts`, `package.json`, `package-lock.json`; plus review round 1 Minor 1: `src/lib/audio-plan.ts`, `src/lib/audio-plan.test.ts` (`planParts` rejects non-finite or ≤ 0 durations), `spec.md` R4 wording ("about 10 minutes, ≤ 610 s")
   - Lines (est.): 160
   - Size: M
   - Depends on: T2
-- [ ] T4 Accept audio in the upload pipeline behind the flag (R1, R3, R14)
+- [x] T4 Accept audio in the upload pipeline behind the flag (R1, R3, R14)
   - Acceptance: with `NEXT_PUBLIC_AUDIO_UPLOADS=1`, the four pickers accept audio; audio is hashed on the original, duration-checked, compressed, split, uploaded with its parts; a failed upload removes every uploaded file; `createDocument` / `createInboxItem` save `consultation_recording` and the `transcript_parts` rows; a mixed pick gives separate items; with the flag off nothing changes.
   - Tests: extend `src/lib/audio-plan.test.ts` with a failing case for the mixed pick → `{audio:[m4a], other:[jpg, pdf]}`; flag-off check in the browser preview.
-  - Files: `src/lib/upload.ts`, `src/components/DocumentUploader.tsx`, `src/components/NewVisitForm.tsx`, `src/components/QuickAddButton.tsx`, `src/components/AssistantChat.tsx`, `src/app/actions.ts`
+  - Files: `src/lib/upload.ts`, `src/components/DocumentUploader.tsx`, `src/components/NewVisitForm.tsx`, `src/components/QuickAddButton.tsx`, `src/components/AssistantChat.tsx`, `src/app/actions.ts`; plus (decided by Hung 2026-11-09, R9) `supabase/migrations/20261109020000_recording_date.sql`, `supabase/rollbacks/20261109020000_recording_date.down.sql`, `src/lib/database.types.ts` for a `recorded_on date` column on `inbox_items` and `documents`
   - Lines (est.): 180
   - Size: M
   - Depends on: T1, T3
-  - Rollback: revert; flag off hides it.
+  - Rollback: revert; flag off hides it. Migration `recording_date`: down SQL drops the two `recorded_on` columns (safe to drop: it is only a hint for AI matching; the confirmed date lives on the visit).
 - [ ] T5 Add pure transcript helpers (R4, R7, R13, R14)
   - Acceptance: `joinParts` offsets segments by part start (5 s into a part at 1202 s → 1207 s, "20:07") and orders by `part_no` regardless of finish order, returning incomplete when a part isn't done; `applySpeakerRoles` maps letters per part and labels unmapped ones "Người nói n"; `capTranscript` at 30,000 chars (30,000 → no note, 30,001 → cut + note); `partPathsToDelete(parts)`.
   - Tests: `src/lib/transcript.test.ts` first with each case above.

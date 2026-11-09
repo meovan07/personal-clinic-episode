@@ -116,3 +116,20 @@ test("R4 window uses fixed marks, not the previous cut", () => {
 test("R9 recording date comes from lastModified", () => {
   assert.equal(recordedOn(Date.UTC(2026, 10, 5, 2, 30)), "2026-11-05");
 });
+
+test("R4 planParts rejects unreadable durations", () => {
+  for (const d of [NaN, 0, -5, Infinity]) {
+    assert.throws(() => planParts(d), (e: unknown) => e instanceof Error && e.message === AUDIO_FORMAT_ERROR);
+  }
+});
+
+test("R1 mixed pick gives audio items and one photo group", () => {
+  const files = [
+    { name: "kham-tim.m4a", type: "audio/mp4" },
+    { name: "anh-1.jpg", type: "image/jpeg" },
+    { name: "toa.pdf", type: "application/pdf" },
+  ];
+  const r = splitAudioFiles(files);
+  assert.deepEqual(r.audioGroups, [[files[0]]]);
+  assert.deepEqual(r.other, [files[1], files[2]]);
+});
