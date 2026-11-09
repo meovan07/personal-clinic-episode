@@ -12,7 +12,14 @@ import { pushConfigured, sendPush } from "@/lib/push";
 import * as inbox from "@/lib/services/inbox";
 import * as records from "@/lib/services/records";
 import { check, removeFilesUnder } from "@/lib/services/records";
+import { safeNext } from "@/lib/safe-next";
 import { createClient } from "@/lib/supabase/server";
+import { getViewer } from "@/lib/viewer";
+
+async function requireMember() {
+  const { isMember } = await getViewer();
+  if (!isMember) throw new Error("Chưa đăng nhập.");
+}
 
 function str(fd: FormData, key: string): string | null {
   const v = fd.get(key);
@@ -36,7 +43,7 @@ export async function signIn(_prev: string | null, fd: FormData): Promise<string
     password: required(fd, "password"),
   });
   if (error) return "Email hoặc mật khẩu không đúng.";
-  redirect("/");
+  redirect(safeNext(fd.get("next")));
 }
 
 export async function signOut() {
@@ -48,6 +55,7 @@ export async function signOut() {
 // ---------- People ----------
 
 export async function savePerson(fd: FormData) {
+  await requireMember();
   const supabase = await createClient();
   const id = str(fd, "id");
   const row = {
@@ -67,6 +75,7 @@ export async function savePerson(fd: FormData) {
 }
 
 export async function deletePerson(id: string) {
+  await requireMember();
   const supabase = await createClient();
   await removeFilesUnder(supabase, (q) => q.eq("documents.visits.person_id", id));
   check(await supabase.from("people").delete().eq("id", id));
@@ -77,6 +86,7 @@ export async function deletePerson(id: string) {
 // ---------- Cases ----------
 
 export async function saveCase(fd: FormData) {
+  await requireMember();
   const supabase = await createClient();
   const id = str(fd, "id");
   const row = {
@@ -93,6 +103,7 @@ export async function saveCase(fd: FormData) {
 }
 
 export async function deleteCase(id: string, personId: string) {
+  await requireMember();
   const supabase = await createClient();
   await records.deleteCase(supabase, id);
   revalidatePath("/", "layout");
@@ -102,6 +113,7 @@ export async function deleteCase(id: string, personId: string) {
 // ---------- Visits ----------
 
 export async function saveVisit(fd: FormData) {
+  await requireMember();
   const supabase = await createClient();
   const id = str(fd, "id");
   const row = {
@@ -123,6 +135,7 @@ export async function saveVisit(fd: FormData) {
 // and jump straight to AI review - it needs the new id back, so it can't use the
 // redirect()-throwing saveVisit above.
 export async function createVisit(fd: FormData): Promise<string> {
+  await requireMember();
   const supabase = await createClient();
   const row = {
     person_id: required(fd, "person_id"),
@@ -140,6 +153,7 @@ export async function createVisit(fd: FormData): Promise<string> {
 }
 
 export async function deleteVisit(id: string, personId: string) {
+  await requireMember();
   const supabase = await createClient();
   await records.deleteVisit(supabase, id);
   revalidatePath("/", "layout");
@@ -152,6 +166,7 @@ export async function deleteVisit(id: string, personId: string) {
 export type DuplicateFile = { sha256: string; file_name: string; visit_id: string | null; pending: boolean };
 
 export async function findDuplicateFiles(hashes: string[]): Promise<DuplicateFile[]> {
+  await requireMember();
   const supabase = await createClient();
   const [docs, inbox] = await Promise.all([
     supabase
@@ -198,6 +213,7 @@ export async function createDocument(input: {
   parts?: RecordingPart[];
   recordedOn?: string;
 }): Promise<string> {
+  await requireMember();
   const parts = RecordingParts.parse(input.parts ?? []);
   const recordedOn = input.recordedOn === undefined ? null : RecordedOn.parse(input.recordedOn);
   const supabase = await createClient();
@@ -232,6 +248,7 @@ export async function createDocument(input: {
 }
 
 export async function deleteDocument(id: string, visitId: string) {
+  await requireMember();
   const supabase = await createClient();
   await records.deleteDocument(supabase, id);
   revalidatePath(`/visits/${visitId}`);
@@ -240,6 +257,7 @@ export async function deleteDocument(id: string, visitId: string) {
 // ---------- Medications ----------
 
 export async function addMedication(fd: FormData) {
+  await requireMember();
   const supabase = await createClient();
   const visitId = required(fd, "visit_id");
   const days = str(fd, "duration_days");
@@ -255,6 +273,7 @@ export async function addMedication(fd: FormData) {
 }
 
 export async function deleteMedication(id: string, visitId: string) {
+  await requireMember();
   const supabase = await createClient();
   await records.deleteMedication(supabase, id);
   revalidatePath(`/visits/${visitId}`);
@@ -263,6 +282,7 @@ export async function deleteMedication(id: string, visitId: string) {
 // ---------- Action items ----------
 
 export async function addActionItem(fd: FormData) {
+  await requireMember();
   const supabase = await createClient();
   await records.addTodo(supabase, {
     person_id: required(fd, "person_id"),
@@ -274,6 +294,7 @@ export async function addActionItem(fd: FormData) {
 }
 
 export async function updateActionItem(fd: FormData) {
+  await requireMember();
   const supabase = await createClient();
   const id = required(fd, "id");
   const notes = str(fd, "notes");
@@ -283,12 +304,14 @@ export async function updateActionItem(fd: FormData) {
 }
 
 export async function setActionItemDone(id: string, done: boolean) {
+  await requireMember();
   const supabase = await createClient();
   await records.updateTodo(supabase, id, { done });
   revalidatePath("/", "layout");
 }
 
 export async function deleteActionItem(id: string) {
+  await requireMember();
   const supabase = await createClient();
   await records.deleteTodo(supabase, id);
   revalidatePath("/", "layout");
@@ -297,6 +320,7 @@ export async function deleteActionItem(id: string) {
 // ---------- Vaccinations (Phase 5) ----------
 
 export async function addVaccination(fd: FormData) {
+  await requireMember();
   const supabase = await createClient();
   const personId = required(fd, "person_id");
   await records.addVaccination(supabase, {
@@ -314,6 +338,7 @@ export async function addVaccination(fd: FormData) {
 }
 
 export async function deleteVaccination(id: string, personId: string) {
+  await requireMember();
   const supabase = await createClient();
   await records.deleteVaccination(supabase, id);
   revalidatePath(`/people/${personId}`, "layout");
@@ -334,6 +359,7 @@ type ReadResult = {
 };
 
 export async function readDocumentWithAI(documentId: string): Promise<ReadResult> {
+  await requireMember();
   const supabase = await createClient();
   const doc = check(
     await supabase
@@ -399,6 +425,7 @@ export async function readDocumentWithAI(documentId: string): Promise<ReadResult
 
 // Saves the user-reviewed extraction as real rows. Re-confirming replaces the rows from the previous confirm.
 export async function confirmExtraction(documentId: string, input: unknown) {
+  await requireMember();
   const reviewed = Extraction.parse(input);
   const supabase = await createClient();
   const doc = check(await supabase.from("documents").select("visit_id").eq("id", documentId).single());
@@ -410,6 +437,7 @@ export async function confirmExtraction(documentId: string, input: unknown) {
 // ---------- AI person summary (Phase 3) ----------
 
 export async function generatePersonSummary(personId: string): Promise<{ error: string | null }> {
+  await requireMember();
   const supabase = await createClient();
   try {
     const [person, cases, visits, openActions, vaccinations, lastSummary] = await Promise.all([
@@ -496,6 +524,7 @@ export async function createInboxItem(
   files: UploadedFile[],
   opts: { parts?: RecordingPart[]; recordedOn?: string } = {},
 ): Promise<{ id: string }> {
+  await requireMember();
   const parts = RecordingParts.parse(opts.parts ?? []);
   const recordedOn = opts.recordedOn === undefined ? null : RecordedOn.parse(opts.recordedOn);
   const supabase = await createClient();
@@ -520,6 +549,7 @@ export async function createInboxItem(
 }
 
 export async function discardInboxItem(id: string) {
+  await requireMember();
   const supabase = await createClient();
   await inbox.discardInboxItem(supabase, id);
   revalidatePath("/", "layout");
@@ -528,6 +558,7 @@ export async function discardInboxItem(id: string) {
 
 // Reads the file(s) with AI, and guesses the person / bệnh án / lần khám they belong to.
 export async function processInboxItem(id: string): Promise<{ error: string | null }> {
+  await requireMember();
   const supabase = await createClient();
   try {
     return await inbox.readInboxItem(supabase, id);
@@ -543,6 +574,7 @@ export async function confirmInboxItem(
   inboxId: string,
   input: { personId: string; case: inbox.CaseChoice; visit: inbox.VisitChoice; reviewed: unknown },
 ) {
+  await requireMember();
   const reviewed = Extraction.parse(input.reviewed);
   const supabase = await createClient();
   const { visitId } = await inbox.saveInboxItem(supabase, inboxId, { ...input, reviewed });
@@ -559,6 +591,7 @@ const PushSubscriptionInput = z.object({
 
 /** Stores this device's push subscription for the signed-in member (re-subscribing replaces it). */
 export async function savePushSubscription(input: unknown, userAgent: string | null) {
+  await requireMember();
   const sub = PushSubscriptionInput.parse(input);
   const supabase = await createClient();
   check(
@@ -575,12 +608,14 @@ export async function savePushSubscription(input: unknown, userAgent: string | n
 }
 
 export async function removePushSubscription(endpoint: string) {
+  await requireMember();
   const supabase = await createClient();
   check(await supabase.from("push_subscriptions").delete().eq("endpoint", endpoint));
 }
 
 /** Sends a test notification to the signed-in member's devices. */
 export async function sendTestPush(): Promise<{ sent: number; error: string | null }> {
+  await requireMember();
   if (!pushConfigured()) return { sent: 0, error: "Máy chủ chưa có khoá thông báo (VAPID)." };
   const supabase = await createClient();
   const subs = check(await supabase.from("push_subscriptions").select("endpoint, p256dh, auth"));
@@ -602,6 +637,7 @@ export async function sendTestPush(): Promise<{ sent: number; error: string | nu
 
 /** The signed-in member's own display name (greeting, assistant). RLS allows only their own row and this column. */
 export async function updateDisplayName(fd: FormData) {
+  await requireMember();
   const name = required(fd, "display_name").replace(/\s+/g, " ").slice(0, 40);
   const supabase = await createClient();
   const {
@@ -626,6 +662,7 @@ export type TranscriptPartRow = TranscriptPart & { id: string };
 const PART_COLUMNS = "id, part_no, start_sec, end_sec, status, storage_path, segments, error";
 
 export async function loadTranscriptParts(owner: { inboxItemId?: string; documentId?: string }): Promise<TranscriptPartRow[]> {
+  await requireMember();
   const supabase = await createClient();
   let q = supabase.from("transcript_parts").select(PART_COLUMNS).order("part_no");
   if (owner.inboxItemId) q = q.eq("inbox_item_id", z.uuid().parse(owner.inboxItemId));
@@ -637,6 +674,7 @@ export async function loadTranscriptParts(owner: { inboxItemId?: string; documen
 /** Transcribes one stored part. OpenAI failures are recorded on the row, never thrown. */
 export async function transcribePart(partId: string): Promise<{ status: "done" | "failed"; error: string | null }> {
   const id = z.uuid().parse(partId);
+  await requireMember();
   const supabase = await createClient();
   const row = check(
     await supabase.from("transcript_parts").select("status, storage_path, error").eq("id", id).single(),
