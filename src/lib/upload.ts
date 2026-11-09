@@ -7,8 +7,8 @@ import { cleanFileName } from "@/lib/format";
 import { extension, sha256 } from "@/lib/hash";
 import { recordedOn } from "@/lib/audio-plan";
 
-// Audio uploads are off unless NEXT_PUBLIC_AUDIO_UPLOADS=1 (read at build time).
-export const AUDIO_UPLOADS = process.env.NEXT_PUBLIC_AUDIO_UPLOADS === "1";
+// Audio uploads are on by default; NEXT_PUBLIC_AUDIO_UPLOADS=0 is the kill switch (read at build time).
+export const AUDIO_UPLOADS = process.env.NEXT_PUBLIC_AUDIO_UPLOADS !== "0";
 export const UPLOAD_ACCEPT = AUDIO_UPLOADS ? "image/*,application/pdf,audio/*" : "image/*,application/pdf";
 
 type SupabaseBrowserClient = ReturnType<typeof createClient>;

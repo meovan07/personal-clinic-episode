@@ -77,8 +77,10 @@ export async function savePerson(fd: FormData) {
 export async function deletePerson(id: string) {
   await requireMember();
   const supabase = await createClient();
+  const partPaths = await records.partFilePathsUnder(supabase, { column: "person_id", id });
   await removeFilesUnder(supabase, (q) => q.eq("documents.visits.person_id", id));
   check(await supabase.from("people").delete().eq("id", id));
+  await records.removePartFiles(supabase, partPaths);
   revalidatePath("/", "layout");
   redirect("/");
 }

@@ -284,6 +284,16 @@ function ChatSession({
     setUploadError(null);
     const supabase = createClient();
     let uploaded: UploadedFile[] = [];
+    const attachments: DocumentAttachment[] = [];
+    const savedFiles: File[] = [];
+    const sendAttachments = () =>
+      sendMessage({
+        role: "user",
+        parts: [
+          { type: "text", text: trimmed || "Đọc và lưu giúp mình tài liệu này." },
+          ...attachments.map((data) => ({ type: "data-document" as const, data })),
+        ],
+      });
     try {
       setUploading("Đang kiểm tra…");
       const hashes = await hashAndCheckDuplicates(files);
@@ -292,13 +302,13 @@ function ChatSession({
       const split = AUDIO_UPLOADS ? splitAudioFiles(files) : null;
       const photos = split ? split.other : files;
       const photoHashes = split ? photos.map((f) => hashes[files.indexOf(f)]) : hashes;
-      const attachments: DocumentAttachment[] = [];
       for (const [audio] of split?.audioGroups ?? []) {
         const rec = await uploadRecording(supabase, audio, hashes[files.indexOf(audio)], "inbox", setUploading);
         uploaded = recordingFiles(rec);
         const { id } = await createInboxItem([rec.file], { parts: rec.parts, recordedOn: rec.recorded_on });
         uploaded = [];
         attachments.push({ inbox_id: id, files: [audio.name] });
+        savedFiles.push(audio);
       }
       if (photos.length > 0) {
         uploaded = await uploadToStorage(supabase, photos, photoHashes, "inbox", (i, total) =>
@@ -307,18 +317,19 @@ function ChatSession({
         const { id } = await createInboxItem(uploaded);
         uploaded = [];
         attachments.push({ inbox_id: id, files: photos.map((f) => f.name) });
+        savedFiles.push(...photos);
       }
-      sendMessage({
-        role: "user",
-        parts: [
-          { type: "text", text: trimmed || "Đọc và lưu giúp mình tài liệu này." },
-          ...attachments.map((data) => ({ type: "data-document" as const, data })),
-        ],
-      });
+      sendAttachments();
       setFiles([]);
       setInput("");
     } catch (e) {
       await rollbackUpload(supabase, uploaded);
+      // Items saved before the failure are not lost: send them now and keep only the unsaved files picked.
+      if (attachments.length > 0) {
+        sendAttachments();
+        setFiles((fs) => fs.filter((f) => !savedFiles.includes(f)));
+        setInput("");
+      }
       setUploadError(e instanceof Error ? e.message : String(e));
     } finally {
       setUploading(null);
@@ -331,7 +342,7 @@ function ChatSession({
         {messages.length === 0 && (
           <div>
             <p className="muted mb-3">
-              Hỏi về các lần khám, chỉ số xét nghiệm, thuốc, lịch hẹn hay tiêm chủng, nhờ ghi lại giúp, hoặc gửi ảnh/PDF
+              Hỏi về các lần khám, chỉ số xét nghiệm, thuốc, lịch hẹn hay tiêm chủng, nhờ ghi lại giúp, hoặc gửi {AUDIO_UPLOADS ? "ảnh/PDF/ghi âm" : "ảnh/PDF"}
               kết quả khám bằng nút kẹp giấy (bạn xác nhận trước khi lưu). Ví dụ:
             </p>
             <div className="flex flex-col items-start gap-2">

@@ -19,3 +19,10 @@ Reviewer: Opus, inline (priority medium). Diff: slice 5..working tree, 7 files, 
 
 ## Confidence: 88/100
 Correctness 27/30; Tests 21/25 - UI covered by the browser run only; Security 18/20 - small storage leak; Plan compliance 14/15; Readability 8/10.
+
+## Slice 6b follow-up (same day)
+- Minor 1 fixed: `deleteVisit` and `deletePerson` remove the part files too. Browser check: deleting a visit with an unread 18-min recording left 0 rows and 0 files.
+- Minor 2 fixed: upload texts mention recordings ("Tải ảnh / PDF / ghi âm buổi khám", "(ảnh, PDF, ghi âm)").
+- Nit 3 fixed: `###` → `##` before the health summary renderer, so the sections look like headings.
+- Round 2 Minor 3 fixed: "+" and the chat drop already-saved files from the pick, so a retry doesn't report them as duplicates; the chat still sends the message for items saved before a failure.
+- Flag on by default (`NEXT_PUBLIC_AUDIO_UPLOADS=0` turns it off), checked with the variable unset.

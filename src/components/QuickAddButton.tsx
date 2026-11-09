@@ -100,6 +100,7 @@ export function QuickAddButton() {
         const { id } = await createInboxItem(uploaded);
         uploaded = [];
         ids.push(id);
+        setFiles((fs) => fs.filter((f) => !photos.includes(f)));
 
         setBusy("AI đang đọc… (khoảng 30-60 giây)");
         // Errors here are stored on the inbox row; the review page surfaces them with a retry button.
@@ -167,7 +168,7 @@ export function QuickAddButton() {
                 }}
               >
                 <FileUp className="h-4 w-4 text-pine" strokeWidth={1.75} />
-                Tải ảnh / PDF kết quả khám
+                {AUDIO_UPLOADS ? "Tải ảnh / PDF / ghi âm buổi khám" : "Tải ảnh / PDF kết quả khám"}
               </button>
             </div>
           )}

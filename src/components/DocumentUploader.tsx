@@ -77,7 +77,10 @@ export function DocumentUploader({ visitId }: { visitId: string }) {
   return (
     <div className="space-y-3 rounded-lg border-2 border-dashed border-line-strong bg-surface p-4">
       <div>
-        <span className="label">Tải tài liệu lên (ảnh, PDF). Nhiều trang của cùng một phiếu thì chọn cùng lúc.</span>
+        <span className="label">{AUDIO_UPLOADS
+            ? "Tải tài liệu lên (ảnh, PDF, ghi âm). Nhiều trang của cùng một phiếu thì chọn cùng lúc."
+            : "Tải tài liệu lên (ảnh, PDF). Nhiều trang của cùng một phiếu thì chọn cùng lúc."}
+        </span>
         <input
           ref={inputRef}
           type="file"

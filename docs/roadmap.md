@@ -13,6 +13,7 @@
 | 7 – Extras | Search ✅ · printable doctor summary ✅ · calendar ✅ · installable app (PWA) ✅ · reminders by Web Push ✅ | ✅ |
 | 8 – Chat assistant | 8a ask ✅ · 8b change with approval ✅ · 8c documents in the chat ✅ · 8d "+" menu and polish ✅ | ✅ |
 | 9 – Revamp for non-medical readers | Foundation ✅ · home ✅ · person page with plain-language results ✅ · visit page ✅ · bệnh án, vaccinations, desktop ✅ · review screens ⏳. See [design.md](design.md#revamp-plan) | nearly done |
+| 10 – Consultation recordings | Upload a recording; transcript with speaker labels, structured summary, to-dos and medications, reviewed before saving. See [ai.md](ai.md#consultation-recordings) | ✅ (on main once 6b merges) |
 
 ## Next
 
@@ -42,6 +43,7 @@ Also listed in the README:
 
 | Date | Change |
 |---|---|
+| 09/11/2026 | Audio recordings, slice 6b/6: turned on (`NEXT_PUBLIC_AUDIO_UPLOADS=0` turns it off); upload texts mention recordings; a retry after a partly failed upload no longer reports saved files as duplicates; deleting a visit or person also removes unconfirmed recording parts. Docs: ai.md "Consultation recordings". |
 | 09/11/2026 | Audio recordings, slice 6a/6 (behind the flag): recordings get their own card on the visit page (date, player, summary, transcript); "Đọc bằng AI" on a recording transcribes it first; part files are deleted after confirm, discard or delete; a recording with no speech says "Không nghe được lời nói nào trong bản ghi." Migrations `audio_recordings` and `recording_date` applied to the hosted project. |
 | 09/11/2026 | Audio recordings, slice 5/6 (behind the flag): the inbox and document review screens show the recording date, an audio player and the folded transcript; the inbox page transcribes the parts ("Đang chép lời n/N", "Thử lại" for failed parts) and then starts the AI read. `TRANSCRIBE_MODEL` can be set to a plain model (`json` response). |
 | 09/11/2026 | Audio recordings, slice 4b/6 (behind the flag): reading a recording in the inbox or on a visit uses its finished transcript (speaker roles, then extraction, with the same visit grouping as photos); confirming moves the transcript, date and parts to the new document. The assistant can read transcripts (`read_transcript`; `get_visit` shows `has_transcript`). |
