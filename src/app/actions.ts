@@ -3,7 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { Extraction, extractDocument, type ExtractFile } from "@/lib/ai/extract";
+import OpenAI from "openai";
 import { z } from "zod";
+import { transcribePartAudio } from "@/lib/ai/transcribe";
+import type { Segment, TranscriptPart } from "@/lib/transcript";
 import { summarizePerson, type PersonSnapshot } from "@/lib/ai/summarize";
 import { pushConfigured, sendPush } from "@/lib/push";
 import * as inbox from "@/lib/services/inbox";
@@ -613,4 +616,52 @@ export async function updateDisplayName(fd: FormData) {
   if (error) throw new Error(error.message);
   if (!data?.length) throw new Error("Chưa đổi được tên. Cần chạy migration member_display_name trên Supabase.");
   revalidatePath("/", "layout");
+}
+
+// ---------- Transcription ----------
+
+/** A part plus its row id, which transcribePart needs. */
+export type TranscriptPartRow = TranscriptPart & { id: string };
+
+const PART_COLUMNS = "id, part_no, start_sec, end_sec, status, storage_path, segments, error";
+
+export async function loadTranscriptParts(owner: { inboxItemId?: string; documentId?: string }): Promise<TranscriptPartRow[]> {
+  const supabase = await createClient();
+  let q = supabase.from("transcript_parts").select(PART_COLUMNS).order("part_no");
+  if (owner.inboxItemId) q = q.eq("inbox_item_id", z.uuid().parse(owner.inboxItemId));
+  else if (owner.documentId) q = q.eq("document_id", z.uuid().parse(owner.documentId));
+  else return [];
+  return (check(await q) as TranscriptPartRow[]).map((p) => ({ ...p, start_sec: Number(p.start_sec), end_sec: Number(p.end_sec) }));
+}
+
+/** Transcribes one stored part. OpenAI failures are recorded on the row, never thrown. */
+export async function transcribePart(partId: string): Promise<{ status: "done" | "failed"; error: string | null }> {
+  const id = z.uuid().parse(partId);
+  const supabase = await createClient();
+  const row = check(
+    await supabase.from("transcript_parts").select("status, storage_path, error").eq("id", id).single(),
+  ) as { status: string; storage_path: string; error: string | null };
+  if (row.status === "done") return { status: "done", error: null };
+
+  let segments: Segment[] | null = null;
+  let error: string | null = null;
+  try {
+    const { data, error: dlError } = await supabase.storage.from("documents").download(row.storage_path);
+    if (dlError || !data) throw new Error("download");
+    const name = row.storage_path.split("/").pop() || "part.m4a";
+    segments = await transcribePartAudio(
+      { name, mime: data.type || "audio/mp4", bytes: Buffer.from(await data.arrayBuffer()) },
+      { client: new OpenAI() },
+    );
+  } catch (e) {
+    console.error("transcribePart", id, e);
+    error = e instanceof Error && e.message === "download" ? "Không tải được phần ghi âm." : "Chưa chép lời được phần này. Thử lại.";
+  }
+
+  const update = error
+    ? { status: "failed", error, segments: null }
+    : { status: "done", error: null, segments };
+  const { error: upError } = await supabase.from("transcript_parts").update(update).eq("id", id);
+  if (upError) return { status: "failed", error: "Chưa lưu được kết quả chép lời. Thử lại." };
+  return { status: error ? "failed" : "done", error };
 }

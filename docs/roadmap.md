@@ -42,6 +42,7 @@ Also listed in the README:
 
 | Date | Change |
 |---|---|
+| 09/11/2026 | Audio recordings, slice 3/6 (not wired to a page yet): `transcribePart` sends one part to OpenAI (`gpt-4o-transcribe-diarize`, Vietnamese, speaker labels; `TRANSCRIBE_MODEL` to change it) and records failures on the part; `useTranscription` runs up to 3 parts at a time and retries only failed ones; tested transcript helpers (`src/lib/transcript.ts`). |
 | 09/11/2026 | Audio recordings, slice 2b/6 (off unless `NEXT_PUBLIC_AUDIO_UPLOADS=1`): the visit page, "Thêm lần khám", "+" and the chat accept audio; each recording is compressed, split, uploaded with its parts and saved as its own document or inbox item. |
 | 09/11/2026 | Audio recordings, slice 2a/6 (nothing visible yet): in-browser compression and splitting of recordings with mediabunny (`src/lib/audio.ts`, mono 48 kHz ≤ 48 kbps, ~10-minute parts cut at quiet moments); migration `recording_date` adds `recorded_on` to `inbox_items` and `documents`. |
 | 09/11/2026 | Audio recordings, slice 1/6 (nothing visible yet): migration `audio_recordings` adds the `consultation_recording` type, `transcript` columns and `transcript_parts`, and search covers transcripts; tested part-planning helpers (`src/lib/audio-plan.ts`). Plan: `docs/features/audio-recordings/`. |
