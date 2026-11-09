@@ -43,6 +43,7 @@ Also listed in the README:
 
 | Date | Change |
 |---|---|
+| 09/11/2026 | Fix: file pickers list `.m4a` and the other recording extensions explicitly (`AUDIO_ACCEPT`), so Apple MPEG-4 audio (Voice Memos) is no longer greyed out on macOS. |
 | 09/11/2026 | Audio recordings, slice 6b/6: turned on (`NEXT_PUBLIC_AUDIO_UPLOADS=0` turns it off); upload texts mention recordings; a retry after a partly failed upload no longer reports saved files as duplicates; deleting a visit or person also removes unconfirmed recording parts. Docs: ai.md "Consultation recordings". |
 | 09/11/2026 | Audio recordings, slice 6a/6 (behind the flag): recordings get their own card on the visit page (date, player, summary, transcript); "Đọc bằng AI" on a recording transcribes it first; part files are deleted after confirm, discard or delete; a recording with no speech says "Không nghe được lời nói nào trong bản ghi." Migrations `audio_recordings` and `recording_date` applied to the hosted project. |
 | 09/11/2026 | Audio recordings, slice 5/6 (behind the flag): the inbox and document review screens show the recording date, an audio player and the folded transcript; the inbox page transcribes the parts ("Đang chép lời n/N", "Thử lại" for failed parts) and then starts the AI read. `TRANSCRIBE_MODEL` can be set to a plain model (`json` response). |
