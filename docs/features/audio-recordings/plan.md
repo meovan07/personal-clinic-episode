@@ -99,7 +99,8 @@ Feature flag `NEXT_PUBLIC_AUDIO_UPLOADS` (default off) hides audio in the upload
 | 2a/6 | T3 (+ `recording_date` migration, planParts guard) | 7 | 207 | yes, nothing calls it yet | 2b-6 | [#5](https://github.com/meovan07/personal-clinic-episode/pull/5) | open |
 | 2b/6 | T4 | 6 | 300 | yes, behind flag off | 3-6 | [#6](https://github.com/meovan07/personal-clinic-episode/pull/6) | open |
 | 3/6 | T5, T6 | 5 | 290 | yes, behind flag off | 4-6 | | pending |
-| 4/6 | T7, T10 | 5 | 260 | yes, behind flag off | 5, 6 | | pending |
+| 4a/6 | T7 part 1: consultation helpers, `assignSpeakers`, consultation extraction | 3 | ~280 | yes, nothing calls it yet | 4b-6 | | pending |
+| 4b/6 | T7 part 2 (routing in `readInboxItem` / `readDocumentWithAI` / `saveInboxItem`), T10 | 4 | ~195 | yes, behind flag off | 5, 6 | | pending |
 | 5/6 | T8 | 7 | 250 | yes, behind flag off | 6 | | pending |
 | 6/6 | T9, T11 | 10 | 260 | yes, turns the flag on | none | | pending |
 
@@ -151,7 +152,7 @@ Every task is test-first: a failing test before the code. Tick the box when the 
   - Lines (est.): 170
   - Size: M
   - Depends on: T1, T5
-- [ ] T7 Assign speaker roles and extract consultations (R7, R8, R9)
+- [x] T7 Assign speaker roles and extract consultations (R7, R8, R9)
   - Acceptance: `assignSpeakers` returns `{part_no, letter → role}`; consultation prompt yields `document_type = consultation_recording` and a summary with the five `###` sections ("Không nhắc đến." when empty); the Omeprazole example from R8 gives the expected medication and `follow_up_date` = recordedOn + 14 days; `finishTranscript` saves the role-labelled transcript and moves the item to `needs_review` (inbox, with person/bệnh án/visit guesses) or `raw_ai_json` (visit document); `readInboxItem` / `readDocumentWithAI` route audio here; the photo/PDF prompt text is unchanged.
   - Tests: failing test for the pure `followUpFrom(recordedOn, days)` and the role application (from T5) wired in; model quality is checked on the user's m4a in T11's proof.
   - Files: `src/lib/ai/extract.ts`, `src/lib/services/inbox.ts`, `src/app/actions.ts`
@@ -172,7 +173,7 @@ Every task is test-first: a failing test before the code. Tick the box when the 
   - Lines (est.): 150
   - Size: M
   - Depends on: T8
-- [ ] T10 Let the assistant read transcripts (R12, R13)
+- [x] T10 Let the assistant read transcripts (R12, R13)
   - Acceptance: `get_visit` lists recordings with their summary; `read_transcript(document_id)` returns the transcript through `capTranscript`; instructions mention it; asking "bác sĩ dặn gì về thuốc ở lần khám 05/11?" uses it.
   - Tests: `capTranscript` (T5) covers the cap; one chat check in the preview.
   - Files: `src/lib/agent/tools.ts`, `src/lib/agent/instructions.ts`
