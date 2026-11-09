@@ -96,14 +96,14 @@ Feature flag `NEXT_PUBLIC_AUDIO_UPLOADS` (default off) hides audio in the upload
 | Slice | Tasks | Files | Est. lines | Shippable alone? (flag/how) | Depended on by | MR | Status |
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
 | 1/6 | T1, T2 | 5 | 330 | yes, schema + pure helpers, nothing calls them | 2-6 | [#3](https://github.com/meovan07/personal-clinic-episode/pull/3) | merged |
-| 2a/6 | T3 (+ `recording_date` migration, planParts guard) | 7 | 207 | yes, nothing calls it yet | 2b-6 | [#5](https://github.com/meovan07/personal-clinic-episode/pull/5) | open |
-| 2b/6 | T4 | 6 | 300 | yes, behind flag off | 3-6 | [#6](https://github.com/meovan07/personal-clinic-episode/pull/6) | open |
+| 2a/6 | T3 (+ `recording_date` migration, planParts guard) | 7 | 207 | yes, nothing calls it yet | 2b-6 | [#5](https://github.com/meovan07/personal-clinic-episode/pull/5) | merged |
+| 2b/6 | T4 | 6 | 300 | yes, behind flag off | 3-6 | [#6](https://github.com/meovan07/personal-clinic-episode/pull/6) | merged |
 | 3/6 | T5, T6 | 5 | 290 | yes, behind flag off | 4-6 | | pending |
 | 4a/6 | T7 part 1: consultation helpers, `assignSpeakers`, consultation extraction | 3 | ~280 | yes, nothing calls it yet | 4b-6 | | pending |
 | 4b/6 | T7 part 2 (routing in `readInboxItem` / `readDocumentWithAI` / `saveInboxItem`), T10 | 4 | ~195 | yes, behind flag off | 5, 6 | | pending |
 | 5/6 | T8 | 7 | 250 | yes, behind flag off | 6 | | pending |
-| 6a/6 | T9 (+ `RecordingReadButton`, no-speech message) | 7 | ~372 | yes, behind flag off | 6b | [#11](https://github.com/meovan07/personal-clinic-episode/pull/11) | open |
-| 6b/6 | T11 | ~8 | ~150 | yes, turns the flag on | none | | pending |
+| 6a/6 | T9 (+ `RecordingReadButton`, no-speech message) | 7 | ~372 | yes, behind flag off | 6b | [#11](https://github.com/meovan07/personal-clinic-episode/pull/11) | merged |
+| 6b/6 | T11 | ~8 | ~150 | yes, turns the flag on | none | [#12](https://github.com/meovan07/personal-clinic-episode/pull/12) | open |
 
 ## Tasks
 
