@@ -7,6 +7,7 @@ import { Badge } from "@/components/Badge";
 import { ConfirmForm } from "@/components/ConfirmForm";
 import { MoreMenu } from "@/components/MoreMenu";
 import { PageHeader } from "@/components/PageHeader";
+import { ShareLink } from "@/components/ShareLink";
 import { ResultRow } from "@/components/ResultRow";
 import { VisitList } from "@/components/VisitList";
 import { getPublicCase } from "@/lib/public-data";
@@ -83,6 +84,7 @@ export default async function CasePage({ params }: PageProps<"/cases/[id]">) {
         actions={
           isMember && (
           <>
+            <ShareLink path={`/cases/${id}`} title={item.title} />
             <Link href={`/visits/new?person=${item.person_id}&case=${id}`} className="btn">
               <CalendarPlus className="h-4 w-4" strokeWidth={1.75} />
               Thêm lần khám
