@@ -51,6 +51,7 @@ Also:
 - `vaccinations` — per person, from confirmed vaccination cards or added by hand. `typically_single_dose` holds the AI's general knowledge of that vaccine's usual schedule.
 - `action_items` — to-dos; `notes` holds context added when editing, which the AI folds into `content`.
 - `ai_summaries` — generated health summaries, with the snapshot they were built from.
+- `transcript_parts` — one row per ~10-minute part of an uploaded consultation recording while it is transcribed (temporary; feature in progress, `docs/features/audio-recordings/`). `documents.transcript` / `inbox_items.transcript` hold the joined transcript.
 - `inbox_items` / `inbox_files` — uploads waiting for review ("+" button and chat attachments), with the AI's reading and its person/bệnh án/visit guesses.
 - `test_catalog` (codes, Vietnamese names, aliases, everyday search terms, standard unit) and `unit_conversions`.
 - Assistant: `chat_threads`, `chat_messages`, `agent_memories`, `agent_actions` (see [assistant.md](assistant.md#data)).

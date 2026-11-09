@@ -352,6 +352,7 @@ export type Database = {
           reviewed_json: Json | null
           summary: string | null
           title: string | null
+          transcript: Json | null
           uploaded_by: string | null
           visit_id: string
         }
@@ -366,6 +367,7 @@ export type Database = {
           reviewed_json?: Json | null
           summary?: string | null
           title?: string | null
+          transcript?: Json | null
           uploaded_by?: string | null
           visit_id: string
         }
@@ -380,6 +382,7 @@ export type Database = {
           reviewed_json?: Json | null
           summary?: string | null
           title?: string | null
+          transcript?: Json | null
           uploaded_by?: string | null
           visit_id?: string
         }
@@ -449,6 +452,7 @@ export type Database = {
           suggested_new_case_title: string | null
           suggested_person_id: string | null
           suggested_visit_id: string | null
+          transcript: Json | null
           uploaded_by: string | null
         }
         Insert: {
@@ -462,6 +466,7 @@ export type Database = {
           suggested_new_case_title?: string | null
           suggested_person_id?: string | null
           suggested_visit_id?: string | null
+          transcript?: Json | null
           uploaded_by?: string | null
         }
         Update: {
@@ -475,6 +480,7 @@ export type Database = {
           suggested_new_case_title?: string | null
           suggested_person_id?: string | null
           suggested_visit_id?: string | null
+          transcript?: Json | null
           uploaded_by?: string | null
         }
         Relationships: [
@@ -735,6 +741,63 @@ export type Database = {
           standard_unit?: string | null
         }
         Relationships: []
+      }
+      transcript_parts: {
+        Row: {
+          created_at: string
+          document_id: string | null
+          end_sec: number
+          error: string | null
+          id: string
+          inbox_item_id: string | null
+          part_no: number
+          segments: Json | null
+          start_sec: number
+          status: string
+          storage_path: string
+        }
+        Insert: {
+          created_at?: string
+          document_id?: string | null
+          end_sec: number
+          error?: string | null
+          id?: string
+          inbox_item_id?: string | null
+          part_no: number
+          segments?: Json | null
+          start_sec: number
+          status?: string
+          storage_path: string
+        }
+        Update: {
+          created_at?: string
+          document_id?: string | null
+          end_sec?: number
+          error?: string | null
+          id?: string
+          inbox_item_id?: string | null
+          part_no?: number
+          segments?: Json | null
+          start_sec?: number
+          status?: string
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transcript_parts_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transcript_parts_inbox_item_id_fkey"
+            columns: ["inbox_item_id"]
+            isOneToOne: false
+            referencedRelation: "inbox_items"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       unit_conversions: {
         Row: {
