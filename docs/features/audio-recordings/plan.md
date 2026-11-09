@@ -102,7 +102,8 @@ Feature flag `NEXT_PUBLIC_AUDIO_UPLOADS` (default off) hides audio in the upload
 | 4a/6 | T7 part 1: consultation helpers, `assignSpeakers`, consultation extraction | 3 | ~280 | yes, nothing calls it yet | 4b-6 | | pending |
 | 4b/6 | T7 part 2 (routing in `readInboxItem` / `readDocumentWithAI` / `saveInboxItem`), T10 | 4 | ~195 | yes, behind flag off | 5, 6 | | pending |
 | 5/6 | T8 | 7 | 250 | yes, behind flag off | 6 | | pending |
-| 6/6 | T9, T11 | 10 | 260 | yes, turns the flag on | none | | pending |
+| 6a/6 | T9 (+ `RecordingReadButton`, no-speech message) | 7 | ~372 | yes, behind flag off | 6b | | pending |
+| 6b/6 | T11 | ~8 | ~150 | yes, turns the flag on | none | | pending |
 
 ## Tasks
 
@@ -166,7 +167,7 @@ Every task is test-first: a failing test before the code. Tick the box when the 
   - Lines (est.): 250
   - Size: M
   - Depends on: T6, T7
-- [ ] T9 Show recordings on the visit page and clean up parts (R11, R14)
+- [x] T9 Show recordings on the visit page and clean up parts (R11, R14)
   - Acceptance: the visit page shows each recording in its own card (player, Markdown summary, transcript toggle); `PhotoGallery` skips audio; confirming, discarding or deleting removes the part files and rows, and deleting the document also removes the recording.
   - Tests: `partPathsToDelete` (T5) is used; storage listing in the preview shows no `parts/` files after confirm.
   - Files: `src/app/visits/[id]/page.tsx`, `src/components/PhotoGallery.tsx`, `src/lib/services/inbox.ts`, `src/app/actions.ts`

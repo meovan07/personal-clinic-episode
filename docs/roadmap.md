@@ -42,6 +42,7 @@ Also listed in the README:
 
 | Date | Change |
 |---|---|
+| 09/11/2026 | Audio recordings, slice 6a/6 (behind the flag): recordings get their own card on the visit page (date, player, summary, transcript); "Đọc bằng AI" on a recording transcribes it first; part files are deleted after confirm, discard or delete; a recording with no speech says "Không nghe được lời nói nào trong bản ghi." Migrations `audio_recordings` and `recording_date` applied to the hosted project. |
 | 09/11/2026 | Audio recordings, slice 5/6 (behind the flag): the inbox and document review screens show the recording date, an audio player and the folded transcript; the inbox page transcribes the parts ("Đang chép lời n/N", "Thử lại" for failed parts) and then starts the AI read. `TRANSCRIBE_MODEL` can be set to a plain model (`json` response). |
 | 09/11/2026 | Audio recordings, slice 4b/6 (behind the flag): reading a recording in the inbox or on a visit uses its finished transcript (speaker roles, then extraction, with the same visit grouping as photos); confirming moves the transcript, date and parts to the new document. The assistant can read transcripts (`read_transcript`; `get_visit` shows `has_transcript`). |
 | 09/11/2026 | Audio recordings, slice 4a/6 (not wired yet): `assignSpeakers` labels speakers Bác sĩ / Bệnh nhân / Người nhà, and `extractConsultation` reads a transcript into the usual fields with a five-section summary; follow-up dates are computed in code (`src/lib/consultation.ts`, tested). |

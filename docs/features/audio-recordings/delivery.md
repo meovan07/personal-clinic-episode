@@ -157,3 +157,18 @@ Traceability (e2e, browser): R5 progress "Đang chép lời 0/1"; R6 a failed pa
 Model comparison: on the owner's first recording (1:54), diarize kept 0:00–0:36 and the plain model drifted into Korean and Thai. On the second recording (5:12, dermatology), diarize gave a correct Bác sĩ / Bệnh nhân transcript and 4 sensible to-dos for 0:00–1:11; a clip of 1:10–4:10 alone gave 0 segments (no speech there). `gpt-4o-transcribe` and `whisper-1` both hallucinated. Default stays diarize.
 
 Not verified: confirming a recording and the visit-page view (slice 6); 12 parts running 3 at a time (needs a recording of nearly 2 hours); iPhone.
+
+## Production incident and migrations (2026-11-09)
+
+#6 and #9 merged (and auto-deployed) before `audio_recordings` and `recording_date` were applied to the hosted Supabase. Production then wrote `recorded_on` on every upload and queried `transcript_parts` in inbox reads. Both migrations were applied on the owner's OK (constraint checked first; 4 columns, `transcript_parts` with RLS and its policy; 23 documents unchanged; search smoke test OK; the advisor shows nothing new beyond the GraphQL listing every table has). Vercel showed no runtime errors from uploads, inbox or the assistant in the 6 hours before. The checklists for slices 1 and 2a said the order didn't matter; that stopped being true once 2b and 4b used the columns.
+
+## Slice 6a/6 (T9), 2026-11-09
+
+| Check | Command | Result |
+| :-- | :-- | :-- |
+| test | `npm test` | 87 passed, 0 failed |
+| typecheck / lint | `npx tsc --noEmit`, `npx eslint src` | pass |
+| browser, visit flow | local Supabase, flag on, the real models, the owner's 5:12 recording on a visit | pass |
+
+Traceability (e2e): R11 card with date, player and summary; R14 after confirm 0 part rows and 0 part files, recording kept; R12 `search_records('da dau')` and `('ghi am')` return the recording.
+Not verified: discard and delete cleanup in the browser (code only); public viewer card.
