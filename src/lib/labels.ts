@@ -17,6 +17,7 @@ export const DOC_TYPE: Record<string, string> = {
   prescription: "Đơn thuốc",
   discharge_summary: "Giấy ra viện / tóm tắt",
   visit_note: "Phiếu khám",
+  consultation_recording: "Ghi âm buổi khám",
   vaccination_record: "Phiếu / sổ tiêm chủng",
   invoice: "Hóa đơn",
   other: "Khác",

@@ -15,8 +15,9 @@ export async function transcribePartAudio(
     file: await toFile(part.bytes, part.name, { type: part.mime }),
     model,
     language: "vi",
-    response_format: "diarized_json",
-    chunking_strategy: "auto",
+    response_format: model.includes("diarize") ? "diarized_json" : "json",
+    // Only the gpt-4o transcription models accept chunking_strategy (whisper-1 returns 400).
+    ...(model.startsWith("gpt-") ? { chunking_strategy: "auto" as const } : {}),
   })) as { text?: string; segments?: { start: number; end: number; speaker: string; text: string }[] };
   const segments = res.segments ?? [];
   if (segments.length) {

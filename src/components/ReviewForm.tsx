@@ -5,7 +5,11 @@ import Link from "next/link";
 import { Check, Paperclip, Plus, TriangleAlert, X } from "lucide-react";
 import { confirmExtraction } from "@/app/actions";
 import type { ExtractionResult } from "@/lib/ai/extract";
+import { AudioPlayer } from "@/components/AudioPlayer";
+import { Transcript } from "@/components/Transcript";
 import { DOC_TYPE } from "@/lib/labels";
+import { formatDate } from "@/lib/format";
+import type { Segment } from "@/lib/transcript";
 
 type Obs = ExtractionResult["observations"][number];
 type Med = ExtractionResult["medications"][number];
@@ -179,12 +183,16 @@ export function ReviewForm({
   visitId,
   initial,
   previews,
+  transcript = [],
+  recordedOn = null,
   catalog,
 }: {
   documentId: string;
   visitId: string;
   initial: ExtractionResult;
   previews: Preview[];
+  transcript?: Segment[];
+  recordedOn?: string | null;
   catalog: { code: string; name_vi: string }[];
 }) {
   const [data, setData] = useState(initial);
@@ -216,10 +224,25 @@ export function ReviewForm({
     });
   }
 
+  const recording = transcript.length > 0 || previews.some((p) => p.mime?.startsWith("audio/"));
+
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <div className="space-y-3 lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
-        {previews.map((p, i) =>
+        {recording && (
+          <>
+            {recordedOn && <p className="muted">Ngày ghi âm: {formatDate(recordedOn)}</p>}
+            {previews
+              .filter((p) => p.mime?.startsWith("audio/"))
+              .map((p, i) => (
+                <AudioPlayer key={i} url={p.url} title={p.name} />
+              ))}
+            <Transcript segments={transcript} />
+          </>
+        )}
+        {previews
+          .filter((p) => !p.mime?.startsWith("audio/"))
+          .map((p, i) =>
           p.mime === "application/pdf" ? (
             <iframe key={i} src={p.url} title={p.name} className="h-[70vh] w-full rounded-lg border bg-white" />
           ) : /^image\/(jpeg|png|gif|webp|avif)$/.test(p.mime ?? "") ? (

@@ -42,6 +42,7 @@ Also listed in the README:
 
 | Date | Change |
 |---|---|
+| 09/11/2026 | Audio recordings, slice 5/6 (behind the flag): the inbox and document review screens show the recording date, an audio player and the folded transcript; the inbox page transcribes the parts ("Đang chép lời n/N", "Thử lại" for failed parts) and then starts the AI read. `TRANSCRIBE_MODEL` can be set to a plain model (`json` response). |
 | 09/11/2026 | Audio recordings, slice 4b/6 (behind the flag): reading a recording in the inbox or on a visit uses its finished transcript (speaker roles, then extraction, with the same visit grouping as photos); confirming moves the transcript, date and parts to the new document. The assistant can read transcripts (`read_transcript`; `get_visit` shows `has_transcript`). |
 | 09/11/2026 | Audio recordings, slice 4a/6 (not wired yet): `assignSpeakers` labels speakers Bác sĩ / Bệnh nhân / Người nhà, and `extractConsultation` reads a transcript into the usual fields with a five-section summary; follow-up dates are computed in code (`src/lib/consultation.ts`, tested). |
 | 09/11/2026 | Audio recordings, slice 3/6 (not wired to a page yet): `transcribePart` sends one part to OpenAI (`gpt-4o-transcribe-diarize`, Vietnamese, speaker labels; `TRANSCRIBE_MODEL` to change it) and records failures on the part; `useTranscription` runs up to 3 parts at a time and retries only failed ones; tested transcript helpers (`src/lib/transcript.ts`). |
