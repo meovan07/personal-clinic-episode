@@ -4,7 +4,16 @@ import { useRef, useState } from "react";
 import { Check, Plus, Sparkles, X } from "lucide-react";
 import { createDocument, createVisit, readDocumentWithAI, saveVisit, type UploadedFile } from "@/app/actions";
 import { createClient } from "@/lib/supabase/client";
-import { hashAndCheckDuplicates, rollbackUpload, uploadToStorage } from "@/lib/upload";
+import { splitAudioFiles } from "@/lib/audio-plan";
+import {
+  AUDIO_UPLOADS,
+  UPLOAD_ACCEPT,
+  hashAndCheckDuplicates,
+  recordingFiles,
+  rollbackUpload,
+  uploadRecording,
+  uploadToStorage,
+} from "@/lib/upload";
 import { formatBytes } from "@/lib/format";
 import type { Tables } from "@/lib/database.types";
 
@@ -41,6 +50,7 @@ export function NewVisitForm({
   const [files, setFiles] = useState<File[]>([]);
   const [visitId, setVisitId] = useState<string | null>(null);
   const [filled, setFilled] = useState(false);
+  const [aiRead, setAiRead] = useState(false); // false when only recordings were attached (no AI read yet)
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,6 +73,7 @@ export function NewVisitForm({
     const fd = new FormData(formRef.current);
     const supabase = createClient();
     let uploaded: UploadedFile[] = [];
+    const saved: File[] = []; // recordings already attached; dropped from the pick on failure so a retry skips them
     try {
       // Reuse the visit from a previous failed attempt instead of creating a duplicate.
       let newVisitId = visitId;
@@ -75,7 +86,32 @@ export function NewVisitForm({
       setBusy("Đang kiểm tra…");
       const hashes = await hashAndCheckDuplicates(files);
 
-      uploaded = await uploadToStorage(supabase, files, hashes, newVisitId, (i, total) =>
+      // Flag off: `photos` is `files`, so this is the original flow. Recordings are only attached, not AI-read
+      // (transcription comes later).
+      const split = AUDIO_UPLOADS ? splitAudioFiles(files) : null;
+      const photos = split ? split.other : files;
+      const photoHashes = split ? photos.map((f) => hashes[files.indexOf(f)]) : hashes;
+      for (const [audio] of split?.audioGroups ?? []) {
+        const rec = await uploadRecording(supabase, audio, hashes[files.indexOf(audio)], newVisitId, setBusy);
+        uploaded = recordingFiles(rec);
+        setBusy("Đang lưu tài liệu…");
+        await createDocument({
+          visitId: newVisitId,
+          title: null,
+          docType: "consultation_recording",
+          files: [rec.file],
+          parts: rec.parts,
+          recordedOn: rec.recorded_on,
+        });
+        uploaded = [];
+        saved.push(audio);
+      }
+      if (photos.length === 0) {
+        setFilled(true);
+        return;
+      }
+
+      uploaded = await uploadToStorage(supabase, photos, photoHashes, newVisitId, (i, total) =>
         setBusy(`Đang tải ${i + 1}/${total}…`),
       );
 
@@ -92,9 +128,11 @@ export function NewVisitForm({
         fillIfEmpty("department", visitFields.department);
         fillIfEmpty("doctor", visitFields.doctor);
       }
+      setAiRead(true);
       setFilled(true);
     } catch (err) {
       await rollbackUpload(supabase, uploaded);
+      if (saved.length > 0) setFiles((fs) => fs.filter((f) => !saved.includes(f)));
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(null);
@@ -145,7 +183,7 @@ export function NewVisitForm({
           ref={inputRef}
           type="file"
           multiple
-          accept="image/*,application/pdf"
+          accept={UPLOAD_ACCEPT}
           className="hidden"
           disabled={!!visitId}
           onChange={(e) => addPicked(Array.from(e.target.files ?? []))}
@@ -182,7 +220,13 @@ export function NewVisitForm({
                 Chụp/chọn thêm trang
               </button>
             )}
-            {filled && (
+            {filled && !aiRead && (
+              <p className="flex items-center gap-1.5 text-sm text-pine">
+                <Check className="h-4 w-4 shrink-0" strokeWidth={2} />
+                Đã đính kèm bản ghi — điền thông tin bên dưới rồi lưu.
+              </p>
+            )}
+            {filled && aiRead && (
               <p className="flex items-center gap-1.5 text-sm text-pine">
                 <Check className="h-4 w-4 shrink-0" strokeWidth={2} />
                 AI đã đọc xong và điền thông tin bên dưới — kiểm tra lại rồi lưu.

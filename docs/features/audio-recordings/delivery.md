@@ -81,3 +81,36 @@ Nothing changes for users yet. This slice prepares the database for consultation
 Result: left open for a human merge.
 
 Review budget: 5 code files (14 with docs), ~549 weighted code lines out of 400. It's over because the full `search_records` body (~130 lines) is copied into both the migration and the rollback; the actual change is 2 lines. Auto-merge limit: 14 out of 5 files, 1212 out of 150 lines → human merge.
+
+## Slice 2/6 (2a: T3, 2b: T4), 2026-11-09
+
+### Test evidence
+
+| Check | Command | Result |
+| :-- | :-- | :-- |
+| test (slice) | `npx tsx --test src/lib/audio-plan.test.ts` | 13 passed, 0 failed |
+| test (all) | `npm test` | 72 tests: 58 passed, 14 failed (later-slice locked tests, "not implemented") |
+| typecheck | `npx tsc --noEmit` | pass |
+| lint | `npx eslint src` | pass |
+| browser (flag on, local Supabase) | "+" upload of the user's 1:54 m4a and an 18-min test file | pass after a fix (see review round 2) |
+
+### Traceability
+
+| R-id | Test | Result |
+| :-- | :-- | :-- |
+| R1 | "R1 mixed pick gives audio items and one photo group" (unit); browser: `accept` includes `audio/*`, m4a accepted in "+" | pass |
+| R2 | browser: the original's duration is read before upload (1:54 and 18:23 accepted) | pass; the over-2 h case is covered only by the unit test |
+| R3 | browser: stored copy mono 48 kHz, 722 KB (1:54) and 6.9 MB (18:23), ~48.6 kbps including container overhead | pass |
+| R4 | "R4 planParts rejects unreadable durations" (unit); browser: 18:23 → 2 parts, cut at 603.0 s | pass |
+| R9 | browser: `recorded_on` saved from the file date (2026-11-09 and 2026-11-05) | pass |
+| R14 | browser: parts under `inbox/parts/`, `transcript_parts` rows `pending` | pass |
+
+Orphan tests: none.
+
+### Mutation check
+
+Removing the `planParts` guard turns "R4 planParts rejects unreadable durations" red; file restored and compared byte for byte.
+
+Not run / not verified: iPhone Safari (needs your phone); flag-off in the browser (verified by code); the duplicate message in the browser.
+
+Review: round 2, confidence 88/100. Majors (slice size, mono/bitrate bug) fixed; 2 Minors open behind the flag (T7, T8/T11).

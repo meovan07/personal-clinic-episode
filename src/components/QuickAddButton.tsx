@@ -6,7 +6,16 @@ import { FileUp, Plus, Sparkles, X } from "lucide-react";
 import { createInboxItem, processInboxItem, type UploadedFile } from "@/app/actions";
 import { openAssistant } from "@/components/AssistantChat";
 import { createClient } from "@/lib/supabase/client";
-import { hashAndCheckDuplicates, rollbackUpload, uploadToStorage } from "@/lib/upload";
+import { splitAudioFiles } from "@/lib/audio-plan";
+import {
+  AUDIO_UPLOADS,
+  UPLOAD_ACCEPT,
+  hashAndCheckDuplicates,
+  recordingFiles,
+  rollbackUpload,
+  uploadRecording,
+  uploadToStorage,
+} from "@/lib/upload";
 import { formatBytes } from "@/lib/format";
 
 // Global "+" button. It opens a small menu: ask the AI assistant (chat panel), or upload photos/PDFs that
@@ -66,18 +75,38 @@ export function QuickAddButton() {
       setBusy("Đang kiểm tra…");
       const hashes = await hashAndCheckDuplicates(files);
 
-      uploaded = await uploadToStorage(supabase, files, hashes, "inbox", (i, total) =>
-        setBusy(`Đang tải ${i + 1}/${total}…`),
-      );
+      // Flag off: `photos` is `files`, so this is the original flow. Each recording is its own inbox item;
+      // it is not AI-read yet (transcription comes later).
+      const split = AUDIO_UPLOADS ? splitAudioFiles(files) : null;
+      const photos = split ? split.other : files;
+      const photoHashes = split ? photos.map((f) => hashes[files.indexOf(f)]) : hashes;
+      const ids: string[] = [];
+      for (const [audio] of split?.audioGroups ?? []) {
+        const rec = await uploadRecording(supabase, audio, hashes[files.indexOf(audio)], "inbox", setBusy);
+        uploaded = recordingFiles(rec);
+        setBusy("Đang lưu…");
+        const { id } = await createInboxItem([rec.file], { parts: rec.parts, recordedOn: rec.recorded_on });
+        uploaded = [];
+        ids.push(id);
+        setFiles((fs) => fs.filter((f) => f !== audio));
+      }
 
-      setBusy("Đang lưu…");
-      const { id } = await createInboxItem(uploaded);
+      if (photos.length > 0) {
+        uploaded = await uploadToStorage(supabase, photos, photoHashes, "inbox", (i, total) =>
+          setBusy(`Đang tải ${i + 1}/${total}…`),
+        );
 
-      setBusy("AI đang đọc… (khoảng 30-60 giây)");
-      // Errors here are stored on the inbox row; the review page surfaces them with a retry button.
-      await processInboxItem(id);
+        setBusy("Đang lưu…");
+        const { id } = await createInboxItem(uploaded);
+        uploaded = [];
+        ids.push(id);
+
+        setBusy("AI đang đọc… (khoảng 30-60 giây)");
+        // Errors here are stored on the inbox row; the review page surfaces them with a retry button.
+        await processInboxItem(id);
+      }
       setFiles([]);
-      router.push(`/inbox/${id}/review`);
+      router.push(`/inbox/${ids[0]}/review`);
     } catch (e) {
       await rollbackUpload(supabase, uploaded);
       setError(e instanceof Error ? e.message : String(e));
@@ -95,7 +124,7 @@ export function QuickAddButton() {
         ref={inputRef}
         type="file"
         multiple
-        accept="image/*,application/pdf"
+        accept={UPLOAD_ACCEPT}
         className="hidden"
         onChange={(e) => addPicked(Array.from(e.target.files ?? []))}
       />

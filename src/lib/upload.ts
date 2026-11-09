@@ -5,6 +5,11 @@ import { findDuplicateFiles, type UploadedFile } from "@/app/actions";
 import type { createClient } from "@/lib/supabase/client";
 import { cleanFileName } from "@/lib/format";
 import { extension, sha256 } from "@/lib/hash";
+import { recordedOn } from "@/lib/audio-plan";
+
+// Audio uploads are off unless NEXT_PUBLIC_AUDIO_UPLOADS=1 (read at build time).
+export const AUDIO_UPLOADS = process.env.NEXT_PUBLIC_AUDIO_UPLOADS === "1";
+export const UPLOAD_ACCEPT = AUDIO_UPLOADS ? "image/*,application/pdf,audio/*" : "image/*,application/pdf";
 
 type SupabaseBrowserClient = ReturnType<typeof createClient>;
 
@@ -82,4 +87,60 @@ export async function rollbackUpload(supabase: SupabaseBrowserClient, uploaded: 
   if (uploaded.length > 0) {
     await supabase.storage.from("documents").remove(uploaded.map((f) => f.storage_path));
   }
+}
+
+export type UploadedPart = { part_no: number; start_sec: number; end_sec: number; storage_path: string };
+
+/**
+ * One recording: compress + split in the browser, upload the recording and every part. `hash` is the sha256 of the
+ * ORIGINAL file (so the duplicate check keeps working). On any failure everything uploaded so far is removed.
+ */
+export async function uploadRecording(
+  supabase: SupabaseBrowserClient,
+  file: File,
+  hash: string,
+  pathPrefix: string,
+  onProgress: (step: string) => void,
+): Promise<{ file: UploadedFile; parts: UploadedPart[]; recorded_on: string }> {
+  const uploaded: UploadedFile[] = [];
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    // Loaded on demand so the audio library stays out of the bundle's first load.
+    const { prepareRecording } = await import("@/lib/audio");
+    const prepared = await prepareRecording(file, `ghi-am-${today}`, onProgress);
+    const put = async (f: File, path: string) => {
+      const { error } = await supabase.storage.from("documents").upload(path, f, { contentType: f.type || undefined });
+      if (error) throw new Error("Tải lên lỗi, thử lại.");
+      uploaded.push({ storage_path: path, file_name: f.name, mime_type: f.type, size_bytes: f.size, sha256: "" });
+    };
+    onProgress("Đang tải bản ghi");
+    const recPath = `${pathPrefix}/${crypto.randomUUID()}.${extension(prepared.recording.name)}`;
+    await put(prepared.recording, recPath);
+    const parts: UploadedPart[] = [];
+    for (const p of prepared.parts) {
+      onProgress(`Đang tải phần ${p.part_no}/${prepared.parts.length}`);
+      const path = `${pathPrefix}/parts/${crypto.randomUUID()}.${extension(p.file.name)}`;
+      await put(p.file, path);
+      parts.push({ part_no: p.part_no, start_sec: p.start, end_sec: p.end, storage_path: path });
+    }
+    return {
+      file: {
+        storage_path: recPath,
+        file_name: prepared.recording.name,
+        mime_type: prepared.recording.type,
+        size_bytes: prepared.recording.size,
+        sha256: hash,
+      },
+      parts,
+      recorded_on: recordedOn(file.lastModified),
+    };
+  } catch (e) {
+    await rollbackUpload(supabase, uploaded);
+    throw e;
+  }
+}
+
+/** Every storage object of an uploaded recording, for rollbackUpload when saving it fails. */
+export function recordingFiles(rec: { file: UploadedFile; parts: UploadedPart[] }): UploadedFile[] {
+  return [rec.file, ...rec.parts.map((p) => ({ ...rec.file, storage_path: p.storage_path }))];
 }
