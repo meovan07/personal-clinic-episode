@@ -42,6 +42,8 @@ Also listed in the README:
 
 | Date | Change |
 |---|---|
+| 09/11/2026 | Audio recordings, slice 3/6 (not wired to a page yet): `transcribePart` sends one part to OpenAI (`gpt-4o-transcribe-diarize`, Vietnamese, speaker labels; `TRANSCRIBE_MODEL` to change it) and records failures on the part; `useTranscription` runs up to 3 parts at a time and retries only failed ones; tested transcript helpers (`src/lib/transcript.ts`). |
+| 09/11/2026 | Audio recordings, slice 2b/6 (off unless `NEXT_PUBLIC_AUDIO_UPLOADS=1`): the visit page, "Thêm lần khám", "+" and the chat accept audio; each recording is compressed, split, uploaded with its parts and saved as its own document or inbox item. |
 | 09/11/2026 | Audio recordings, slice 2b/6 (off unless `NEXT_PUBLIC_AUDIO_UPLOADS=1`): the visit page, "Thêm lần khám", "+" and the chat accept audio; each recording is compressed, split, uploaded with its parts and saved as its own document or inbox item. |
 | 09/11/2026 | Public read access, slice 3/3: the proxy lets signed-out visitors open `/people/<id>` (Tổng quan, Lần khám), `/visits/<id>`, `/cases/<id>` and `/api/public-file/<id>` (`isPublicPath`); other routes go to `/login?next=…` and sign-in returns there (`safeNext`); every server action calls `requireMember()`. Migration `public_read` applied to production on 09/11/2026; needs `SUPABASE_SECRET_KEY` set in Vercel. Pages are indexable on purpose. |
 | 09/11/2026 | Public read access, slice 2/3 (still not public; the proxy requires login): person, visit and case pages read through `public_*` for signed-out visitors and hide member-only controls (`getViewer()` in `src/lib/viewer.ts`, wrappers in `src/lib/public-data.ts`); header shows "Đăng nhập" with a return link (`LoginLink`). Members see no change. |

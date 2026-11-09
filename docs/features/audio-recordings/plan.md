@@ -137,14 +137,14 @@ Every task is test-first: a failing test before the code. Tick the box when the 
   - Size: M
   - Depends on: T1, T3
   - Rollback: revert; flag off hides it. Migration `recording_date`: down SQL drops the two `recorded_on` columns (safe to drop: it is only a hint for AI matching; the confirmed date lives on the visit).
-- [ ] T5 Add pure transcript helpers (R4, R7, R13, R14)
+- [x] T5 Add pure transcript helpers (R4, R7, R13, R14)
   - Acceptance: `joinParts` offsets segments by part start (5 s into a part at 1202 s → 1207 s, "20:07") and orders by `part_no` regardless of finish order, returning incomplete when a part isn't done; `applySpeakerRoles` maps letters per part and labels unmapped ones "Người nói n"; `capTranscript` at 30,000 chars (30,000 → no note, 30,001 → cut + note); `partPathsToDelete(parts)`.
   - Tests: `src/lib/transcript.test.ts` first with each case above.
   - Files: `src/lib/transcript.ts`, `src/lib/transcript.test.ts`
   - Lines (est.): 80 + 80 tests
   - Size: S
   - Depends on: none
-- [ ] T6 Transcribe parts with retry (R5, R6, R15)
+- [x] T6 Transcribe parts with retry (R5, R6, R15)
   - Acceptance: `transcribePart(partId)` downloads the part and calls OpenAI with `TRANSCRIBE_MODEL` (default `gpt-4o-transcribe-diarize`), `language: "vi"`, `diarized_json`, `chunking_strategy: "auto"`, then saves segments and `done`, or `failed` with the error; `useTranscription` runs pending/failed parts at most 3 at a time, reports "Đang chép lời n/N", and a retry calls only failed parts (1 request for 1 failed part of 12).
   - Tests: a failing test in `src/lib/transcript.test.ts` for the pure scheduler `nextParts(parts, running, max=3)` (skips done, picks failed/pending, never over 3). Network check in the preview for retry.
   - Files: `src/lib/ai/transcribe.ts`, `src/app/actions.ts`, `src/lib/use-transcription.ts`

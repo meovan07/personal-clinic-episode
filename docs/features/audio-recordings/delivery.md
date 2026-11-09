@@ -114,3 +114,18 @@ Removing the `planParts` guard turns "R4 planParts rejects unreadable durations"
 Not run / not verified: iPhone Safari (needs your phone); flag-off in the browser (verified by code); the duplicate message in the browser.
 
 Review: round 2, confidence 88/100. Majors (slice size, mono/bitrate bug) fixed; 2 Minors open behind the flag (T7, T8/T11).
+
+## Slice 3/6 (T5, T6), 2026-11-09
+
+| Check | Command | Result |
+| :-- | :-- | :-- |
+| test (slice) | `npx tsx --test src/lib/transcript.test.ts src/lib/ai/transcribe.test.ts` | 9 passed, 0 failed |
+| test (all) | `npm test` | 72 tests: 67 passed, 5 failed (slice-4 locked tests, "not implemented") |
+| typecheck / lint | `npx tsc --noEmit`, `npx eslint src` | pass |
+
+Traceability: R4 "R4 joined segment times are offset and ordered"; R5 "R5 scheduler never runs more than 3", "R5 progress label counts done parts", "R5 transcription request uses diarize defaults and override"; R6 "R6 timeout on part 7 keeps the other 11"; R7 "R7 applies roles per part, unmapped become Người nói"; R10 "R10 minutes label rounds up"; R13 "R13 cap at 30,000 and note at 30,001"; R14 "R14 lists part paths only". All pass. Orphan tests: none.
+
+Mutation check: offset, concurrency limit, minute rounding and language mutants all turn tests red; files restored.
+
+Not verified: transcription with the real model (Claude can't load `.env.local`; the owner can run the probe, otherwise it's covered in slice 5's browser check); the R5 e2e row (3 at a time in the browser) waits for the UI in slice 5.
+Review: round 3, confidence 89/100, no open Critical/Major.
