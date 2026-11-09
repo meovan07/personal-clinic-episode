@@ -1,10 +1,13 @@
 import type { Metadata, Viewport } from "next";
 import { Be_Vietnam_Pro, IBM_Plex_Mono, Newsreader } from "next/font/google";
 import Link from "next/link";
+import { Suspense } from "react";
 import { Settings, Stethoscope } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getViewer } from "@/lib/viewer";
 import { AppShell } from "@/components/AppShell";
 import { AssistantChat } from "@/components/AssistantChat";
+import { LoginLink } from "@/components/LoginLink";
 import { PersonNav, PersonTabBar } from "@/components/PersonNav";
 import { QuickAddButton } from "@/components/QuickAddButton";
 import { SearchDialog } from "@/components/SearchDialog";
@@ -57,20 +60,13 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { user, isMember } = await getViewer();
 
-  let isMember = false;
   let people: { id: string; full_name: string }[] = [];
-  if (user) {
-    const { data } = await supabase.from("members").select("user_id").eq("user_id", user.id).maybeSingle();
-    isMember = !!data;
-    if (isMember) {
-      const { data: peopleData } = await supabase.from("people").select("id, full_name").order("created_at");
-      people = peopleData ?? [];
-    }
+  if (isMember) {
+    const supabase = await createClient();
+    const { data: peopleData } = await supabase.from("people").select("id, full_name").order("created_at");
+    people = peopleData ?? [];
   }
 
   return (
@@ -80,16 +76,23 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <div className="print:hidden">
           <TopLoader />
         </div>
-        {user && (
-          <header className="sticky top-0 z-10 border-b print:hidden border-line bg-paper/90 pt-[env(safe-area-inset-top)] backdrop-blur">
-            <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3">
+        <header className="sticky top-0 z-10 border-b print:hidden border-line bg-paper/90 pt-[env(safe-area-inset-top)] backdrop-blur">
+          <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3">
+            {user ? (
               <Link href="/" className="flex shrink-0 items-center gap-2 font-semibold text-pine hover:text-pine-dark">
                 <Stethoscope className="h-5 w-5" strokeWidth={2} />
                 <span className="hidden sm:inline">Sổ bệnh án</span>
               </Link>
-              {isMember && <PersonNav people={people} />}
-              <div className="flex shrink-0 items-center gap-4">
-                {isMember && <SearchDialog />}
+            ) : (
+              <div className="flex shrink-0 items-center gap-2 font-semibold text-pine">
+                <Stethoscope className="h-5 w-5" strokeWidth={2} />
+                <span className="hidden sm:inline">Sổ bệnh án</span>
+              </div>
+            )}
+            {isMember && <PersonNav people={people} />}
+            <div className="flex shrink-0 items-center gap-4">
+              {isMember && <SearchDialog />}
+              {user ? (
                 <Link
                   href="/settings"
                   className="flex items-center gap-1.5 text-sm text-ink-soft hover:text-ink"
@@ -98,10 +101,20 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                   <Settings className="h-4 w-4" strokeWidth={1.75} />
                   <span className="hidden sm:inline">Cài đặt</span>
                 </Link>
-              </div>
+              ) : (
+                <Suspense
+                  fallback={
+                    <Link href="/login" className="flex items-center gap-1.5 text-sm text-ink-soft hover:text-ink">
+                      Đăng nhập
+                    </Link>
+                  }
+                >
+                  <LoginLink />
+                </Suspense>
+              )}
             </div>
-          </header>
-        )}
+          </div>
+        </header>
         <main className="mx-auto max-w-5xl px-4 py-6 pb-24 sm:pb-6 print:max-w-none print:p-0">
           {user && !isMember ? (
             <div className="card">

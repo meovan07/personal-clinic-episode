@@ -9,7 +9,9 @@ import { MoreMenu } from "@/components/MoreMenu";
 import { PageHeader } from "@/components/PageHeader";
 import { ResultRow } from "@/components/ResultRow";
 import { VisitList } from "@/components/VisitList";
+import { getPublicCase } from "@/lib/public-data";
 import { createClient } from "@/lib/supabase/server";
+import { getViewer } from "@/lib/viewer";
 import { formatDate } from "@/lib/format";
 import { CASE_STATUS, CASE_STATUS_TONE } from "@/lib/labels";
 import { latestResults, OUT_OF_RANGE } from "@/lib/results";
@@ -18,18 +20,28 @@ import { latestResults, OUT_OF_RANGE } from "@/lib/results";
 // and the visits that belong to it.
 export default async function CasePage({ params }: PageProps<"/cases/[id]">) {
   const { id } = await params;
+  const { isMember } = await getViewer();
   const supabase = await createClient();
-  const { data: item } = await supabase.from("cases").select("*, people(full_name)").eq("id", id).maybeSingle();
+  const pub = isMember ? null : await getPublicCase(supabase, id);
+  if (!isMember && !pub) notFound();
+  const { data: item } = pub
+    ? { data: { ...pub, people: pub.people ?? { full_name: "" } } }
+    : await supabase.from("cases").select("*, people(full_name)").eq("id", id).maybeSingle();
   if (!item) notFound();
-  const { data: visits } = await supabase
+  const { data: memberVisits } = pub
+    ? { data: null }
+    : await supabase
     .from("visits")
     .select("id, visit_date, facility, reason, documents(count)")
     .eq("case_id", id)
     .order("visit_date", { ascending: false, nullsFirst: false });
+  const visits = pub ? pub.visits : memberVisits;
 
   const visitDates = new Map((visits ?? []).map((v) => [v.id, v.visit_date]));
   const visitIds = [...visitDates.keys()];
-  const [obs, todos] = visitIds.length
+  const [obs, todos] = pub
+    ? [{ data: pub.observations }, { data: pub.action_items }]
+    : visitIds.length
     ? await Promise.all([
         supabase
           .from("observations")
@@ -69,6 +81,7 @@ export default async function CasePage({ params }: PageProps<"/cases/[id]">) {
           </span>
         }
         actions={
+          isMember && (
           <>
             <Link href={`/visits/new?person=${item.person_id}&case=${id}`} className="btn">
               <CalendarPlus className="h-4 w-4" strokeWidth={1.75} />
@@ -90,6 +103,7 @@ export default async function CasePage({ params }: PageProps<"/cases/[id]">) {
               </ConfirmForm>
             </MoreMenu>
           </>
+          )
         }
       />
 
@@ -110,7 +124,18 @@ export default async function CasePage({ params }: PageProps<"/cases/[id]">) {
         <section>
           <h2 className="section-title">Việc cần làm</h2>
           <div className="card">
-            <ActionItems items={todos.data ?? []} />
+            {isMember ? (
+              <ActionItems items={todos.data ?? []} />
+            ) : (
+              <ul className="divide-y divide-line">
+                {todos.data?.map((a) => (
+                  <li key={a.id} className="flex items-start justify-between gap-3 py-2.5 first:pt-0 last:pb-0">
+                    <span>{a.content}</span>
+                    {a.due_on && <span className="muted shrink-0">Hạn {formatDate(a.due_on)}</span>}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </section>
       )}
