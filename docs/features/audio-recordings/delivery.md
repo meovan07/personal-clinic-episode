@@ -143,3 +143,17 @@ Mutation check: empty-section, digit-filter and confidence mutants all turn test
 
 Not verified: real-model quality (speaker roles, summary, follow-up from "2 tuần sau"), the R8/R9/R13 e2e rows. They need the review UI (slice 5) and the OpenAI key, which Claude can't load.
 Review: round 4, confidence 85/100; Majors fixed (numeric part times, slice size).
+
+## Slice 5/6 (T8), 2026-11-09
+
+| Check | Command | Result |
+| :-- | :-- | :-- |
+| test | `npm test` | 87 passed, 0 failed |
+| typecheck / lint | `npx tsc --noEmit`, `npx eslint src` | pass |
+| browser, full run | local Supabase, flag on, the real OpenAI models, the owner's 1:54 m4a through "+" | pass after 3 fixes (review round 5) |
+
+Traceability (e2e, browser): R5 progress "Đang chép lời 0/1"; R6 a failed part shows "Chép lời lỗi 1/1 phần", and "Thử lại" re-sent only that part, then the AI read ran (~12 s); R8 the review shows the five summary sections; R10 recording date, player, transcript toggle, nothing saved before Xác nhận; R15 the audio loads through a signed URL with a token.
+
+Model comparison on the owner's recording: diarize kept 0:00–0:36 (one speaker); `gpt-4o-transcribe` drifted into Korean and Thai. Default stays diarize; quality is open until a clearer recording is tried.
+
+Not verified: confirming a recording and the visit-page view (slice 6); 12 parts running 3 at a time (needs a recording of nearly 2 hours); iPhone.

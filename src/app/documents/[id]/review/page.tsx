@@ -5,6 +5,7 @@ import { Extraction, withExtractionDefaults } from "@/lib/ai/extract";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate } from "@/lib/format";
 import { DOC_TYPE } from "@/lib/labels";
+import type { Segment } from "@/lib/transcript";
 
 export default async function ReviewPage({ params }: PageProps<"/documents/[id]/review">) {
   const { id } = await params;
@@ -45,6 +46,8 @@ export default async function ReviewPage({ params }: PageProps<"/documents/[id]/
         visitId={doc.visit_id}
         initial={parsed.data}
         previews={previews}
+        transcript={Array.isArray(doc.transcript) ? (doc.transcript as Segment[]) : []}
+        recordedOn={doc.recorded_on}
         catalog={catalog ?? []}
       />
     </>

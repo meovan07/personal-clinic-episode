@@ -101,3 +101,4 @@ From: intent.md (Hung). Status: approved. Approved: 2026-11-09.
 - Long audio: split in the browser (R4). Decided by Hung, 2026-11-09.
 - Keep compressed audio (R3), read-only transcript (R10), retry failed parts (R6), structured summary (R8), searchable transcript (R12, R13). Decided by Hung, 2026-11-09.
 - Test-design gaps (09/11/2026): spoken values need a test name + number (R8), discard deletes everything (R14), unknown speakers are "Người nói" (R7). Decided by Hung. Progress counts done parts, minutes round up, cut note wording, fixed ±10 s marks, shorter part over 24 MB, confidence from the model's `low`: defaults set by Claude, same date.
+- Public pages (public read access feature): a confirmed recording shows like a photo, so its summary and audio file are public; the transcript stays members-only (`public_visit` doesn't return it). Decided by Hung, 2026-11-09; checked in T11.

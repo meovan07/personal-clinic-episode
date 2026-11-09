@@ -159,10 +159,10 @@ Every task is test-first: a failing test before the code. Tick the box when the 
   - Lines (est.): 200
   - Size: M
   - Depends on: T5, T6
-- [ ] T8 Show the recording on the review screens (R10, R6)
+- [x] T8 Show the recording on the review screens (R10, R6)
   - Acceptance: both review screens show `AudioPlayer` (signed URL, `preload="metadata"`) and `Transcript` folded behind "Xem lời thoại (n phút)" with speaker and time per turn, read-only; `InboxRetry` shows part progress and "Chép lời lỗi k/N phần" with "Thử lại"; nothing saved before **Xác nhận**.
   - Tests: no unit test (UI); browser preview check with a seeded item (a done item and one with a failed part).
-  - Files: `src/components/AudioPlayer.tsx`, `src/components/Transcript.tsx`, `src/components/ReviewForm.tsx`, `src/components/InboxReviewForm.tsx`, `src/components/InboxRetry.tsx`, `src/app/documents/[id]/review/page.tsx`, `src/app/inbox/[id]/review/page.tsx`
+  - Files: `src/components/AudioPlayer.tsx`, `src/components/Transcript.tsx`, `src/components/ReviewForm.tsx`, `src/components/InboxReviewForm.tsx`, `src/components/InboxRetry.tsx`, `src/app/documents/[id]/review/page.tsx`, `src/app/inbox/[id]/review/page.tsx`; plus (found in the browser run) `src/lib/labels.ts` (the recording type label) and `src/lib/ai/transcribe.ts` + its locked test (response format per model; test change approved by Hung 2026-11-09)
   - Lines (est.): 250
   - Size: M
   - Depends on: T6, T7

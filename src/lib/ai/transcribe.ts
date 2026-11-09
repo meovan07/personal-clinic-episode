@@ -15,7 +15,7 @@ export async function transcribePartAudio(
     file: await toFile(part.bytes, part.name, { type: part.mime }),
     model,
     language: "vi",
-    response_format: "diarized_json",
+    response_format: model.includes("diarize") ? "diarized_json" : "json",
     chunking_strategy: "auto",
   })) as { text?: string; segments?: { start: number; end: number; speaker: string; text: string }[] };
   const segments = res.segments ?? [];

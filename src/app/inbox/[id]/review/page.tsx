@@ -3,7 +3,9 @@ import { PageHeader } from "@/components/PageHeader";
 import { InboxReviewForm } from "@/components/InboxReviewForm";
 import { InboxRetry } from "@/components/InboxRetry";
 import { InboxExtraction, withExtractionDefaults } from "@/lib/ai/extract";
+import { loadTranscriptParts } from "@/app/actions";
 import { createClient } from "@/lib/supabase/server";
+import type { Segment } from "@/lib/transcript";
 
 // AI extraction/matching runs inside a server action triggered from this page and can take a minute.
 export const maxDuration = 300;
@@ -14,18 +16,19 @@ export default async function InboxReviewPage({ params }: PageProps<"/inbox/[id]
   const { data: item } = await supabase
     .from("inbox_items")
     .select(
-      "id, status, error, extraction, suggested_person_id, suggested_case_id, suggested_is_new_case, suggested_new_case_title, suggested_visit_id, inbox_files(storage_path, file_name, mime_type, page_no)",
+      "id, status, error, extraction, transcript, recorded_on, suggested_person_id, suggested_case_id, suggested_is_new_case, suggested_new_case_title, suggested_visit_id, inbox_files(storage_path, file_name, mime_type, page_no)",
     )
     .eq("id", id)
     .order("page_no", { referencedTable: "inbox_files" })
     .maybeSingle();
   if (!item) notFound();
+  const parts = item.status !== "needs_review" ? await loadTranscriptParts({ inboxItemId: id }) : [];
 
   return (
     <>
       <PageHeader back={{ href: "/", label: "Trang chủ" }} title="Tài liệu mới" subtitle="AI đọc và đoán người bệnh / bệnh án, bạn kiểm tra lại rồi xác nhận." />
       {item.status !== "needs_review" ? (
-        <InboxRetry id={id} error={item.error} />
+        <InboxRetry id={id} error={item.error} parts={parts} />
       ) : (
         <ReviewBody item={item} />
       )}
@@ -39,6 +42,8 @@ async function ReviewBody({
   item: {
     id: string;
     extraction: unknown;
+    transcript: unknown;
+    recorded_on: string | null;
     suggested_person_id: string | null;
     suggested_case_id: string | null;
     suggested_is_new_case: boolean;
@@ -81,6 +86,8 @@ async function ReviewBody({
       cases={cases ?? []}
       catalog={catalog ?? []}
       previews={previews}
+      transcript={Array.isArray(item.transcript) ? (item.transcript as Segment[]) : []}
+      recordedOn={item.recorded_on}
       suggestedPersonId={item.suggested_person_id}
       suggestedCaseId={item.suggested_case_id}
       suggestedIsNewCase={item.suggested_is_new_case}

@@ -8,7 +8,10 @@ import { ConfirmForm } from "@/components/ConfirmForm";
 import { StringList, VaccinationFields } from "@/components/ReviewForm";
 import type { ExtractionResult, InboxExtractionResult } from "@/lib/ai/extract";
 import { DOC_TYPE } from "@/lib/labels";
+import { AudioPlayer } from "@/components/AudioPlayer";
+import { Transcript } from "@/components/Transcript";
 import { formatDate } from "@/lib/format";
+import type { Segment } from "@/lib/transcript";
 
 type Obs = ExtractionResult["observations"][number];
 type Med = ExtractionResult["medications"][number];
@@ -37,6 +40,8 @@ export function InboxReviewForm({
   cases,
   catalog,
   previews,
+  transcript = [],
+  recordedOn = null,
   suggestedPersonId,
   suggestedCaseId,
   suggestedIsNewCase,
@@ -49,6 +54,8 @@ export function InboxReviewForm({
   cases: CaseOpt[];
   catalog: { code: string; name_vi: string }[];
   previews: Preview[];
+  transcript?: Segment[];
+  recordedOn?: string | null;
   suggestedPersonId: string | null;
   suggestedCaseId: string | null;
   suggestedIsNewCase: boolean;
@@ -117,10 +124,25 @@ export function InboxReviewForm({
     });
   }
 
+  const recording = transcript.length > 0 || previews.some((p) => p.mime?.startsWith("audio/"));
+
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <div className="space-y-3 lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
-        {previews.map((p, i) =>
+        {recording && (
+          <>
+            {recordedOn && <p className="muted">Ngày ghi âm: {formatDate(recordedOn)}</p>}
+            {previews
+              .filter((p) => p.mime?.startsWith("audio/"))
+              .map((p, i) => (
+                <AudioPlayer key={i} url={p.url} title={p.name} />
+              ))}
+            <Transcript segments={transcript} />
+          </>
+        )}
+        {previews
+          .filter((p) => !p.mime?.startsWith("audio/"))
+          .map((p, i) =>
           p.mime === "application/pdf" ? (
             <iframe key={i} src={p.url} title={p.name} className="h-[70vh] w-full rounded-lg border bg-white" />
           ) : /^image\/(jpeg|png|gif|webp|avif)$/.test(p.mime ?? "") ? (

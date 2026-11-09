@@ -27,8 +27,9 @@ test("R5 transcription request uses diarize defaults and override", async () => 
   assert.equal(captured.length, 2);
   assert.equal(captured[0].model, "gpt-4o-transcribe-diarize");
   assert.equal(captured[1].model, "gpt-4o-transcribe");
+  assert.equal(captured[0].response_format, "diarized_json");
+  assert.equal(captured[1].response_format, "json");
   for (const c of captured) {
-    assert.equal(c.response_format, "diarized_json");
     assert.equal(c.chunking_strategy, "auto");
     assert.equal(c.language, "vi");
   }
